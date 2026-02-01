@@ -1,18 +1,14 @@
 -- Seed data for Automations
--- This provides sample automations to demonstrate the system
+-- This provides sample automations matching the current schema
 
--- Sample Automation 1: Welcome Message for New Contacts
-INSERT INTO `Automation` (id, name, description, `trigger`, conditions, actions, isActive, priority, createdBy, createdAt, updatedAt)
+-- Sample Automation 1: Welcome New Customers
+INSERT INTO `Automation` (id, userId, name, `trigger`, actions, isActive, createdAt, updatedAt)
 VALUES 
 (
   UUID(),
+  (SELECT id FROM User LIMIT 1),
   'Welcome New Customers',
-  'Send a welcome message to new contacts when they first message us',
-  'message_received',
-  JSON_OBJECT(
-    'matchType', 'first_message',
-    'fromNewContact', true
-  ),
+  'MESSAGE_RECEIVED',
   JSON_ARRAY(
     JSON_OBJECT(
       'type', 'send_message',
@@ -24,54 +20,18 @@ VALUES
     )
   ),
   true,
-  1,
-  (SELECT id FROM User LIMIT 1),
   NOW(),
   NOW()
 );
 
--- Sample Automation 2: Auto-reply for Business Hours
-INSERT INTO `Automation` (id, name, description, `trigger`, conditions, actions, isActive, priority, createdBy, createdAt, updatedAt)
+-- Sample Automation 2: Product Inquiry Handler
+INSERT INTO `Automation` (id, userId, name, `trigger`, actions, isActive, createdAt, updatedAt)
 VALUES 
 (
   UUID(),
-  'After Hours Auto-Reply',
-  'Send automatic reply when messages arrive outside business hours',
-  'message_received',
-  JSON_OBJECT(
-    'timeCondition', JSON_OBJECT(
-      'type', 'outside_hours',
-      'businessHours', JSON_OBJECT(
-        'start', '09:00',
-        'end', '18:00',
-        'days', JSON_ARRAY('monday', 'tuesday', 'wednesday', 'thursday', 'friday')
-      )
-    )
-  ),
-  JSON_ARRAY(
-    JSON_OBJECT(
-      'type', 'send_message',
-      'message', '⏰ Thank you for your message. Our business hours are 9 AM - 6 PM, Monday to Friday. We will respond when we are back!'
-    )
-  ),
-  true,
-  2,
   (SELECT id FROM User LIMIT 1),
-  NOW(),
-  NOW()
-);
-
--- Sample Automation 3: Product Inquiry Handler
-INSERT INTO `Automation` (id, name, description, `trigger`, conditions, actions, isActive, priority, createdBy, createdAt, updatedAt)
-VALUES 
-(
-  UUID(),
-  'Product Inquiry - Auto Tag',
-  'Tag contacts who ask about products or pricing',
-  'message_received',
-  JSON_OBJECT(
-    'messageContains', JSON_ARRAY('price', 'product', 'buy', 'order', 'purchase', 'cost', 'how much')
-  ),
+  'Product Inquiry Auto-Tag',
+  'MESSAGE_RECEIVED',
   JSON_ARRAY(
     JSON_OBJECT(
       'type', 'add_tag',
@@ -79,27 +39,22 @@ VALUES
     ),
     JSON_OBJECT(
       'type', 'send_message',
-      'message', '📦 Thank you for your interest in our products! A team member will send you our catalog and pricing shortly.'
+      'message', '📦 Thank you for your interest! A team member will send you our catalog shortly.'
     )
   ),
   true,
-  3,
-  (SELECT id FROM User LIMIT 1),
   NOW(),
   NOW()
 );
 
--- Sample Automation 4: Support Request Handler
-INSERT INTO `Automation` (id, name, description, `trigger`, conditions, actions, isActive, priority, createdBy, createdAt, updatedAt)
+-- Sample Automation 3: Support Request Handler
+INSERT INTO `Automation` (id, userId, name, `trigger`, actions, isActive, createdAt, updatedAt)
 VALUES 
 (
   UUID(),
+  (SELECT id FROM User LIMIT 1),
   'Support Request Handler',
-  'Tag and acknowledge support requests',
-  'message_received',
-  JSON_OBJECT(
-    'messageContains', JSON_ARRAY('help', 'support', 'issue', 'problem', 'not working', 'error', 'broken')
-  ),
+  'MESSAGE_RECEIVED',
   JSON_ARRAY(
     JSON_OBJECT(
       'type', 'add_tag',
@@ -107,55 +62,22 @@ VALUES
     ),
     JSON_OBJECT(
       'type', 'send_message',
-      'message', '🛠️ We are here to help! Our support team has been notified and will assist you shortly. Please describe your issue in detail.'
+      'message', '🛠️ Support team has been notified. Please describe your issue in detail.'
     )
   ),
   true,
-  4,
-  (SELECT id FROM User LIMIT 1),
   NOW(),
   NOW()
 );
 
--- Sample Automation 5: Thank You for Orders
-INSERT INTO `Automation` (id, name, description, `trigger`, conditions, actions, isActive, priority, createdBy, createdAt, updatedAt)
+-- Sample Automation 4: VIP Customer Recognition
+INSERT INTO `Automation` (id, userId, name, `trigger`, actions, isActive, createdAt, updatedAt)
 VALUES 
 (
   UUID(),
-  'Order Confirmation',
-  'Send thank you message when order keywords detected',
-  'message_received',
-  JSON_OBJECT(
-    'messageContains', JSON_ARRAY('order confirmed', 'i want to order', 'place order', 'confirm order')
-  ),
-  JSON_ARRAY(
-    JSON_OBJECT(
-      'type', 'add_tag',
-      'tagName', 'Order Placed'
-    ),
-    JSON_OBJECT(
-      'type', 'send_message',
-      'message', '✅ Thank you for your order! We will process it and send you tracking details soon. Order confirmation will be sent shortly.'
-    )
-  ),
-  true,
-  5,
   (SELECT id FROM User LIMIT 1),
-  NOW(),
-  NOW()
-);
-
--- Sample Automation 6: VIP Customer Auto-Tag
-INSERT INTO `Automation` (id, name, description, `trigger`, conditions, actions, isActive, priority, createdBy, createdAt, updatedAt)
-VALUES 
-(
-  UUID(),
-  'VIP Customer Recognition',
-  'Tag contacts who mention they are returning customers',
-  'message_received',
-  JSON_OBJECT(
-    'messageContains', JSON_ARRAY('regular customer', 'bought before', 'previous order', 'last time', 'vip')
-  ),
+  'VIP Customer Tag',
+  'MESSAGE_RECEIVED',
   JSON_ARRAY(
     JSON_OBJECT(
       'type', 'add_tag',
@@ -163,12 +85,10 @@ VALUES
     ),
     JSON_OBJECT(
       'type', 'send_message',
-      'message', '⭐ Welcome back, valued customer! We appreciate your continued support. How can we serve you today?'
+      'message', '⭐ Welcome back, valued customer! How can we serve you today?'
     )
   ),
   true,
-  6,
-  (SELECT id FROM User LIMIT 1),
   NOW(),
   NOW()
 );
@@ -179,7 +99,6 @@ VALUES
   (UUID(), 'New Customer', '#3B82F6', (SELECT id FROM User LIMIT 1), NOW(), NOW()),
   (UUID(), 'Product Inquiry', '#8B5CF6', (SELECT id FROM User LIMIT 1), NOW(), NOW()),
   (UUID(), 'Support', '#EF4444', (SELECT id FROM User LIMIT 1), NOW(), NOW()),
-  (UUID(), 'Order Placed', '#10B981', (SELECT id FROM User LIMIT 1), NOW(), NOW()),
   (UUID(), 'VIP Customer', '#F59E0B', (SELECT id FROM User LIMIT 1), NOW(), NOW());
 
-SELECT 'Automation seed data inserted successfully!' AS status;
+SELECT '✅ Automation seed data inserted successfully!' AS status;
