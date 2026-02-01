@@ -224,14 +224,19 @@ export class MessageService implements IMessageService {
             30000,
             'WhatsApp send timed out',
           );
-          logger.info({ messageId: waMessage.id.id }, 'WhatsApp message sent successfully');
+          
+          if (!waMessage || !waMessage.id) {
+            throw new Error('WhatsApp returned invalid message response');
+          }
+          
+          logger.info({ messageId: waMessage.id.id || waMessage.id._serialized }, 'WhatsApp message sent successfully');
         } catch (sendError: any) {
           // Handle detached frame errors - mark session as disconnected
-          if (sendError.message?.includes('detached Frame')) {
+          if (sendError.message?.includes('detached Frame') || sendError.message?.includes('Execution context')) {
             logger.warn({ 
               sessionId: activeSession.id, 
               error: sendError.message 
-            }, 'Detached frame detected - session needs reconnection');
+            }, 'Detached frame/context detected - session needs reconnection');
             activeSession.status = 'DISCONNECTED';
             throw new ExternalServiceError('WhatsApp Web', 'Session disconnected. Please scan QR code to reconnect.');
           }
@@ -239,8 +244,9 @@ export class MessageService implements IMessageService {
         }
 
         // Update message with WhatsApp message ID
+        const messageId = waMessage.id.id || waMessage.id._serialized || waMessage.id;
         return await this.messageRepository.update(message.id, {
-          waMessageId: waMessage.id.id,
+          waMessageId: messageId,
           status: MessageStatus.SENT,
         });
       } catch (error) {
