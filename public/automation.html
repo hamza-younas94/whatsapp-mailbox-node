@@ -205,8 +205,16 @@
             const response = await fetchWithAuth(`${API_BASE}/automations`);
             if (response.ok) {
                 const data = await response.json();
-                displayAutomations(data.data || []);
+                const automations = data.data || [];
+                displayAutomations(automations);
+                updateStats(automations);
             }
+        }
+
+        function updateStats(automations) {
+            const activeCount = automations.filter(a => a.isActive).length;
+            document.getElementById('totalAutomations').textContent = automations.length;
+            document.getElementById('activeAutomations').textContent = activeCount;
         }
 
         async function loadTags() {
