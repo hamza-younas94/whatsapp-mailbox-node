@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>API Test - WhatsApp Mailbox</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+        .test { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; }
+        .success { border-left: 4px solid #10b981; }
+        .error { border-left: 4px solid #ef4444; }
+        pre { background: #f3f4f6; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        button { background: #3b82f6; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; }
+        button:hover { background: #2563eb; }
+    </style>
+</head>
+<body>
+    <h1>🧪 API Connection Test</h1>
+    <p>Testing backend API endpoints...</p>
+    
+    <button onclick="runTests()">Run All Tests</button>
+    <button onclick="location.reload()">Refresh</button>
+    
+    <div id="results"></div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api/v1';
+        
+        async function testEndpoint(name, url, needsAuth = true) {
+            const results = document.getElementById('results');
+            const testDiv = document.createElement('div');
+            testDiv.className = 'test';
+            testDiv.innerHTML = `<strong>${name}</strong><br>Testing ${url}...`;
+            results.appendChild(testDiv);
+            
+            try {
+                const headers = {};
+                if (needsAuth) {
+                    const token = localStorage.getItem('authToken');
+                    if (token) {
+                        headers['Authorization'] = `Bearer ${token}`;
+                    }
+                }
+                
+                const response = await fetch(url, { headers });
+                const data = await response.json();
+                
+                testDiv.className = 'test ' + (response.ok ? 'success' : 'error');
+                testDiv.innerHTML = `
+                    <strong>${name}</strong><br>
+                    Status: ${response.status} ${response.statusText}<br>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                testDiv.className = 'test error';
+                testDiv.innerHTML = `
+                    <strong>${name}</strong><br>
+                    Error: ${error.message}
+                `;
+            }
+        }
+        
+        async function runTests() {
+            document.getElementById('results').innerHTML = '';
+            
+            // Check auth token
+            const token = localStorage.getItem('authToken');
+            const authDiv = document.createElement('div');
+            authDiv.className = 'test ' + (token ? 'success' : 'error');
+            authDiv.innerHTML = `
+                <strong>Authentication</strong><br>
+                Token: ${token ? '✅ Found' : '❌ Not found'}<br>
+                ${!token ? '<em>You need to login first at <a href="/login.html">/login.html</a></em>' : ''}
+            `;
+            document.getElementById('results').appendChild(authDiv);
+            
+            if (!token) {
+                return;
+            }
+            
+            // Test endpoints
+            await testEndpoint('Health Check', `${window.location.origin}/health`, false);
+            await testEndpoint('Automations List', `${API_BASE}/automations`);
+            await testEndpoint('Shops List', `${API_BASE}/shops`);
+            await testEndpoint('Drip Campaigns', `${API_BASE}/drip-campaigns`);
+            await testEndpoint('Quick Replies', `${API_BASE}/quick-replies`);
+            await testEndpoint('Tags', `${API_BASE}/tags`);
+        }
+        
+        // Auto-run on load
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(runTests, 500);
+        });
+    </script>
+</body>
+</html>
