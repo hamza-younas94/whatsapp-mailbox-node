@@ -1,5 +1,5 @@
 -- Seed data for Automations
--- This provides sample automations matching the current schema
+-- Sample automations matching the current schema
 
 -- Sample Automation 1: Welcome New Customers
 INSERT INTO `Automation` (id, userId, name, `trigger`, actions, isActive, createdAt, updatedAt)
@@ -10,21 +10,15 @@ VALUES
   'Welcome New Customers',
   'MESSAGE_RECEIVED',
   JSON_ARRAY(
-    JSON_OBJECT(
-      'type', 'send_message',
-      'message', 'Welcome! 👋 Thank you for contacting us. How can we help you today?'
-    ),
-    JSON_OBJECT(
-      'type', 'add_tag',
-      'tagName', 'New Customer'
-    )
+    JSON_OBJECT('type', 'send_message', 'message', 'Welcome! 👋 Thank you for contacting us. How can we help you today?'),
+    JSON_OBJECT('type', 'add_tag', 'tagName', 'New Customer')
   ),
   true,
   NOW(),
   NOW()
 );
 
--- Sample Automation 2: Product Inquiry Handler
+-- Sample Automation 2: Product Inquiry
 INSERT INTO `Automation` (id, userId, name, `trigger`, actions, isActive, createdAt, updatedAt)
 VALUES 
 (
@@ -33,21 +27,15 @@ VALUES
   'Product Inquiry Auto-Tag',
   'MESSAGE_RECEIVED',
   JSON_ARRAY(
-    JSON_OBJECT(
-      'type', 'add_tag',
-      'tagName', 'Product Inquiry'
-    ),
-    JSON_OBJECT(
-      'type', 'send_message',
-      'message', '📦 Thank you for your interest! A team member will send you our catalog shortly.'
-    )
+    JSON_OBJECT('type', 'add_tag', 'tagName', 'Product Inquiry'),
+    JSON_OBJECT('type', 'send_message', 'message', '📦 Thank you! A team member will send you our catalog shortly.')
   ),
   true,
   NOW(),
   NOW()
 );
 
--- Sample Automation 3: Support Request Handler
+-- Sample Automation 3: Support Requests
 INSERT INTO `Automation` (id, userId, name, `trigger`, actions, isActive, createdAt, updatedAt)
 VALUES 
 (
@@ -56,49 +44,20 @@ VALUES
   'Support Request Handler',
   'MESSAGE_RECEIVED',
   JSON_ARRAY(
-    JSON_OBJECT(
-      'type', 'add_tag',
-      'tagName', 'Support'
-    ),
-    JSON_OBJECT(
-      'type', 'send_message',
-      'message', '🛠️ Support team has been notified. Please describe your issue in detail.'
-    )
+    JSON_OBJECT('type', 'add_tag', 'tagName', 'Support'),
+    JSON_OBJECT('type', 'send_message', 'message', '🛠️ Support team notified. Please describe your issue.')
   ),
   true,
   NOW(),
   NOW()
 );
 
--- Sample Automation 4: VIP Customer Recognition
-INSERT INTO `Automation` (id, userId, name, `trigger`, actions, isActive, createdAt, updatedAt)
-VALUES 
-(
-  UUID(),
-  (SELECT id FROM User LIMIT 1),
-  'VIP Customer Tag',
-  'MESSAGE_RECEIVED',
-  JSON_ARRAY(
-    JSON_OBJECT(
-      'type', 'add_tag',
-      'tagName', 'VIP Customer'
-    ),
-    JSON_OBJECT(
-      'type', 'send_message',
-      'message', '⭐ Welcome back, valued customer! How can we serve you today?'
-    )
-  ),
-  true,
-  NOW(),
-  NOW()
-);
-
--- Create tags if they don't exist
-INSERT IGNORE INTO `Tag` (id, name, color, createdBy, createdAt, updatedAt)
+-- Create tags (use IGNORE to skip if exists)
+INSERT IGNORE INTO `Tag` (id, userId, name, color, createdAt)
 VALUES
-  (UUID(), 'New Customer', '#3B82F6', (SELECT id FROM User LIMIT 1), NOW(), NOW()),
-  (UUID(), 'Product Inquiry', '#8B5CF6', (SELECT id FROM User LIMIT 1), NOW(), NOW()),
-  (UUID(), 'Support', '#EF4444', (SELECT id FROM User LIMIT 1), NOW(), NOW()),
-  (UUID(), 'VIP Customer', '#F59E0B', (SELECT id FROM User LIMIT 1), NOW(), NOW());
+  (UUID(), (SELECT id FROM User LIMIT 1), 'New Customer', '#3B82F6', NOW()),
+  (UUID(), (SELECT id FROM User LIMIT 1), 'Product Inquiry', '#8B5CF6', NOW()),
+  (UUID(), (SELECT id FROM User LIMIT 1), 'Support', '#EF4444', NOW()),
+  (UUID(), (SELECT id FROM User LIMIT 1), 'VIP Customer', '#F59E0B', NOW());
 
-SELECT '✅ Automation seed data inserted successfully!' AS status;
+SELECT '✅ 4 automations and 4 tags created!' AS Status;
