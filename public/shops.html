@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop Management - WhatsApp Mailbox</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .navbar-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            transition: opacity 0.2s;
+        }
+
+        .nav-links a:hover {
+            opacity: 0.8;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            color: #333;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(37, 211, 102, 0.3);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            padding: 1rem 1.5rem;
+            background: none;
+            border: none;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab.active {
+            color: #25D366;
+            border-bottom-color: #25D366;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .stat-card .icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-card.sales .icon {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .stat-card.products .icon {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .stat-card.customers .icon {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .stat-card.revenue .icon {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            color: white;
+        }
+
+        .stat-card h3 {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 1.5rem;
+        }
+
+        .card h2 {
+            margin-bottom: 1.5rem;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #555;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f8f9fa;
+        }
+
+        th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: #555;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .badge.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge.danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #999;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="logo">
+                <i class="fab fa-whatsapp"></i>
+                WhatsApp Mailbox
+            </div>
+            <ul class="nav-links">
+                <li><a href="/messages.html">Messages</a></li>
+                <li><a href="/contacts.html">Contacts</a></li>
+                <li><a href="/shops.html" class="active">Shops</a></li>
+                <li><a href="/analytics.html">Analytics</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-store"></i> Shop Management</h1>
+            <button class="btn btn-primary" onclick="showShopModal()">
+                <i class="fas fa-plus"></i> Add Shop
+            </button>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card sales">
+                <div class="icon"><i class="fas fa-shopping-cart"></i></div>
+                <h3>Total Sales</h3>
+                <div class="value" id="totalSales">PKR 0</div>
+            </div>
+            <div class="stat-card products">
+                <div class="icon"><i class="fas fa-box"></i></div>
+                <h3>Products</h3>
+                <div class="value" id="totalProducts">0</div>
+            </div>
+            <div class="stat-card customers">
+                <div class="icon"><i class="fas fa-users"></i></div>
+                <h3>Customers</h3>
+                <div class="value" id="totalCustomers">0</div>
+            </div>
+            <div class="stat-card revenue">
+                <div class="icon"><i class="fas fa-chart-line"></i></div>
+                <h3>Total Orders</h3>
+                <div class="value" id="totalOrders">0</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('shops')">Shops</button>
+            <button class="tab" onclick="switchTab('products')">Products</button>
+            <button class="tab" onclick="switchTab('customers')">Customers</button>
+            <button class="tab" onclick="switchTab('transactions')">Transactions</button>
+        </div>
+
+        <!-- Shops Tab -->
+        <div id="shops-tab" class="tab-content active">
+            <div class="card">
+                <h2>Your Shops</h2>
+                <div id="shopsList"></div>
+            </div>
+        </div>
+
+        <!-- Products Tab -->
+        <div id="products-tab" class="tab-content">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2>Products</h2>
+                    <button class="btn btn-primary btn-sm" onclick="showProductModal()">
+                        <i class="fas fa-plus"></i> Add Product
+                    </button>
+                </div>
+                <div id="productsList"></div>
+            </div>
+        </div>
+
+        <!-- Customers Tab -->
+        <div id="customers-tab" class="tab-content">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2>Customers</h2>
+                    <button class="btn btn-primary btn-sm" onclick="showCustomerModal()">
+                        <i class="fas fa-plus"></i> Add Customer
+                    </button>
+                </div>
+                <div id="customersList"></div>
+            </div>
+        </div>
+
+        <!-- Transactions Tab -->
+        <div id="transactions-tab" class="tab-content">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2>Sales Transactions</h2>
+                    <button class="btn btn-primary btn-sm" onclick="showTransactionModal()">
+                        <i class="fas fa-plus"></i> New Sale
+                    </button>
+                </div>
+                <div id="transactionsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shop Modal -->
+    <div id="shopModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create Shop</h2>
+                <button class="close-btn" onclick="closeModal('shopModal')">&times;</button>
+            </div>
+            <form id="shopForm" onsubmit="createShop(event)">
+                <div class="form-group">
+                    <label>Shop Name *</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>Type *</label>
+                    <select name="type" required>
+                        <option value="PHYSICAL">Physical Store</option>
+                        <option value="ONLINE">Online Store</option>
+                        <option value="BOTH">Both</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Currency</label>
+                        <input type="text" name="currency" value="PKR">
+                    </div>
+                    <div class="form-group">
+                        <label>Tax Rate (%)</label>
+                        <input type="number" name="taxRate" value="0" step="0.01">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="tel" name="phone">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email">
+                </div>
+                <div class="form-group">
+                    <label>Address</label>
+                    <textarea name="address"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Create Shop</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/navbar.js"></script>
+    <script>
+        let currentShopId = null;
+        let shops = [];
+        let products = [];
+        let customers = [];
+        let transactions = [];
+
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadShops();
+        });
+
+        // Switch tabs
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+
+            // Load data for the active tab
+            if (tabName === 'products' && currentShopId) {
+                loadProducts(currentShopId);
+            } else if (tabName === 'customers' && currentShopId) {
+                loadCustomers(currentShopId);
+            } else if (tabName === 'transactions' && currentShopId) {
+                loadTransactions(currentShopId);
+            }
+        }
+
+        // Load shops
+        async function loadShops() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/v1/shops', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    shops = data.data;
+                    displayShops(shops);
+                    if (shops.length > 0) {
+                        currentShopId = shops[0].id;
+                        loadAnalytics(currentShopId);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading shops:', error);
+            }
+        }
+
+        // Display shops
+        function displayShops(shops) {
+            const container = document.getElementById('shopsList');
+            if (shops.length === 0) {
+                container.innerHTML = '<div class="empty-state"><i class="fas fa-store"></i><p>No shops yet. Create your first shop!</p></div>';
+                return;
+            }
+
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Currency</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${shops.map(shop => `
+                            <tr>
+                                <td><strong>${shop.name}</strong></td>
+                                <td>${shop.type}</td>
+                                <td>${shop.currency}</td>
+                                <td><span class="badge success">Active</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary" onclick="selectShop('${shop.id}')">
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        // Select shop
+        function selectShop(shopId) {
+            currentShopId = shopId;
+            loadAnalytics(shopId);
+            switchTab('products');
+        }
+
+        // Load analytics
+        async function loadAnalytics(shopId) {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`/api/v1/analytics/shop/${shopId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('totalSales').textContent = `PKR ${data.data.totalSales.toLocaleString()}`;
+                    document.getElementById('totalProducts').textContent = data.data.totalProducts;
+                    document.getElementById('totalCustomers').textContent = data.data.totalCustomers;
+                    document.getElementById('totalOrders').textContent = data.data.totalOrders;
+                }
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+            }
+        }
+
+        // Load products
+        async function loadProducts(shopId) {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`/api/v1/products/shop/${shopId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    products = data.data;
+                    displayProducts(products);
+                }
+            } catch (error) {
+                console.error('Error loading products:', error);
+            }
+        }
+
+        // Display products
+        function displayProducts(products) {
+            const container = document.getElementById('productsList');
+            if (products.length === 0) {
+                container.innerHTML = '<div class="empty-state"><i class="fas fa-box"></i><p>No products yet.</p></div>';
+                return;
+            }
+
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>SKU</th>
+                            <th>Price</th>
+                            <th>Stock</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${products.map(product => `
+                            <tr>
+                                <td><strong>${product.name}</strong></td>
+                                <td>${product.sku || '-'}</td>
+                                <td>PKR ${product.price.toLocaleString()}</td>
+                                <td>${product.stock} ${product.unit || ''}</td>
+                                <td>
+                                    ${product.stock <= (product.lowStockThreshold || 0) ? 
+                                        '<span class="badge danger">Low Stock</span>' : 
+                                        '<span class="badge success">In Stock</span>'}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        // Load customers
+        async function loadCustomers(shopId) {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`/api/v1/customers/shop/${shopId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    customers = data.data;
+                    displayCustomers(customers);
+                }
+            } catch (error) {
+                console.error('Error loading customers:', error);
+            }
+        }
+
+        // Display customers
+        function displayCustomers(customers) {
+            const container = document.getElementById('customersList');
+            if (customers.length === 0) {
+                container.innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><p>No customers yet.</p></div>';
+                return;
+            }
+
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Phone</th>
+                            <th>Total Orders</th>
+                            <th>Total Spent</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${customers.map(customer => `
+                            <tr>
+                                <td><strong>${customer.name}</strong></td>
+                                <td>${customer.phone || '-'}</td>
+                                <td>${customer.totalOrders || 0}</td>
+                                <td>PKR ${(customer.totalPurchases || 0).toLocaleString()}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        // Load transactions
+        async function loadTransactions(shopId) {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`/api/v1/transactions/shop/${shopId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    transactions = data.data;
+                    displayTransactions(transactions);
+                }
+            } catch (error) {
+                console.error('Error loading transactions:', error);
+            }
+        }
+
+        // Display transactions
+        function displayTransactions(transactions) {
+            const container = document.getElementById('transactionsList');
+            if (transactions.length === 0) {
+                container.innerHTML = '<div class="empty-state"><i class="fas fa-receipt"></i><p>No transactions yet.</p></div>';
+                return;
+            }
+
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Transaction #</th>
+                            <th>Customer</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${transactions.map(txn => `
+                            <tr>
+                                <td><strong>${txn.transactionNumber}</strong></td>
+                                <td>${txn.customer?.name || '-'}</td>
+                                <td>PKR ${txn.finalAmount.toLocaleString()}</td>
+                                <td>
+                                    <span class="badge ${txn.status === 'COMPLETED' ? 'success' : txn.status === 'PENDING' ? 'warning' : 'danger'}">
+                                        ${txn.status}
+                                    </span>
+                                </td>
+                                <td>${new Date(txn.createdAt).toLocaleDateString()}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        // Create shop
+        async function createShop(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const shopData = Object.fromEntries(formData);
+
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/v1/shops', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(shopData)
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('Shop created successfully!');
+                    closeModal('shopModal');
+                    loadShops();
+                }
+            } catch (error) {
+                console.error('Error creating shop:', error);
+                alert('Failed to create shop');
+            }
+        }
+
+        // Modal functions
+        function showShopModal() {
+            document.getElementById('shopModal').classList.add('active');
+        }
+
+        function showProductModal() {
+            if (!currentShopId) {
+                alert('Please select a shop first');
+                return;
+            }
+            alert('Product creation form coming soon!');
+        }
+
+        function showCustomerModal() {
+            if (!currentShopId) {
+                alert('Please select a shop first');
+                return;
+            }
+            alert('Customer creation form coming soon!');
+        }
+
+        function showTransactionModal() {
+            if (!currentShopId) {
+                alert('Please select a shop first');
+                return;
+            }
+            alert('Transaction creation form coming soon!');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+    </script>
+</body>
+</html>

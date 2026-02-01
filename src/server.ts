@@ -28,6 +28,7 @@ import whatsappWebRoutes from '@routes/whatsapp-web';
 import mediaRoutes from '@routes/media';
 import dripCampaignRoutes from '@routes/drip-campaigns';
 import shopRoutes from '@routes/shops';
+import shopSystemRoutes from './routes/shop-system';
 import { whatsappWebService } from '@services/whatsapp-web.service';
 import { autoReplyService } from '@services/auto-reply.service';
 import { getContactType } from '@utils/contact-type';
@@ -115,6 +116,7 @@ export function createApp(): Express {
   app.use('/api/v1/drip-campaigns', dripCampaignRoutes);
   app.use('/api/v1/whatsapp-web', whatsappWebRoutes);
   app.use('/api/v1', shopRoutes); // Adds /shops, /products, /orders, /invoices, /payments
+  app.use('/api/v1', shopSystemRoutes); // Shop automation system
 
   // Serve index.html for all non-API routes (SPA fallback)
   app.get('*', (req, res) => {

@@ -7,6 +7,7 @@ function createNavbar() {
     const navItems = [
         { label: 'Messages', href: '/messages.html', icon: 'fa-comments' },
         { label: 'Contacts', href: '/contacts.html', icon: 'fa-address-book' },
+        { label: 'Shops', href: '/shops.html', icon: 'fa-store' },
         { label: 'Quick Replies', href: '/quick-replies.html', icon: 'fa-bolt' },
         { label: 'Broadcasts', href: '/broadcasts.html', icon: 'fa-bullhorn' },
         { label: 'Segments', href: '/segments.html', icon: 'fa-layer-group' },
