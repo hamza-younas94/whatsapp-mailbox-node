@@ -2,7 +2,7 @@
 -- This provides sample automations to demonstrate the system
 
 -- Sample Automation 1: Welcome Message for New Contacts
-INSERT INTO `Automation` (id, name, description, trigger, conditions, actions, isActive, priority, createdBy, createdAt, updatedAt)
+INSERT INTO `Automation` (id, name, description, `trigger`, conditions, actions, isActive, priority, createdBy, createdAt, updatedAt)
 VALUES 
 (
   UUID(),
@@ -31,7 +31,7 @@ VALUES
 );
 
 -- Sample Automation 2: Auto-reply for Business Hours
-INSERT INTO `Automation` (id, name, description, trigger, conditions, actions, isActive, priority, createdBy, createdAt, updatedAt)
+INSERT INTO `Automation` (id, name, description, `trigger`, conditions, actions, isActive, priority, createdBy, createdAt, updatedAt)
 VALUES 
 (
   UUID(),
@@ -62,7 +62,7 @@ VALUES
 );
 
 -- Sample Automation 3: Product Inquiry Handler
-INSERT INTO `Automation` (id, name, description, trigger, conditions, actions, isActive, priority, createdBy, createdAt, updatedAt)
+INSERT INTO `Automation` (id, name, description, `trigger`, conditions, actions, isActive, priority, createdBy, createdAt, updatedAt)
 VALUES 
 (
   UUID(),
@@ -90,7 +90,7 @@ VALUES
 );
 
 -- Sample Automation 4: Support Request Handler
-INSERT INTO `Automation` (id, name, description, trigger, conditions, actions, isActive, priority, createdBy, createdAt, updatedAt)
+INSERT INTO `Automation` (id, name, description, `trigger`, conditions, actions, isActive, priority, createdBy, createdAt, updatedAt)
 VALUES 
 (
   UUID(),
@@ -118,7 +118,7 @@ VALUES
 );
 
 -- Sample Automation 5: Thank You for Orders
-INSERT INTO `Automation` (id, name, description, trigger, conditions, actions, isActive, priority, createdBy, createdAt, updatedAt)
+INSERT INTO `Automation` (id, name, description, `trigger`, conditions, actions, isActive, priority, createdBy, createdAt, updatedAt)
 VALUES 
 (
   UUID(),
@@ -146,7 +146,7 @@ VALUES
 );
 
 -- Sample Automation 6: VIP Customer Auto-Tag
-INSERT INTO `Automation` (id, name, description, trigger, conditions, actions, isActive, priority, createdBy, createdAt, updatedAt)
+INSERT INTO `Automation` (id, name, description, `trigger`, conditions, actions, isActive, priority, createdBy, createdAt, updatedAt)
 VALUES 
 (
   UUID(),
