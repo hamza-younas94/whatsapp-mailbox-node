@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Broadcasts - WhatsApp Mailbox</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://whatshub.nexofydigital.com:3000 https://whatshub.nexofydigital.com:3000;">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .step-active { background: linear-gradient(135deg, #128C7E 0%, #0d6b5f 100%); color: white; }
+        .step-completed { background: #10b981; color: white; }
+        .step-pending { background: #f3f4f6; color: #9ca3af; }
+        .gradient-btn { background: linear-gradient(135deg, #128C7E 0%, #25D366 100%); }
+        .gradient-btn:hover { background: linear-gradient(135deg, #0d6b5f 0%, #1fb855 100%); }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <script>
+        if (!localStorage.getItem('authToken')) window.location.href = '/login.html';
+    </script>
+    <script src="/js/navbar.js"></script>
+
+    <div class="max-w-7xl mx-auto px-4 py-6">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">📢 Broadcasts</h1>
+                <p class="text-gray-600 mt-1">Send messages to multiple contacts at once</p>
+            </div>
+            <button onclick="showCreateModal()" 
+                class="gradient-btn text-white px-6 py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+                <i class="fas fa-plus mr-2"></i>New Broadcast
+            </button>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-gray-400">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-3xl font-bold text-gray-800" id="totalBroadcasts">0</div>
+                        <div class="text-sm text-gray-500">Total Broadcasts</div>
+                    </div>
+                    <div class="p-3 bg-gray-100 rounded-full">
+                        <i class="fas fa-broadcast-tower text-gray-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-blue-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-3xl font-bold text-blue-600" id="scheduledCount">0</div>
+                        <div class="text-sm text-gray-500">Scheduled</div>
+                    </div>
+                    <div class="p-3 bg-blue-100 rounded-full">
+                        <i class="fas fa-clock text-blue-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-green-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-3xl font-bold text-green-600" id="sentCount">0</div>
+                        <div class="text-sm text-gray-500">Completed</div>
+                    </div>
+                    <div class="p-3 bg-green-100 rounded-full">
+                        <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-purple-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-3xl font-bold text-purple-600" id="totalRecipients">0</div>
+                        <div class="text-sm text-gray-500">Total Recipients</div>
+                    </div>
+                    <div class="p-3 bg-purple-100 rounded-full">
+                        <i class="fas fa-users text-purple-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="bg-white rounded-t-xl shadow-sm border-b">
+            <div class="flex space-x-1 p-2">
+                <button onclick="filterBroadcasts('')" class="filter-tab px-4 py-2 rounded-lg text-sm font-medium bg-green-600 text-white">All</button>
+                <button onclick="filterBroadcasts('DRAFT')" class="filter-tab px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100">Draft</button>
+                <button onclick="filterBroadcasts('SCHEDULED')" class="filter-tab px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100">Scheduled</button>
+                <button onclick="filterBroadcasts('SENT')" class="filter-tab px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100">Sent</button>
+                <button onclick="filterBroadcasts('CANCELLED')" class="filter-tab px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100">Cancelled</button>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-b-xl shadow-sm">
+            <!-- Broadcasts List -->
+            <div id="broadcastsList" class="divide-y">
+                <div class="p-8 text-center text-gray-500">
+                    <i class="fas fa-spinner fa-spin text-4xl mb-2"></i>
+                    <p>Loading broadcasts...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Broadcast Modal - 4 Step Wizard -->
+    <div id="broadcastModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+            <!-- Header -->
+            <div class="p-6 border-b bg-gradient-to-r from-green-600 to-green-700">
+                <h2 class="text-2xl font-bold text-white">Create Broadcast</h2>
+                
+                <!-- Step Indicator -->
+                <div class="flex justify-between mt-4">
+                    <div class="flex flex-col items-center" id="step1Indicator">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center bg-white text-green-700 font-bold">1</div>
+                        <span class="text-xs mt-1 text-white">Message</span>
+                    </div>
+                    <div class="flex-1 h-0.5 bg-green-400 self-center mx-2"></div>
+                    <div class="flex flex-col items-center" id="step2Indicator">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center bg-green-500 text-white font-bold step-pending-circle">2</div>
+                        <span class="text-xs mt-1 text-green-200">Recipients</span>
+                    </div>
+                    <div class="flex-1 h-0.5 bg-green-400 self-center mx-2"></div>
+                    <div class="flex flex-col items-center" id="step3Indicator">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center bg-green-500 text-white font-bold step-pending-circle">3</div>
+                        <span class="text-xs mt-1 text-green-200">Schedule</span>
+                    </div>
+                    <div class="flex-1 h-0.5 bg-green-400 self-center mx-2"></div>
+                    <div class="flex flex-col items-center" id="step4Indicator">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center bg-green-500 text-white font-bold step-pending-circle">4</div>
+                        <span class="text-xs mt-1 text-green-200">Review</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Content -->
+            <div class="p-6 max-h-[60vh] overflow-y-auto">
+                <!-- Step 1: Message -->
+                <div id="step1" class="step-content">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-800">📝 Create Your Message</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-gray-700 mb-2 font-medium">Broadcast Name *</label>
+                            <input type="text" id="broadcastName" required
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                                placeholder="e.g., Weekly Newsletter, Promo Alert">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2 font-medium">Message Type</label>
+                            <div class="flex flex-wrap gap-3">
+                                <label class="flex items-center px-4 py-2 border rounded-lg cursor-pointer hover:bg-gray-50 transition-all has-[:checked]:bg-green-50 has-[:checked]:border-green-500">
+                                    <input type="radio" name="messageType" value="TEXT" checked class="mr-2 text-green-600"> <i class="fas fa-align-left mr-1"></i> Text
+                                </label>
+                                <label class="flex items-center px-4 py-2 border rounded-lg cursor-pointer hover:bg-gray-50 transition-all has-[:checked]:bg-green-50 has-[:checked]:border-green-500">
+                                    <input type="radio" name="messageType" value="IMAGE" class="mr-2 text-green-600"> <i class="fas fa-image mr-1"></i> Image
+                                </label>
+                                <label class="flex items-center px-4 py-2 border rounded-lg cursor-pointer hover:bg-gray-50 transition-all has-[:checked]:bg-green-50 has-[:checked]:border-green-500">
+                                    <input type="radio" name="messageType" value="VIDEO" class="mr-2 text-green-600"> <i class="fas fa-video mr-1"></i> Video
+                                </label>
+                                <label class="flex items-center px-4 py-2 border rounded-lg cursor-pointer hover:bg-gray-50 transition-all has-[:checked]:bg-green-50 has-[:checked]:border-green-500">
+                                    <input type="radio" name="messageType" value="DOCUMENT" class="mr-2 text-green-600"> <i class="fas fa-file-alt mr-1"></i> Document
+                                </label>
+                            </div>
+                        </div>
+                        <div id="mediaUrlField" class="hidden">
+                            <label class="block text-gray-700 mb-2 font-medium">Media URL</label>
+                            <input type="url" id="mediaUrl"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                placeholder="https://example.com/image.jpg">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2 font-medium">Message Content *</label>
+                            <textarea id="messageContent" required rows="5"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 transition-all"
+                                placeholder="Type your message here... Use {{name}} for personalization"></textarea>
+                            <div class="flex justify-between text-sm text-gray-500 mt-1">
+                                <span>Tip: Use {{name}} to personalize</span>
+                                <span><span id="charCount">0</span> characters</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Recipients -->
+                <div id="step2" class="step-content hidden">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-800">👥 Select Recipients</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-gray-700 mb-2 font-medium">Recipient Type</label>
+                            <select id="recipientType" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                                <option value="ALL">📋 All Contacts</option>
+                                <option value="SEGMENT">🎯 By Segment</option>
+                                <option value="TAG">🏷️ By Tag</option>
+                            </select>
+                        </div>
+                        
+                        <div id="segmentSelector" class="hidden">
+                            <label class="block text-gray-700 mb-2 font-medium">Select Segments</label>
+                            <div id="segmentList" class="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3 bg-gray-50">
+                                <p class="text-gray-500">Loading segments...</p>
+                            </div>
+                        </div>
+                        
+                        <div id="tagSelector" class="hidden">
+                            <label class="block text-gray-700 mb-2 font-medium">Select Tags</label>
+                            <div id="tagList" class="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3 bg-gray-50">
+                                <p class="text-gray-500">Loading tags...</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 text-center">
+                            <div class="text-4xl font-bold text-green-600" id="estimatedRecipients">0</div>
+                            <div class="text-sm text-green-700 font-medium">Estimated Recipients</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Schedule -->
+                <div id="step3" class="step-content hidden">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-800">⏰ Schedule Broadcast</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="flex items-center space-x-3 p-4 border-2 rounded-xl cursor-pointer hover:bg-green-50 transition-all has-[:checked]:bg-green-50 has-[:checked]:border-green-500">
+                                <input type="checkbox" id="sendNow" checked class="w-5 h-5 text-green-600 rounded">
+                                <div>
+                                    <span class="font-medium text-gray-800">🚀 Send immediately</span>
+                                    <p class="text-sm text-gray-500">Broadcast will start sending right away</p>
+                                </div>
+                            </label>
+                        </div>
+                        <div id="schedulerField" class="hidden">
+                            <label class="block text-gray-700 mb-2 font-medium">Schedule For</label>
+                            <input type="datetime-local" id="scheduledFor"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2 font-medium">Priority</label>
+                            <div class="grid grid-cols-4 gap-2">
+                                <label class="flex flex-col items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500">
+                                    <input type="radio" name="priority" value="LOW" class="sr-only">
+                                    <span class="text-2xl">🐢</span>
+                                    <span class="text-xs">Low</span>
+                                </label>
+                                <label class="flex flex-col items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500">
+                                    <input type="radio" name="priority" value="MEDIUM" checked class="sr-only">
+                                    <span class="text-2xl">🚶</span>
+                                    <span class="text-xs">Medium</span>
+                                </label>
+                                <label class="flex flex-col items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500">
+                                    <input type="radio" name="priority" value="HIGH" class="sr-only">
+                                    <span class="text-2xl">🏃</span>
+                                    <span class="text-xs">High</span>
+                                </label>
+                                <label class="flex flex-col items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-red-50 has-[:checked]:border-red-500">
+                                    <input type="radio" name="priority" value="URGENT" class="sr-only">
+                                    <span class="text-2xl">🚨</span>
+                                    <span class="text-xs">Urgent</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4: Review -->
+                <div id="step4" class="step-content hidden">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-800">✅ Review & Send</h3>
+                    <div class="space-y-4">
+                        <div class="bg-gray-50 rounded-xl p-5">
+                            <h4 class="font-medium text-gray-700 mb-3 flex items-center">
+                                <i class="fas fa-info-circle mr-2 text-blue-500"></i> Broadcast Details
+                            </h4>
+                            <div class="grid grid-cols-2 gap-3 text-sm">
+                                <div class="text-gray-500">Name:</div>
+                                <div id="reviewName" class="font-semibold text-gray-800">-</div>
+                                <div class="text-gray-500">Type:</div>
+                                <div id="reviewType" class="font-semibold text-gray-800">-</div>
+                                <div class="text-gray-500">Recipients:</div>
+                                <div id="reviewRecipients" class="font-semibold text-green-600">-</div>
+                                <div class="text-gray-500">Send Time:</div>
+                                <div id="reviewSchedule" class="font-semibold text-gray-800">-</div>
+                                <div class="text-gray-500">Priority:</div>
+                                <div id="reviewPriority" class="font-semibold text-gray-800">-</div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 rounded-xl p-5">
+                            <h4 class="font-medium text-gray-700 mb-3 flex items-center">
+                                <i class="fas fa-comment mr-2 text-green-500"></i> Message Preview
+                            </h4>
+                            <div id="reviewMessage" class="bg-white border rounded-lg p-4 text-sm whitespace-pre-wrap">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="p-6 border-t bg-gray-50 flex justify-between">
+                <button type="button" onclick="previousStep()" id="prevBtn"
+                    class="px-6 py-2.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-lg font-medium hidden transition-all">
+                    <i class="fas fa-arrow-left mr-2"></i>Previous
+                </button>
+                <div class="flex-1"></div>
+                <button type="button" onclick="hideCreateModal()"
+                    class="px-6 py-2.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-lg font-medium mr-2 transition-all">
+                    Cancel
+                </button>
+                <button type="button" onclick="nextStep()" id="nextBtn"
+                    class="px-6 py-2.5 gradient-btn text-white rounded-lg font-medium transition-all shadow-lg">
+                    Next <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+                <button type="button" onclick="submitBroadcast()" id="submitBtn"
+                    class="px-6 py-2.5 gradient-btn text-white rounded-lg font-medium hidden transition-all shadow-lg">
+                    <i class="fas fa-paper-plane mr-2"></i>Send Broadcast
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analytics Modal -->
+    <div id="analyticsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-gray-800">📊 Broadcast Analytics</h2>
+                <button onclick="hideAnalyticsModal()" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-all">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="analyticsContent">
+                <p class="text-gray-500 text-center py-8">Loading...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api/v1';
+        let currentStep = 1;
+        let segments = [];
+        let tags = [];
+        let contacts = [];
+        let allBroadcasts = [];
+        
+        async function fetchWithAuth(url, options = {}) {
+            const token = localStorage.getItem('authToken');
+            const headers = {
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` }),
+                ...options.headers
+            };
+            const response = await fetch(url, { ...options, headers });
+            if (response.status === 401) {
+                localStorage.removeItem('authToken');
+                window.location.href = '/login.html';
+            }
+            return response;
+        }
+
+        async function loadBroadcasts() {
+            try {
+                // Try enhanced API first
+                let response = await fetchWithAuth(`${API_BASE}/broadcasts-enhanced`);
+                if (!response.ok) {
+                    // Fallback to original API
+                    response = await fetchWithAuth(`${API_BASE}/broadcasts`);
+                }
+                if (response.ok) {
+                    const data = await response.json();
+                    allBroadcasts = data.data || [];
+                    displayBroadcasts(allBroadcasts);
+                    updateStats(allBroadcasts);
+                }
+            } catch (err) {
+                console.error('Error loading broadcasts:', err);
+            }
+        }
+
+        function updateStats(broadcasts) {
+            document.getElementById('totalBroadcasts').textContent = broadcasts.length;
+            document.getElementById('scheduledCount').textContent = broadcasts.filter(b => 
+                b.status === 'SCHEDULED' || b.status === 'scheduled').length;
+            document.getElementById('sentCount').textContent = broadcasts.filter(b => 
+                b.status === 'SENT' || b.status === 'completed').length;
+            document.getElementById('totalRecipients').textContent = broadcasts.reduce((sum, b) => 
+                sum + (b.totalRecipients || 0), 0);
+        }
+
+        function filterBroadcasts(status) {
+            document.querySelectorAll('.filter-tab').forEach(tab => {
+                tab.classList.remove('bg-green-600', 'text-white');
+                tab.classList.add('text-gray-600');
+            });
+            event.target.classList.add('bg-green-600', 'text-white');
+            event.target.classList.remove('text-gray-600');
+            
+            const filtered = status ? allBroadcasts.filter(b => 
+                b.status === status || b.status === status.toLowerCase()) : allBroadcasts;
+            displayBroadcasts(filtered);
+        }
+
+        async function loadSegments() {
+            try {
+                const response = await fetchWithAuth(`${API_BASE}/segments`);
+                if (response.ok) {
+                    const data = await response.json();
+                    segments = data.data || [];
+                    renderSegmentList();
+                }
+            } catch (err) {
+                console.error('Error loading segments:', err);
+            }
+        }
+
+        async function loadTags() {
+            try {
+                const response = await fetchWithAuth(`${API_BASE}/tags`);
+                if (response.ok) {
+                    const data = await response.json();
+                    tags = data.data || [];
+                    renderTagList();
+                }
+            } catch (err) {
+                console.error('Error loading tags:', err);
+            }
+        }
+
+        async function loadContacts() {
+            try {
+                const response = await fetchWithAuth(`${API_BASE}/contacts`);
+                if (response.ok) {
+                    const data = await response.json();
+                    contacts = data.data || [];
+                    updateEstimatedRecipients();
+                }
+            } catch (err) {
+                console.error('Error loading contacts:', err);
+            }
+        }
+
+        function renderSegmentList() {
+            const container = document.getElementById('segmentList');
+            if (segments.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">No segments available. <a href="/segments.html" class="text-green-600 underline">Create one</a></p>';
+                return;
+            }
+            container.innerHTML = segments.map(s => `
+                <label class="flex items-center space-x-3 p-3 hover:bg-white rounded-lg cursor-pointer transition-all">
+                    <input type="checkbox" value="${s.id}" class="segment-checkbox w-5 h-5 text-green-600 rounded" onchange="updateEstimatedRecipients()">
+                    <span class="font-medium">${s.name}</span>
+                    <span class="text-sm text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">${s.contactCount || 0} contacts</span>
+                </label>
+            `).join('');
+        }
+
+        function renderTagList() {
+            const container = document.getElementById('tagList');
+            if (tags.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">No tags available. <a href="/tags.html" class="text-green-600 underline">Create one</a></p>';
+                return;
+            }
+            container.innerHTML = tags.map(t => `
+                <label class="flex items-center space-x-3 p-3 hover:bg-white rounded-lg cursor-pointer transition-all">
+                    <input type="checkbox" value="${t.id}" class="tag-checkbox w-5 h-5 text-green-600 rounded" onchange="updateEstimatedRecipients()">
+                    <span class="px-3 py-1 rounded-full text-sm font-medium" style="background: ${t.color || '#e5e7eb'}; color: ${getContrastColor(t.color)}">${t.name}</span>
+                </label>
+            `).join('');
+        }
+
+        function getContrastColor(hexcolor) {
+            if (!hexcolor) return '#000000';
+            hexcolor = hexcolor.replace('#', '');
+            const r = parseInt(hexcolor.substr(0,2),16);
+            const g = parseInt(hexcolor.substr(2,2),16);
+            const b = parseInt(hexcolor.substr(4,2),16);
+            const yiq = ((r*299)+(g*587)+(b*114))/1000;
+            return (yiq >= 128) ? '#000000' : '#ffffff';
+        }
+
+        function updateEstimatedRecipients() {
+            const type = document.getElementById('recipientType').value;
+            let count = 0;
+            
+            if (type === 'ALL') {
+                count = contacts.length;
+            } else if (type === 'SEGMENT') {
+                document.querySelectorAll('.segment-checkbox:checked').forEach(cb => {
+                    const seg = segments.find(s => s.id === cb.value);
+                    if (seg) count += seg.contactCount || 0;
+                });
+            } else if (type === 'TAG') {
+                const selectedTags = document.querySelectorAll('.tag-checkbox:checked').length;
+                count = Math.min(selectedTags * 10, contacts.length); // Estimate
+            }
+            
+            document.getElementById('estimatedRecipients').textContent = count || contacts.length;
+        }
+
+        function displayBroadcasts(broadcasts) {
+            const container = document.getElementById('broadcastsList');
+            if (broadcasts.length === 0) {
+                container.innerHTML = `
+                    <div class="p-12 text-center">
+                        <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-broadcast-tower text-4xl text-gray-400"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-700 mb-2">No broadcasts yet</h3>
+                        <p class="text-gray-500 mb-6">Create your first broadcast to reach your audience</p>
+                        <button onclick="showCreateModal()" class="gradient-btn text-white px-6 py-3 rounded-lg font-medium shadow-lg">
+                            <i class="fas fa-plus mr-2"></i>Create Your First Broadcast
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = broadcasts.map(broadcast => `
+                <div class="p-6 hover:bg-gray-50 transition-colors">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-3 mb-2">
+                                <h3 class="text-xl font-semibold text-gray-800">${broadcast.name}</h3>
+                                <span class="px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(broadcast.status)}">
+                                    ${(broadcast.status || '').toUpperCase()}
+                                </span>
+                            </div>
+                            <p class="text-gray-600 mb-3 line-clamp-2">${broadcast.messageContent || broadcast.message || ''}</p>
+                            
+                            <div class="flex flex-wrap gap-4 text-sm">
+                                <span class="flex items-center text-gray-500">
+                                    <i class="fas fa-users mr-2 text-gray-400"></i>${broadcast.totalRecipients || 0} recipients
+                                </span>
+                                <span class="flex items-center text-green-600">
+                                    <i class="fas fa-check mr-2"></i>${broadcast.sentCount || 0} sent
+                                </span>
+                                <span class="flex items-center text-blue-600">
+                                    <i class="fas fa-envelope-open mr-2"></i>${broadcast.deliveredCount || 0} delivered
+                                </span>
+                                <span class="flex items-center text-purple-600">
+                                    <i class="fas fa-eye mr-2"></i>${broadcast.readCount || 0} read
+                                </span>
+                                ${(broadcast.failedCount || 0) > 0 ? `
+                                    <span class="flex items-center text-red-600">
+                                        <i class="fas fa-times mr-2"></i>${broadcast.failedCount} failed
+                                    </span>
+                                ` : ''}
+                            </div>
+
+                            ${broadcast.scheduledFor ? `
+                                <p class="text-sm text-blue-600 mt-3 flex items-center">
+                                    <i class="fas fa-clock mr-2"></i>
+                                    Scheduled for ${new Date(broadcast.scheduledFor).toLocaleString()}
+                                </p>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="flex space-x-2 ml-4">
+                            <button onclick="viewAnalytics('${broadcast.id}')" 
+                                class="p-2.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="View Analytics">
+                                <i class="fas fa-chart-bar"></i>
+                            </button>
+                            ${broadcast.status === 'DRAFT' || broadcast.status === 'draft' ? `
+                                <button onclick="sendNow('${broadcast.id}')" 
+                                    class="p-2.5 text-green-600 hover:bg-green-50 rounded-lg transition-all" title="Send Now">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            ` : ''}
+                            ${broadcast.status === 'DRAFT' || broadcast.status === 'draft' || 
+                              broadcast.status === 'SCHEDULED' || broadcast.status === 'scheduled' ? `
+                                <button onclick="deleteBroadcast('${broadcast.id}')" 
+                                    class="p-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getStatusColor(status) {
+            const s = (status || '').toLowerCase();
+            const colors = {
+                draft: 'bg-gray-100 text-gray-700',
+                scheduled: 'bg-blue-100 text-blue-700',
+                sending: 'bg-yellow-100 text-yellow-700',
+                sent: 'bg-green-100 text-green-700',
+                completed: 'bg-green-100 text-green-700',
+                cancelled: 'bg-red-100 text-red-700',
+                failed: 'bg-red-100 text-red-700'
+            };
+            return colors[s] || 'bg-gray-100 text-gray-700';
+        }
+
+        function showCreateModal() {
+            currentStep = 1;
+            updateStepUI();
+            document.getElementById('broadcastName').value = '';
+            document.getElementById('messageContent').value = '';
+            document.getElementById('charCount').textContent = '0';
+            document.getElementById('sendNow').checked = true;
+            document.getElementById('schedulerField').classList.add('hidden');
+            document.getElementById('broadcastModal').classList.remove('hidden');
+        }
+
+        function hideCreateModal() {
+            document.getElementById('broadcastModal').classList.add('hidden');
+        }
+
+        function updateStepUI() {
+            // Hide all steps
+            document.querySelectorAll('.step-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`step${currentStep}`).classList.remove('hidden');
+            
+            // Update step indicators
+            for (let i = 1; i <= 4; i++) {
+                const indicator = document.getElementById(`step${i}Indicator`);
+                const circle = indicator.querySelector('div');
+                const text = indicator.querySelector('span');
+                
+                if (i < currentStep) {
+                    circle.className = 'w-10 h-10 rounded-full flex items-center justify-center bg-white text-green-700 font-bold';
+                    circle.innerHTML = '<i class="fas fa-check"></i>';
+                    text.className = 'text-xs mt-1 text-white';
+                } else if (i === currentStep) {
+                    circle.className = 'w-10 h-10 rounded-full flex items-center justify-center bg-white text-green-700 font-bold';
+                    circle.textContent = i;
+                    text.className = 'text-xs mt-1 text-white';
+                } else {
+                    circle.className = 'w-10 h-10 rounded-full flex items-center justify-center bg-green-500 text-white font-bold';
+                    circle.textContent = i;
+                    text.className = 'text-xs mt-1 text-green-200';
+                }
+            }
+            
+            // Update buttons
+            document.getElementById('prevBtn').classList.toggle('hidden', currentStep === 1);
+            document.getElementById('nextBtn').classList.toggle('hidden', currentStep === 4);
+            document.getElementById('submitBtn').classList.toggle('hidden', currentStep !== 4);
+        }
+
+        function nextStep() {
+            if (currentStep === 1) {
+                if (!document.getElementById('broadcastName').value.trim()) {
+                    alert('Please enter a broadcast name');
+                    document.getElementById('broadcastName').focus();
+                    return;
+                }
+                if (!document.getElementById('messageContent').value.trim()) {
+                    alert('Please enter a message');
+                    document.getElementById('messageContent').focus();
+                    return;
+                }
+            }
+            if (currentStep < 4) {
+                currentStep++;
+                updateStepUI();
+                if (currentStep === 4) updateReview();
+            }
+        }
+
+        function previousStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateStepUI();
+            }
+        }
+
+        function updateReview() {
+            document.getElementById('reviewName').textContent = document.getElementById('broadcastName').value;
+            document.getElementById('reviewType').textContent = document.querySelector('input[name="messageType"]:checked').value;
+            document.getElementById('reviewRecipients').textContent = document.getElementById('estimatedRecipients').textContent + ' contacts';
+            document.getElementById('reviewSchedule').textContent = document.getElementById('sendNow').checked ? 
+                '🚀 Immediately' : new Date(document.getElementById('scheduledFor').value).toLocaleString();
+            document.getElementById('reviewPriority').textContent = document.querySelector('input[name="priority"]:checked')?.value || 'MEDIUM';
+            document.getElementById('reviewMessage').textContent = document.getElementById('messageContent').value;
+        }
+
+        async function submitBroadcast() {
+            const name = document.getElementById('broadcastName').value.trim();
+            const messageContent = document.getElementById('messageContent').value.trim();
+            const messageType = document.querySelector('input[name="messageType"]:checked').value;
+            const mediaUrl = document.getElementById('mediaUrl').value.trim();
+            const recipientType = document.getElementById('recipientType').value;
+            const sendNowChecked = document.getElementById('sendNow').checked;
+            const scheduledFor = document.getElementById('scheduledFor').value;
+            const priority = document.querySelector('input[name="priority"]:checked')?.value || 'MEDIUM';
+
+            const data = {
+                name,
+                messageContent,
+                message: messageContent, // Fallback
+                messageType,
+                priority,
+                recipientType
+            };
+
+            if (mediaUrl) data.mediaUrl = mediaUrl;
+            if (!sendNowChecked && scheduledFor) {
+                data.scheduledFor = new Date(scheduledFor).toISOString();
+            }
+
+            if (recipientType === 'SEGMENT') {
+                data.segmentIds = Array.from(document.querySelectorAll('.segment-checkbox:checked')).map(cb => cb.value);
+            } else if (recipientType === 'TAG') {
+                data.tagIds = Array.from(document.querySelectorAll('.tag-checkbox:checked')).map(cb => cb.value);
+            }
+
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('submitBtn').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creating...';
+
+            try {
+                // Try enhanced API first
+                let response = await fetchWithAuth(`${API_BASE}/broadcasts-enhanced`, {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    // Fallback to original API
+                    response = await fetchWithAuth(`${API_BASE}/broadcasts`, {
+                        method: 'POST',
+                        body: JSON.stringify(data)
+                    });
+                }
+
+                if (response.ok) {
+                    const result = await response.json();
+                    if (sendNowChecked && result.data?.id) {
+                        // Try to send immediately
+                        await fetchWithAuth(`${API_BASE}/broadcasts-enhanced/${result.data.id}/send`, {
+                            method: 'POST'
+                        }).catch(() => {});
+                    }
+                    hideCreateModal();
+                    loadBroadcasts();
+                    showNotification('Broadcast created successfully!', 'success');
+                } else {
+                    const error = await response.json();
+                    showNotification('Error: ' + (error.message || 'Failed to create broadcast'), 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showNotification('Error creating broadcast', 'error');
+            } finally {
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('submitBtn').innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Send Broadcast';
+            }
+        }
+
+        async function sendNow(id) {
+            if (!confirm('Send this broadcast now?')) return;
+            try {
+                const response = await fetchWithAuth(`${API_BASE}/broadcasts-enhanced/${id}/send`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    loadBroadcasts();
+                    showNotification('Broadcast is being sent!', 'success');
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function deleteBroadcast(id) {
+            if (!confirm('Are you sure you want to delete this broadcast?')) return;
+            try {
+                let response = await fetchWithAuth(`${API_BASE}/broadcasts-enhanced/${id}`, {
+                    method: 'DELETE'
+                });
+                if (!response.ok) {
+                    response = await fetchWithAuth(`${API_BASE}/broadcasts/${id}`, {
+                        method: 'DELETE'
+                    });
+                }
+                if (response.ok) {
+                    loadBroadcasts();
+                    showNotification('Broadcast deleted', 'success');
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function viewAnalytics(id) {
+            document.getElementById('analyticsModal').classList.remove('hidden');
+            document.getElementById('analyticsContent').innerHTML = `
+                <div class="flex items-center justify-center py-12">
+                    <i class="fas fa-spinner fa-spin text-4xl text-green-600"></i>
+                </div>
+            `;
+            
+            try {
+                const response = await fetchWithAuth(`${API_BASE}/broadcasts-enhanced/${id}/analytics`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const analytics = data.data || { stats: {}, rates: {} };
+                    document.getElementById('analyticsContent').innerHTML = `
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                            <div class="bg-gray-50 rounded-xl p-4 text-center">
+                                <div class="text-3xl font-bold text-gray-800">${analytics.stats?.total || 0}</div>
+                                <div class="text-sm text-gray-500">Total</div>
+                            </div>
+                            <div class="bg-green-50 rounded-xl p-4 text-center">
+                                <div class="text-3xl font-bold text-green-600">${analytics.stats?.delivered || analytics.stats?.sent || 0}</div>
+                                <div class="text-sm text-gray-500">Delivered</div>
+                            </div>
+                            <div class="bg-blue-50 rounded-xl p-4 text-center">
+                                <div class="text-3xl font-bold text-blue-600">${analytics.stats?.read || 0}</div>
+                                <div class="text-sm text-gray-500">Read</div>
+                            </div>
+                            <div class="bg-red-50 rounded-xl p-4 text-center">
+                                <div class="text-3xl font-bold text-red-600">${analytics.stats?.failed || 0}</div>
+                                <div class="text-sm text-gray-500">Failed</div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4 bg-gray-50 rounded-xl p-4">
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-green-600">${analytics.rates?.delivery || 0}%</div>
+                                <div class="text-sm text-gray-500">Delivery Rate</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-blue-600">${analytics.rates?.read || 0}%</div>
+                                <div class="text-sm text-gray-500">Read Rate</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-red-600">${analytics.rates?.failure || 0}%</div>
+                                <div class="text-sm text-gray-500">Failure Rate</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    throw new Error('Failed to load');
+                }
+            } catch (err) {
+                document.getElementById('analyticsContent').innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-chart-bar text-4xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-500">Analytics not available yet</p>
+                    </div>
+                `;
+            }
+        }
+
+        function hideAnalyticsModal() {
+            document.getElementById('analyticsModal').classList.add('hidden');
+        }
+
+        function showNotification(message, type = 'info') {
+            const colors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                info: 'bg-blue-500'
+            };
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+        }
+
+        // Event Listeners
+        document.getElementById('recipientType').addEventListener('change', (e) => {
+            document.getElementById('segmentSelector').classList.toggle('hidden', e.target.value !== 'SEGMENT');
+            document.getElementById('tagSelector').classList.toggle('hidden', e.target.value !== 'TAG');
+            updateEstimatedRecipients();
+        });
+
+        document.getElementById('sendNow').addEventListener('change', (e) => {
+            document.getElementById('schedulerField').classList.toggle('hidden', e.target.checked);
+        });
+
+        document.getElementById('messageContent').addEventListener('input', (e) => {
+            document.getElementById('charCount').textContent = e.target.value.length;
+        });
+
+        document.querySelectorAll('input[name="messageType"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                document.getElementById('mediaUrlField').classList.toggle('hidden', e.target.value === 'TEXT');
+            });
+        });
+
+        // Initial load
+        loadBroadcasts();
+        loadSegments();
+        loadTags();
+        loadContacts();
+    </script>
+</body>
+</html>

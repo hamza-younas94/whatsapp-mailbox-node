@@ -1,0 +1,121 @@
+.message-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
+  animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-bubble.own {
+  align-self: flex-end;
+  max-width: 60%;
+}
+
+.message-bubble.other {
+  align-self: flex-start;
+  max-width: 60%;
+}
+
+.message-bubble > div:first-child {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-lg);
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+.message-bubble.own > div:first-child {
+  background-color: var(--color-primary-light);
+  color: var(--color-text);
+  border-bottom-right-radius: 0;
+}
+
+.message-bubble.other > div:first-child {
+  background-color: #e5e5ea;
+  color: var(--color-text);
+  border-bottom-left-radius: 0;
+}
+
+.message-media {
+  padding: var(--spacing-xs);
+  overflow: hidden;
+}
+
+.message-text {
+  margin: 0;
+  font-size: var(--font-size-base);
+  line-height: 1.4;
+}
+
+.message-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-light);
+  padding: 0 var(--spacing-lg);
+}
+
+.message-bubble.other .message-meta {
+  justify-content: flex-start;
+}
+
+.status-icon {
+  font-size: var(--font-size-sm);
+}
+
+.status-pending {
+  color: var(--color-pending);
+}
+
+.status-sent {
+  color: var(--color-sent);
+}
+
+.status-delivered {
+  color: var(--color-delivered);
+}
+
+.status-read {
+  color: var(--color-read);
+}
+
+.status-failed {
+  color: var(--color-failed);
+}
+
+.document-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background-color: var(--color-bg-alt);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--color-accent);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.document-link:hover {
+  background-color: #e0e0e0;
+}
+
+@media (max-width: 640px) {
+  .message-bubble.own,
+  .message-bubble.other {
+    max-width: 80%;
+  }
+}

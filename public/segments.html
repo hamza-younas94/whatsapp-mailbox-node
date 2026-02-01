@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Segments - WhatsApp Mailbox</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://whatshub.nexofydigital.com:3000 https://whatshub.nexofydigital.com:3000;">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-btn { background: linear-gradient(135deg, #128C7E 0%, #25D366 100%); }
+        .gradient-btn:hover { background: linear-gradient(135deg, #0d6b5f 0%, #1fb855 100%); }
+        .condition-row { animation: slideIn 0.2s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <script>
+        if (!localStorage.getItem('authToken')) window.location.href = '/login.html';
+    </script>
+    <script src="/js/navbar.js"></script>
+
+    <div class="max-w-7xl mx-auto px-4 py-6">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">🎯 Segments</h1>
+                <p class="text-gray-600 mt-1">Create dynamic contact groups based on conditions</p>
+            </div>
+            <button onclick="showCreateModal()" 
+                class="gradient-btn text-white px-6 py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+                <i class="fas fa-plus mr-2"></i>New Segment
+            </button>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-purple-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-3xl font-bold text-purple-600" id="totalSegments">0</div>
+                        <div class="text-sm text-gray-500">Total Segments</div>
+                    </div>
+                    <div class="p-3 bg-purple-100 rounded-full">
+                        <i class="fas fa-layer-group text-purple-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-blue-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-3xl font-bold text-blue-600" id="activeSegments">0</div>
+                        <div class="text-sm text-gray-500">Active Segments</div>
+                    </div>
+                    <div class="p-3 bg-blue-100 rounded-full">
+                        <i class="fas fa-check-circle text-blue-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-green-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-3xl font-bold text-green-600" id="totalContacts">0</div>
+                        <div class="text-sm text-gray-500">Contacts in Segments</div>
+                    </div>
+                    <div class="p-3 bg-green-100 rounded-full">
+                        <i class="fas fa-users text-green-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Segments Grid -->
+        <div class="bg-white rounded-xl shadow-sm">
+            <div class="p-4 border-b flex items-center justify-between">
+                <div class="relative flex-1 max-w-md">
+                    <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                    <input type="text" id="searchInput" placeholder="Search segments..." 
+                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                </div>
+            </div>
+            
+            <div id="segmentsList" class="divide-y">
+                <div class="p-8 text-center text-gray-500">
+                    <i class="fas fa-spinner fa-spin text-4xl mb-2"></i>
+                    <p>Loading segments...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create/Edit Segment Modal -->
+    <div id="segmentModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+            <div class="p-6 border-b bg-gradient-to-r from-purple-600 to-purple-700">
+                <h2 id="modalTitle" class="text-2xl font-bold text-white">🎯 Create Segment</h2>
+                <p class="text-purple-200 text-sm">Define conditions to group your contacts</p>
+            </div>
+            
+            <div class="p-6 max-h-[60vh] overflow-y-auto">
+                <input type="hidden" id="segmentId">
+                
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-gray-700 mb-2 font-medium">Segment Name *</label>
+                        <input type="text" id="segmentName" required
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                            placeholder="e.g., VIP Customers">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2 font-medium">Description</label>
+                        <input type="text" id="segmentDescription"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                            placeholder="Optional description">
+                    </div>
+                </div>
+
+                <!-- Logic Selector -->
+                <div class="mb-4 flex items-center space-x-4">
+                    <span class="text-gray-700 font-medium">Match:</span>
+                    <label class="flex items-center cursor-pointer">
+                        <input type="radio" name="logic" value="AND" checked class="mr-2">
+                        <span class="px-3 py-1 border rounded-lg">ALL conditions (AND)</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer">
+                        <input type="radio" name="logic" value="OR" class="mr-2">
+                        <span class="px-3 py-1 border rounded-lg">ANY condition (OR)</span>
+                    </label>
+                </div>
+
+                <!-- Conditions Builder -->
+                <div class="bg-gray-50 rounded-xl p-4 mb-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-semibold text-gray-700">Conditions</h3>
+                        <button type="button" onclick="addCondition()" 
+                            class="text-purple-600 hover:text-purple-800 text-sm font-medium">
+                            <i class="fas fa-plus mr-1"></i>Add Condition
+                        </button>
+                    </div>
+                    
+                    <div id="conditionsContainer" class="space-y-3">
+                        <!-- Conditions will be added here -->
+                    </div>
+                </div>
+
+                <!-- Preview Panel -->
+                <div class="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-semibold text-purple-700">Preview</h3>
+                        <button type="button" onclick="previewSegment()" 
+                            class="text-purple-600 hover:text-purple-800 text-sm font-medium">
+                            <i class="fas fa-sync-alt mr-1"></i>Refresh
+                        </button>
+                    </div>
+                    <div class="mt-3 flex items-center justify-center">
+                        <div class="text-center">
+                            <div class="text-4xl font-bold text-purple-600" id="previewCount">0</div>
+                            <div class="text-sm text-purple-700">matching contacts</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 border-t bg-gray-50 flex justify-between">
+                <button type="button" onclick="hideModal()"
+                    class="px-6 py-2.5 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-lg font-medium">
+                    Cancel
+                </button>
+                <button type="button" onclick="saveSegment()"
+                    class="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium shadow-lg">
+                    <i class="fas fa-save mr-2"></i>Save Segment
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api/v1';
+        let allSegments = [];
+        let conditionIndex = 0;
+
+        const FIELDS = [
+            { value: 'name', label: 'Name', type: 'text' },
+            { value: 'phone', label: 'Phone', type: 'text' },
+            { value: 'email', label: 'Email', type: 'text' },
+            { value: 'company', label: 'Company', type: 'text' },
+            { value: 'tags', label: 'Tags', type: 'tags' },
+            { value: 'lastMessageAt', label: 'Last Message', type: 'date' },
+            { value: 'createdAt', label: 'Created Date', type: 'date' },
+            { value: 'messageCount', label: 'Message Count', type: 'number' }
+        ];
+
+        const OPERATORS = {
+            text: [
+                { value: 'equals', label: 'equals' },
+                { value: 'not_equals', label: 'does not equal' },
+                { value: 'contains', label: 'contains' },
+                { value: 'not_contains', label: 'does not contain' },
+                { value: 'starts_with', label: 'starts with' },
+                { value: 'ends_with', label: 'ends with' },
+                { value: 'is_empty', label: 'is empty' },
+                { value: 'is_not_empty', label: 'is not empty' }
+            ],
+            number: [
+                { value: 'equals', label: 'equals' },
+                { value: 'not_equals', label: 'does not equal' },
+                { value: 'greater_than', label: 'greater than' },
+                { value: 'less_than', label: 'less than' },
+                { value: 'greater_or_equal', label: 'greater or equal' },
+                { value: 'less_or_equal', label: 'less or equal' }
+            ],
+            date: [
+                { value: 'equals', label: 'is' },
+                { value: 'before', label: 'is before' },
+                { value: 'after', label: 'is after' },
+                { value: 'in_last_days', label: 'in the last X days' },
+                { value: 'not_in_last_days', label: 'not in the last X days' }
+            ],
+            tags: [
+                { value: 'has_tag', label: 'has tag' },
+                { value: 'not_has_tag', label: 'does not have tag' },
+                { value: 'has_any_tag', label: 'has any tag' },
+                { value: 'has_no_tags', label: 'has no tags' }
+            ]
+        };
+
+        async function fetchWithAuth(url, options = {}) {
+            const token = localStorage.getItem('authToken');
+            const headers = {
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` }),
+                ...options.headers
+            };
+            const response = await fetch(url, { ...options, headers });
+            if (response.status === 401) {
+                localStorage.removeItem('authToken');
+                window.location.href = '/login.html';
+            }
+            return response;
+        }
+
+        async function loadSegments() {
+            try {
+                let response = await fetchWithAuth(`${API_BASE}/segments-enhanced`);
+                if (!response.ok) {
+                    response = await fetchWithAuth(`${API_BASE}/segments`);
+                }
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    allSegments = data.data || [];
+                    displaySegments(allSegments);
+                    updateStats();
+                }
+            } catch (err) {
+                console.error('Error loading segments:', err);
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('totalSegments').textContent = allSegments.length;
+            document.getElementById('activeSegments').textContent = allSegments.filter(s => s.isActive !== false).length;
+            document.getElementById('totalContacts').textContent = allSegments.reduce((sum, s) => sum + (s.contactCount || 0), 0);
+        }
+
+        function displaySegments(segments) {
+            const container = document.getElementById('segmentsList');
+            
+            if (segments.length === 0) {
+                container.innerHTML = `
+                    <div class="p-12 text-center">
+                        <div class="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-layer-group text-4xl text-purple-400"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-700 mb-2">No segments yet</h3>
+                        <p class="text-gray-500 mb-6">Create segments to organize and target your contacts</p>
+                        <button onclick="showCreateModal()" class="gradient-btn text-white px-6 py-3 rounded-lg font-medium shadow-lg">
+                            <i class="fas fa-plus mr-2"></i>Create Your First Segment
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = segments.map(segment => `
+                <div class="p-6 hover:bg-gray-50 transition-all">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-3 mb-2">
+                                <h3 class="text-xl font-semibold text-gray-800">${segment.name}</h3>
+                                <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+                                    <i class="fas fa-users mr-1"></i>${segment.contactCount || 0} contacts
+                                </span>
+                            </div>
+                            ${segment.description ? `<p class="text-gray-600 mb-2">${segment.description}</p>` : ''}
+                            <div class="flex flex-wrap gap-2 text-sm">
+                                ${renderConditionsSummary(segment.conditions)}
+                            </div>
+                        </div>
+                        <div class="flex space-x-2 ml-4">
+                            <button onclick="viewContacts('${segment.id}')" 
+                                class="p-2.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="View Contacts">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button onclick="editSegment('${segment.id}')" 
+                                class="p-2.5 text-purple-600 hover:bg-purple-50 rounded-lg transition-all" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deleteSegment('${segment.id}')" 
+                                class="p-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderConditionsSummary(conditions) {
+            if (!conditions || !Array.isArray(conditions) || conditions.length === 0) {
+                return '<span class="text-gray-500">No conditions</span>';
+            }
+            return conditions.slice(0, 3).map(c => 
+                `<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded">${c.field} ${c.operator} ${c.value || ''}</span>`
+            ).join('') + (conditions.length > 3 ? `<span class="text-gray-500">+${conditions.length - 3} more</span>` : '');
+        }
+
+        function showCreateModal() {
+            document.getElementById('modalTitle').textContent = '🎯 Create Segment';
+            document.getElementById('segmentId').value = '';
+            document.getElementById('segmentName').value = '';
+            document.getElementById('segmentDescription').value = '';
+            document.getElementById('conditionsContainer').innerHTML = '';
+            document.getElementById('previewCount').textContent = '0';
+            conditionIndex = 0;
+            addCondition(); // Add one default condition
+            document.getElementById('segmentModal').classList.remove('hidden');
+        }
+
+        function hideModal() {
+            document.getElementById('segmentModal').classList.add('hidden');
+        }
+
+        function addCondition(condition = null) {
+            const container = document.getElementById('conditionsContainer');
+            const idx = conditionIndex++;
+            
+            const row = document.createElement('div');
+            row.className = 'condition-row flex items-center space-x-3 bg-white p-3 rounded-lg border';
+            row.id = `condition-${idx}`;
+            
+            const field = condition?.field || 'name';
+            const fieldInfo = FIELDS.find(f => f.value === field) || FIELDS[0];
+            const operators = OPERATORS[fieldInfo.type] || OPERATORS.text;
+            
+            row.innerHTML = `
+                <select class="field-select px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500" onchange="updateOperators(${idx})">
+                    ${FIELDS.map(f => `<option value="${f.value}" ${f.value === field ? 'selected' : ''}>${f.label}</option>`).join('')}
+                </select>
+                <select class="operator-select px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">
+                    ${operators.map(o => `<option value="${o.value}" ${o.value === condition?.operator ? 'selected' : ''}>${o.label}</option>`).join('')}
+                </select>
+                <input type="text" class="value-input flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500" 
+                    placeholder="Value" value="${condition?.value || ''}">
+                <button type="button" onclick="removeCondition(${idx})" class="p-2 text-red-500 hover:bg-red-50 rounded-lg">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            container.appendChild(row);
+        }
+
+        function updateOperators(idx) {
+            const row = document.getElementById(`condition-${idx}`);
+            const fieldSelect = row.querySelector('.field-select');
+            const operatorSelect = row.querySelector('.operator-select');
+            
+            const fieldInfo = FIELDS.find(f => f.value === fieldSelect.value);
+            const operators = OPERATORS[fieldInfo?.type || 'text'];
+            
+            operatorSelect.innerHTML = operators.map(o => 
+                `<option value="${o.value}">${o.label}</option>`
+            ).join('');
+        }
+
+        function removeCondition(idx) {
+            const row = document.getElementById(`condition-${idx}`);
+            if (row) row.remove();
+        }
+
+        function getConditions() {
+            const conditions = [];
+            document.querySelectorAll('#conditionsContainer .condition-row').forEach(row => {
+                const field = row.querySelector('.field-select').value;
+                const operator = row.querySelector('.operator-select').value;
+                const value = row.querySelector('.value-input').value;
+                conditions.push({ field, operator, value });
+            });
+            return conditions;
+        }
+
+        async function previewSegment() {
+            const conditions = getConditions();
+            const logic = document.querySelector('input[name="logic"]:checked').value;
+            
+            try {
+                const response = await fetchWithAuth(`${API_BASE}/segments-enhanced/preview`, {
+                    method: 'POST',
+                    body: JSON.stringify({ conditions, logic })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('previewCount').textContent = data.data?.count || 0;
+                } else {
+                    document.getElementById('previewCount').textContent = '?';
+                }
+            } catch (err) {
+                console.error('Preview error:', err);
+                document.getElementById('previewCount').textContent = '?';
+            }
+        }
+
+        async function saveSegment() {
+            const id = document.getElementById('segmentId').value;
+            const name = document.getElementById('segmentName').value.trim();
+            const description = document.getElementById('segmentDescription').value.trim();
+            const conditions = getConditions();
+            const logic = document.querySelector('input[name="logic"]:checked').value;
+
+            if (!name) {
+                showNotification('Please enter a segment name', 'error');
+                return;
+            }
+
+            if (conditions.length === 0) {
+                showNotification('Please add at least one condition', 'error');
+                return;
+            }
+
+            const data = { name, description, conditions, logic };
+
+            try {
+                let url = id ? `${API_BASE}/segments-enhanced/${id}` : `${API_BASE}/segments-enhanced`;
+                let method = id ? 'PUT' : 'POST';
+                
+                let response = await fetchWithAuth(url, {
+                    method,
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    url = id ? `${API_BASE}/segments/${id}` : `${API_BASE}/segments`;
+                    response = await fetchWithAuth(url, {
+                        method,
+                        body: JSON.stringify(data)
+                    });
+                }
+
+                if (response.ok) {
+                    hideModal();
+                    loadSegments();
+                    showNotification(id ? 'Segment updated!' : 'Segment created!', 'success');
+                } else {
+                    const error = await response.json();
+                    showNotification('Error: ' + (error.message || 'Failed to save'), 'error');
+                }
+            } catch (err) {
+                console.error('Save error:', err);
+                showNotification('An error occurred', 'error');
+            }
+        }
+
+        async function editSegment(id) {
+            try {
+                let response = await fetchWithAuth(`${API_BASE}/segments-enhanced/${id}`);
+                if (!response.ok) {
+                    response = await fetchWithAuth(`${API_BASE}/segments/${id}`);
+                }
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const segment = data.data || data;
+                    
+                    document.getElementById('modalTitle').textContent = '✏️ Edit Segment';
+                    document.getElementById('segmentId').value = segment.id;
+                    document.getElementById('segmentName').value = segment.name || '';
+                    document.getElementById('segmentDescription').value = segment.description || '';
+                    
+                    if (segment.logic) {
+                        document.querySelector(`input[name="logic"][value="${segment.logic}"]`).checked = true;
+                    }
+                    
+                    document.getElementById('conditionsContainer').innerHTML = '';
+                    conditionIndex = 0;
+                    
+                    if (segment.conditions && segment.conditions.length > 0) {
+                        segment.conditions.forEach(c => addCondition(c));
+                    } else {
+                        addCondition();
+                    }
+                    
+                    document.getElementById('segmentModal').classList.remove('hidden');
+                    previewSegment();
+                }
+            } catch (err) {
+                console.error('Edit error:', err);
+            }
+        }
+
+        async function deleteSegment(id) {
+            if (!confirm('Are you sure you want to delete this segment?')) return;
+            
+            try {
+                let response = await fetchWithAuth(`${API_BASE}/segments-enhanced/${id}`, {
+                    method: 'DELETE'
+                });
+                if (!response.ok) {
+                    response = await fetchWithAuth(`${API_BASE}/segments/${id}`, {
+                        method: 'DELETE'
+                    });
+                }
+                
+                if (response.ok) {
+                    loadSegments();
+                    showNotification('Segment deleted', 'success');
+                }
+            } catch (err) {
+                console.error('Delete error:', err);
+            }
+        }
+
+        function viewContacts(id) {
+            window.location.href = `/contacts.html?segment=${id}`;
+        }
+
+        function showNotification(message, type = 'info') {
+            const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500' };
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+        }
+
+        // Search filter
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const search = e.target.value.toLowerCase();
+            const filtered = allSegments.filter(s => 
+                s.name?.toLowerCase().includes(search) ||
+                s.description?.toLowerCase().includes(search)
+            );
+            displaySegments(filtered);
+        });
+
+        // Initial load
+        loadSegments();
+    </script>
+</body>
+</html>

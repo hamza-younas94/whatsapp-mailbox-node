@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Web QR Code - Mailbox</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .status {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .status.initializing { background: #fff3cd; color: #856404; }
+        .status.qr-ready { background: #d1ecf1; color: #0c5460; }
+        .status.ready { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .qr-container {
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .qr-container img {
+            max-width: 100%;
+            border: 3px solid #25D366;
+            border-radius: 10px;
+        }
+        .instructions {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #2196F3;
+        }
+        .instructions h3 {
+            color: #1976D2;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        .instructions ol {
+            margin-left: 20px;
+            color: #555;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #25D366;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #128C7E;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            margin-top: 10px;
+        }
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        .input-group input:focus {
+            outline: none;
+            border-color: #25D366;
+        }
+        .phone-info {
+            text-align: center;
+            padding: 15px;
+            background: #d4edda;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        .phone-info strong {
+            color: #155724;
+            font-size: 18px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #25D366;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 WhatsApp Web Connection</h1>
+        <p class="subtitle">Connect your WhatsApp account to the mailbox</p>
+
+        <div class="input-group">
+            <label for="token">JWT Token:</label>
+            <input type="text" id="token" placeholder="Paste your JWT token here" />
+        </div>
+
+        <button class="btn-primary" id="connectBtn" onclick="connectWhatsApp()">
+            Connect WhatsApp
+        </button>
+
+        <div id="statusDiv"></div>
+        <div id="qrDiv"></div>
+        <div id="phoneDiv"></div>
+
+        <div class="instructions">
+            <h3>📝 How to Connect:</h3>
+            <ol>
+                <li>Enter your JWT token (from login)</li>
+                <li>Click "Connect WhatsApp"</li>
+                <li>Wait for QR code to appear</li>
+                <li>Open WhatsApp on your phone</li>
+                <li>Go to Settings → Linked Devices</li>
+                <li>Tap "Link a Device"</li>
+                <li>Scan the QR code</li>
+            </ol>
+        </div>
+
+        <button class="btn-secondary" style="display:none;" id="testBtn" onclick="testSendMessage()">
+            Send Test Message
+        </button>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api/v1/whatsapp-web';
+        let sessionId = null;
+        let checkInterval = null;
+
+        function showStatus(message, type = 'initializing') {
+            const statusDiv = document.getElementById('statusDiv');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        async function connectWhatsApp() {
+            const token = document.getElementById('token').value.trim();
+            if (!token) {
+                alert('Please enter your JWT token');
+                return;
+            }
+
+            document.getElementById('connectBtn').disabled = true;
+            showStatus('Initializing WhatsApp session...', 'initializing');
+            document.getElementById('qrDiv').innerHTML = '';
+            document.getElementById('phoneDiv').innerHTML = '';
+
+            try {
+                // Initialize session
+                const response = await fetch(`${API_URL}/init`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to initialize session');
+                }
+
+                const data = await response.json();
+                sessionId = data.data.sessionId;
+
+                showStatus('Waiting for QR code...', 'initializing');
+                document.getElementById('qrDiv').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+                // Start polling for QR code
+                checkQRCode(token);
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+                document.getElementById('connectBtn').disabled = false;
+            }
+        }
+
+        async function checkQRCode(token) {
+            if (checkInterval) {
+                clearInterval(checkInterval);
+            }
+
+            checkInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_URL}/sessions/${sessionId}/status`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+
+                    if (!response.ok) return;
+
+                    const data = await response.json();
+                    const status = data.data.status;
+
+                    if (status === 'QR_READY') {
+                        showStatus('Scan this QR code with WhatsApp', 'qr-ready');
+                        await getQRCode(token);
+                    } else if (status === 'READY') {
+                        clearInterval(checkInterval);
+                        showStatus('✅ WhatsApp Connected Successfully!', 'ready');
+                        document.getElementById('qrDiv').innerHTML = '';
+                        document.getElementById('phoneDiv').innerHTML = 
+                            `<div class="phone-info">
+                                <strong>📞 Connected: +${data.data.phoneNumber}</strong>
+                            </div>`;
+                        document.getElementById('testBtn').style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Status check error:', error);
+                }
+            }, 2000);
+        }
+
+        async function getQRCode(token) {
+            try {
+                const response = await fetch(`${API_URL}/sessions/${sessionId}/qr`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) return;
+
+                const data = await response.json();
+                if (data.data.qrCode) {
+                    document.getElementById('qrDiv').innerHTML = 
+                        `<div class="qr-container">
+                            <img src="${data.data.qrCode}" alt="WhatsApp QR Code" />
+                        </div>`;
+                }
+            } catch (error) {
+                console.error('QR fetch error:', error);
+            }
+        }
+
+        async function testSendMessage() {
+            const token = document.getElementById('token').value;
+            const phoneNumber = prompt('Enter phone number (with country code, no + or spaces):');
+            
+            if (!phoneNumber) return;
+
+            try {
+                const response = await fetch(`${API_URL}/sessions/${sessionId}/send`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        to: phoneNumber,
+                        message: 'Hello from WhatsApp Mailbox! 🎉'
+                    })
+                });
+
+                if (response.ok) {
+                    alert('✅ Test message sent successfully!');
+                } else {
+                    alert('❌ Failed to send message');
+                }
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // Save token to localStorage for convenience
+        document.getElementById('token').addEventListener('change', (e) => {
+            localStorage.setItem('jwt_token', e.target.value);
+        });
+
+        // Load saved token
+        window.onload = () => {
+            const savedToken = localStorage.getItem('jwt_token');
+            if (savedToken) {
+                document.getElementById('token').value = savedToken;
+            }
+        };
+    </script>
+</body>
+</html>

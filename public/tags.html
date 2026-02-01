@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tags - WhatsApp Mailbox</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://whatshub.nexofydigital.com:3000 https://whatshub.nexofydigital.com:3000;">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <script>
+        if (!localStorage.getItem('authToken')) window.location.href = '/login.html';
+    </script>
+    <script src="/js/navbar.js"></script>
+
+    <div class="max-w-7xl mx-auto px-4 py-6">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">🏷️ Tags</h1>
+                <p class="text-gray-600 mt-1">Organize your contacts with custom tags</p>
+            </div>
+            <button onclick="showCreateModal()" 
+                class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+                <i class="fas fa-plus mr-2"></i>Create Tag
+            </button>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-blue-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-3xl font-bold text-blue-600" id="totalTags">0</div>
+                        <div class="text-sm text-gray-500">Total Tags</div>
+                    </div>
+                    <div class="p-3 bg-blue-100 rounded-full">
+                        <i class="fas fa-tags text-blue-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-green-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-3xl font-bold text-green-600" id="taggedContacts">0</div>
+                        <div class="text-sm text-gray-500">Tagged Contacts</div>
+                    </div>
+                    <div class="p-3 bg-green-100 rounded-full">
+                        <i class="fas fa-user-tag text-green-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-purple-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-3xl font-bold text-purple-600" id="mostUsedTag">-</div>
+                        <div class="text-sm text-gray-500">Most Used Tag</div>
+                    </div>
+                    <div class="p-3 bg-purple-100 rounded-full">
+                        <i class="fas fa-star text-purple-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm">
+            <div class="p-4 border-b">
+                <div class="relative w-full md:w-64">
+                    <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                    <input type="text" id="searchInput" placeholder="Search tags..." 
+                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            <!-- Tags Grid -->
+            <div id="tagsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-6">
+                <div class="col-span-full p-8 text-center text-gray-500">
+                    <i class="fas fa-spinner fa-spin text-4xl mb-2"></i>
+                    <p>Loading tags...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create/Edit Tag Modal -->
+    <div id="tagModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg max-w-md w-full p-6">
+            <h2 id="modalTitle" class="text-2xl font-bold mb-4">Create Tag</h2>
+            <form id="tagForm" class="space-y-4">
+                <input type="hidden" id="tagId">
+                
+                <div>
+                    <label class="block text-gray-700 mb-2">Tag Name *</label>
+                    <input type="text" id="name" required
+                        class="w-full px-4 py-2 border rounded-lg"
+                        placeholder="VIP Customer">
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 mb-2">Color</label>
+                    <div class="grid grid-cols-6 gap-2">
+                        <button type="button" onclick="selectColor('blue')" 
+                            class="color-btn w-full h-10 bg-blue-500 rounded hover:ring-2 ring-gray-400" data-color="blue"></button>
+                        <button type="button" onclick="selectColor('green')" 
+                            class="color-btn w-full h-10 bg-green-500 rounded hover:ring-2 ring-gray-400" data-color="green"></button>
+                        <button type="button" onclick="selectColor('red')" 
+                            class="color-btn w-full h-10 bg-red-500 rounded hover:ring-2 ring-gray-400" data-color="red"></button>
+                        <button type="button" onclick="selectColor('yellow')" 
+                            class="color-btn w-full h-10 bg-yellow-500 rounded hover:ring-2 ring-gray-400" data-color="yellow"></button>
+                        <button type="button" onclick="selectColor('purple')" 
+                            class="color-btn w-full h-10 bg-purple-500 rounded hover:ring-2 ring-gray-400" data-color="purple"></button>
+                        <button type="button" onclick="selectColor('pink')" 
+                            class="color-btn w-full h-10 bg-pink-500 rounded hover:ring-2 ring-gray-400" data-color="pink"></button>
+                    </div>
+                    <input type="hidden" id="color" value="blue">
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 mb-2">Description</label>
+                    <textarea id="description" rows="3"
+                        class="w-full px-4 py-2 border rounded-lg"
+                        placeholder="Tag description..."></textarea>
+                </div>
+
+                <div class="flex space-x-4">
+                    <button type="submit" class="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg">
+                        Save
+                    </button>
+                    <button type="button" onclick="hideModal()"
+                        class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 rounded-lg">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api/v1';
+        
+        async function fetchWithAuth(url, options = {}) {
+            const token = localStorage.getItem('authToken');
+            const headers = {
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` }),
+                ...options.headers
+            };
+            const response = await fetch(url, { ...options, headers });
+            if (response.status === 401) {
+                localStorage.removeItem('authToken');
+                window.location.href = '/login.html';
+            }
+            return response;
+        }
+
+        async function loadTags() {
+            try {
+                const response = await fetchWithAuth(`${API_BASE}/tags`);
+                if (response.ok) {
+                    const result = await response.json();
+                    displayTags(result.data || []);
+                } else {
+                    const result = await response.json();
+                    console.error('Error loading tags:', result.error);
+                    displayTags([]);
+                }
+            } catch (error) {
+                console.error('Error loading tags:', error);
+                displayTags([]);
+            }
+        }
+
+        function displayTags(tags) {
+            const container = document.getElementById('tagsList');
+            if (tags.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full p-8 text-center text-gray-500">
+                        <i class="fas fa-tags text-4xl mb-2"></i>
+                        <p>No tags yet</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = tags.map(tag => `
+                <div class="border-2 border-${tag.color || 'blue'}-200 rounded-lg p-4 hover:shadow-md transition">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-4 h-4 bg-${tag.color || 'blue'}-500 rounded-full"></div>
+                            <h3 class="font-semibold text-gray-800">${tag.name}</h3>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="editTag('${tag.id}')" 
+                                class="text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deleteTag('${tag.id}')" 
+                                class="text-red-600 hover:text-red-800">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    ${tag.description ? `
+                        <p class="text-sm text-gray-600 mb-2">${tag.description}</p>
+                    ` : ''}
+                    
+                    <div class="flex items-center justify-between text-sm text-gray-500 mt-3">
+                        <span><i class="fas fa-users mr-1"></i>${tag._count?.contacts || 0} contacts</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showCreateModal() {
+            document.getElementById('modalTitle').textContent = 'Create Tag';
+            document.getElementById('tagForm').reset();
+            selectColor('blue');
+            document.getElementById('tagModal').classList.remove('hidden');
+        }
+
+        function hideModal() {
+            document.getElementById('tagModal').classList.add('hidden');
+        }
+
+        function selectColor(color) {
+            document.querySelectorAll('.color-btn').forEach(btn => {
+                btn.classList.remove('ring-2', 'ring-gray-800');
+            });
+            document.querySelector(`[data-color="${color}"]`).classList.add('ring-2', 'ring-gray-800');
+            document.getElementById('color').value = color;
+        }
+
+        async function editTag(id) {
+            try {
+                const response = await fetchWithAuth(`${API_BASE}/tags/${id}`);
+                if (response.ok) {
+                    const result = await response.json();
+                    const tag = result.data || result;
+                    document.getElementById('modalTitle').textContent = 'Edit Tag';
+                    document.getElementById('tagId').value = tag.id;
+                    document.getElementById('name').value = tag.name || '';
+                    document.getElementById('description').value = tag.description || '';
+                    selectColor(tag.color || 'blue');
+                    document.getElementById('tagModal').classList.remove('hidden');
+                } else {
+                    const result = await response.json();
+                    alert(`Error: ${result.error?.message || 'Failed to load tag'}`);
+                }
+            } catch (error) {
+                console.error('Error loading tag:', error);
+                alert('An error occurred. Please try again.');
+            }
+        }
+
+        async function deleteTag(id) {
+            if (!confirm('Are you sure you want to delete this tag?')) return;
+            
+            const response = await fetchWithAuth(`${API_BASE}/tags/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                loadTags();
+            }
+        }
+
+        document.getElementById('tagForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const id = document.getElementById('tagId').value;
+            const name = document.getElementById('name').value;
+            const color = document.getElementById('color').value;
+            const description = document.getElementById('description').value;
+
+            // Validation
+            if (!name || name.trim().length === 0) {
+                alert('Please enter a tag name');
+                return;
+            }
+
+            const data = { 
+                name: name.trim(), 
+                ...(color && { color }), 
+                ...(description && { description: description.trim() })
+            };
+            const url = id ? `${API_BASE}/tags/${id}` : `${API_BASE}/tags`;
+            const method = id ? 'PUT' : 'POST';
+
+            try {
+                const response = await fetchWithAuth(url, {
+                    method,
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    hideModal();
+                    loadTags();
+                } else {
+                    const errorMsg = result.error?.message || 'Failed to save tag';
+                    alert(`Error: ${errorMsg}`);
+                }
+            } catch (error) {
+                console.error('Error saving tag:', error);
+                alert('An error occurred. Please try again.');
+            }
+        });
+
+        // Initial load
+        loadTags();
+    </script>
+</body>
+</html>

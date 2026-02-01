@@ -1,0 +1,890 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  binaryTargets   = ["native", "debian-openssl-3.0.x"]
+  previewFeatures = ["fullTextSearch", "fullTextIndex"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// AUTH & USER MANAGEMENT
+// ============================================
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  username     String    @unique
+  passwordHash String
+  name         String?
+  avatarUrl    String?
+  role         UserRole  @default(USER)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  // Relations
+  conversations     Conversation[]
+  messages          Message[]
+  contacts          Contact[]
+  tags              Tag[]
+  segments          Segment[]
+  quickReplies      QuickReply[]
+  automations       Automation[]
+  notes             Note[]
+  activityLogs      ActivityLog[]
+  dripCampaigns     DripCampaign[]
+  broadcasts        Broadcast[]
+  labels            Label[]
+  scheduledMessages ScheduledMessage[]
+  imports           ImportJob[]
+
+  @@index([email])
+  @@index([username])
+  @@index([isActive])
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  AGENT
+  USER
+}
+
+// ============================================
+// CONTACTS & CONVERSATIONS
+// ============================================
+
+model Contact {
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phoneNumber       String    @db.VarChar(20)
+  chatId            String?   @db.VarChar(50) // Full WhatsApp ID: phone@c.us or channel@newsletter
+  name              String?
+  pushName          String? // Contact's WhatsApp display name
+  businessName      String? // For business accounts
+  email             String?
+  avatarUrl         String?   @db.Text
+  profilePhotoUrl   String?   @db.Text // WhatsApp profile picture
+  company           String?
+  department        String?
+  contactType       String    @default("individual") // individual, business, group, broadcast
+  timezone          String?
+  lastMessageAt     DateTime?
+  lastActiveAt      DateTime?
+  engagementScore   Float     @default(0) // 0-100 score
+  engagementLevel   String    @default("inactive") // high, medium, low, inactive
+  messageCount      Int       @default(0)
+  totalInteractions Int       @default(0)
+  isBlocked         Boolean   @default(false)
+  isBusiness        Boolean   @default(false)
+  isVerified        Boolean   @default(false)
+  customFields      Json?     @default("{}") // Flexible custom attributes
+  metadata          Json?     @default("{}")
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  conversations   Conversation[]
+  messages        Message[]
+  tags            TagOnContact[]
+  notes           Note[]
+  dripEnrollments DripEnrollment[]
+  transactions    Transaction[]
+  dripScheduled   DripScheduledMessage[]
+
+  @@unique([userId, phoneNumber])
+  @@index([userId])
+  @@index([phoneNumber])
+  @@index([engagementLevel])
+  @@index([engagementScore])
+  @@fulltext([phoneNumber, name, pushName, businessName])
+}
+
+model Conversation {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  isActive      Boolean   @default(true)
+  status        String    @default("open")
+  priority      String    @default("normal")
+  assignedToId  String?
+  unreadCount   Int       @default(0)
+  isArchived    Boolean   @default(false)
+  archivedAt    DateTime?
+  lastMessageAt DateTime?
+  metadata      Json?     @default("{}")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  messages Message[]
+  labels   ConversationLabel[]
+
+  @@unique([userId, contactId])
+  @@index([userId])
+  @@index([isActive])
+  @@index([status])
+  @@index([lastMessageAt])
+}
+
+// ============================================
+// MESSAGING
+// ============================================
+
+model Message {
+  id             String       @id @default(cuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contactId      String
+  contact        Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  waMessageId String?          @unique // WhatsApp message ID
+  content     String?          @db.LongText
+  messageType MessageType      @default(TEXT)
+  direction   MessageDirection @default(INCOMING)
+  status      MessageStatus    @default(RECEIVED)
+
+  // Media
+  mediaUrl      String? @db.Text
+  mediaType     String?
+  mediaFileName String?
+
+  // Message context (for replies, groups, etc.)
+  quotedMessageId  String? // ID of quoted/replied message
+  isGroupMessage   Boolean @default(false)
+  groupId          String? // WhatsApp group ID
+  groupName        String? // Group name
+  isStatusUpdate   Boolean @default(false)
+  isChannelMessage Boolean @default(false)
+  channelId        String? // Channel ID
+  senderName       String? // Sender name in group/channel
+
+  // Metadata
+  templateId   String?
+  quickReplyId String?
+  tagIds       Json?   @default("[]")
+  metadata     Json?   @default("{}")
+
+  // Timing
+  scheduledAt DateTime?
+  sendAt      DateTime?
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  reactions Reaction[]
+  notes     Note[]
+
+  @@index([userId])
+  @@index([contactId])
+  @@index([conversationId])
+  @@index([waMessageId])
+  @@index([status])
+  @@index([createdAt])
+  @@fulltext([content])
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+  BUTTON
+  LIST
+  INTERACTIVE
+  LOCATION
+  CONTACT
+  TEMPLATE
+  REACTION
+  STICKER
+  POLL
+  GROUP_INVITE
+  STATUS
+  CHANNEL_POST
+}
+
+enum MessageDirection {
+  INCOMING
+  OUTGOING
+}
+
+enum MessageStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  RECEIVED
+}
+
+enum MessageMediaType {
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+}
+
+enum ScheduledMessageStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+model Reaction {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  emoji     String
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, emoji])
+  @@index([messageId])
+}
+
+// ============================================
+// TAGGING & ORGANIZATION
+// ============================================
+
+model Tag {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  color     String?  @default("#3B82F6")
+  createdAt DateTime @default(now())
+
+  // Relations
+  contacts TagOnContact[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model TagOnContact {
+  contactId  String
+  contact    Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tagId      String
+  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  assignedAt DateTime @default(now())
+
+  @@id([contactId, tagId])
+  @@index([tagId])
+}
+
+// ============================================
+// SEGMENTS & CAMPAIGNS
+// ============================================
+
+model Segment {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  criteria  Json // Saved filter criteria
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model Campaign {
+  id     String         @id @default(cuid())
+  name   String
+  type   CampaignType
+  status CampaignStatus @default(DRAFT)
+
+  templateId String?
+  content    String? @db.LongText
+  mediaUrl   String?
+
+  scheduleTime DateTime?
+  sentAt       DateTime?
+  completedAt  DateTime?
+
+  recipientCount Int @default(0)
+  sentCount      Int @default(0)
+  failedCount    Int @default(0)
+
+  metadata  Json?    @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum CampaignType {
+  BROADCAST
+  SCHEDULED
+  DRIP
+  WORKFLOW
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  PAUSED
+  COMPLETED
+  FAILED
+}
+
+// ============================================
+// QUICK REPLIES & TEMPLATES
+// ============================================
+
+model QuickReply {
+  id                 String              @id @default(cuid())
+  userId             String
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title              String
+  content            String              @db.LongText
+  category           String?
+  categoryId         String?
+  quickReplyCategory QuickReplyCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  shortcut           String?             @unique
+  variables          Json?               @default("[]")
+  mediaUrl           String?             @db.Text
+  mediaType          String?
+  tags               Json?               @default("[]")
+  isActive           Boolean             @default(true)
+  usageCount         Int                 @default(0)
+  usageTodayCount    Int                 @default(0)
+  lastUsedAt         DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@index([userId])
+  @@index([isActive])
+  @@index([categoryId])
+  @@fulltext([title, content])
+}
+
+model MessageTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  category  String
+  language  String   @default("en")
+  content   String   @db.LongText
+  variables Json?    @default("[]")
+  metadata  Json?    @default("{}")
+  createdAt DateTime @default(now())
+
+  @@unique([name, language])
+}
+
+// ============================================
+// AUTOMATION & WORKFLOWS
+// ============================================
+
+model Automation {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  trigger   String // MESSAGE_RECEIVED, CONTACT_ADDED, etc.
+  actions   Json // Array of actions to execute
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isActive])
+}
+
+model AutoReply {
+  id        String   @id @default(cuid())
+  isActive  Boolean  @default(true)
+  message   String   @db.LongText
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// NOTES & ACTIVITIES
+// ============================================
+
+model Note {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  messageId String?
+  message   Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  content   String   @db.LongText
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([contactId])
+  @@fulltext([content])
+}
+
+model ActivityLog {
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action       ActivityType
+  resourceType String?
+  resourceId   String?
+  details      Json?        @default("{}")
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime     @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+enum ActivityType {
+  LOGIN
+  LOGOUT
+  MESSAGE_SENT
+  MESSAGE_RECEIVED
+  CONTACT_CREATED
+  CONTACT_UPDATED
+  TAG_CREATED
+  TAG_DELETED
+  AUTOMATION_TRIGGERED
+  CAMPAIGN_STARTED
+}
+
+// ============================================
+// CONFIGURATION & SETTINGS
+// ============================================
+
+model AppConfig {
+  id        String     @id @default(cuid())
+  key       String     @unique
+  value     String     @db.LongText
+  type      ConfigType
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([key])
+}
+
+enum ConfigType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+}
+
+// ============================================
+// DRIP CAMPAIGNS
+// ============================================
+
+model DripCampaign {
+  id           String          @id @default(cuid())
+  userId       String
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?         @db.Text
+  triggerType  DripTriggerType
+  triggerValue String?
+  isActive     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  steps       DripCampaignStep[]
+  enrollments DripEnrollment[]
+  scheduled   DripScheduledMessage[]
+
+  @@index([userId])
+  @@index([isActive])
+}
+
+enum DripTriggerType {
+  MANUAL
+  TAG_ADDED
+  FORM_SUBMITTED
+}
+
+model DripCampaignStep {
+  id         String       @id @default(cuid())
+  campaignId String
+  campaign   DripCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  sequence   Int
+  delayHours Int
+  message    String       @db.Text
+  mediaUrl   String?
+  mediaType  String?
+  createdAt  DateTime     @default(now())
+
+  scheduled DripScheduledMessage[]
+
+  @@index([campaignId])
+  @@index([sequence])
+}
+
+model DripEnrollment {
+  id          String               @id @default(cuid())
+  campaignId  String
+  campaign    DripCampaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contactId   String
+  contact     Contact              @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  currentStep Int                  @default(0)
+  status      DripEnrollmentStatus
+  enrolledAt  DateTime             @default(now())
+  completedAt DateTime?
+
+  @@unique([campaignId, contactId])
+  @@index([campaignId])
+  @@index([contactId])
+  @@index([status])
+}
+
+enum DripEnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model DripScheduledMessage {
+  id           String           @id @default(cuid())
+  campaignId   String
+  campaign     DripCampaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  stepId       String
+  step         DripCampaignStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  contactId    String
+  contact      Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  message      String           @db.Text
+  mediaUrl     String?
+  mediaType    String?
+  scheduledFor DateTime
+  status       String           @default("PENDING")
+  sentAt       DateTime?
+  createdAt    DateTime         @default(now())
+
+  @@index([campaignId])
+  @@index([contactId])
+  @@index([status])
+  @@index([scheduledFor])
+}
+
+model WebhookLog {
+  id        String   @id @default(cuid())
+  event     String
+  payload   Json
+  status    Int
+  error     String?
+  retries   Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([event])
+  @@index([createdAt])
+}
+
+// ============================================
+// BROADCAST SYSTEM
+// ============================================
+
+model Broadcast {
+  id        String          @id @default(cuid())
+  userId    String
+  name      String
+  message   String          @db.LongText
+  mediaUrl  String?         @db.Text
+  mediaType String?
+  status    BroadcastStatus @default(DRAFT)
+
+  // Targeting
+  segmentId  String?
+  tagIds     Json?   @default("[]")
+  contactIds Json?   @default("[]")
+
+  // Metrics
+  recipientCount Int @default(0)
+  sentCount      Int @default(0)
+  deliveredCount Int @default(0)
+  readCount      Int @default(0)
+  failedCount    Int @default(0)
+
+  // Scheduling
+  scheduledFor DateTime?
+  startedAt    DateTime?
+  completedAt  DateTime?
+
+  metadata  Json?    @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  recipients BroadcastRecipient[]
+  User       User                 @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([scheduledFor])
+}
+
+enum BroadcastStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model BroadcastRecipient {
+  id          String                   @id @default(cuid())
+  broadcastId String
+  broadcast   Broadcast                @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  contactId   String
+  phoneNumber String
+  status      BroadcastRecipientStatus @default(PENDING)
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  readAt      DateTime?
+  failedAt    DateTime?
+  error       String?                  @db.Text
+  retryCount  Int                      @default(0)
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+
+  @@index([broadcastId])
+  @@index([contactId])
+  @@index([status])
+}
+
+enum BroadcastRecipientStatus {
+  PENDING
+  SENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+// ============================================
+// CONVERSATION LABELS & MANAGEMENT
+// ============================================
+
+model Label {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  color     String   @default("#3B82F6")
+  icon      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conversations ConversationLabel[]
+  User          User                @relation(fields: [userId], references: [id])
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model ConversationLabel {
+  id             String       @id @default(cuid())
+  conversationId String
+  labelId        String
+  label          Label        @relation(fields: [labelId], references: [id], onDelete: Cascade)
+  assignedAt     DateTime     @default(now())
+  Conversation   Conversation @relation(fields: [conversationId], references: [id])
+
+  @@unique([conversationId, labelId])
+  @@index([conversationId])
+  @@index([labelId])
+}
+
+// ============================================
+// QUICK REPLY ENHANCEMENTS
+// ============================================
+
+model QuickReplyCategory {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  icon        String?
+  color       String?  @default("#6B7280")
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  quickReplies QuickReply[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model QuickReplyUsage {
+  id           String   @id @default(cuid())
+  quickReplyId String
+  userId       String
+  contactId    String?
+  usedAt       DateTime @default(now())
+
+  @@index([quickReplyId])
+  @@index([userId])
+  @@index([usedAt])
+}
+
+// ============================================
+// ANALYTICS & METRICS
+// ============================================
+
+model MessageMetrics {
+  id     String   @id @default(cuid())
+  date   DateTime @db.Date
+  userId String
+
+  totalMessages Int @default(0)
+  incomingCount Int @default(0)
+  outgoingCount Int @default(0)
+
+  avgResponseTime Int @default(0)
+  totalResponses  Int @default(0)
+
+  uniqueContacts Int @default(0)
+  newContacts    Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([date, userId])
+  @@index([date])
+  @@index([userId])
+}
+
+model CampaignMetrics {
+  id         String   @id @default(cuid())
+  campaignId String
+  date       DateTime @db.Date
+
+  sent      Int @default(0)
+  delivered Int @default(0)
+  read      Int @default(0)
+  failed    Int @default(0)
+
+  replies Int @default(0)
+  clicks  Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([date, campaignId])
+  @@index([date])
+  @@index([campaignId])
+}
+
+// ============================================
+// SCHEDULED MESSAGES
+// ============================================
+
+model ScheduledMessage {
+  id           String          @id @default(cuid())
+  userId       String
+  contactId    String
+  message      String          @db.LongText
+  mediaUrl     String?         @db.Text
+  mediaType    String?
+  scheduledFor DateTime
+  status       ScheduledStatus @default(PENDING)
+  sentAt       DateTime?
+  error        String?         @db.Text
+  retryCount   Int             @default(0)
+  metadata     Json?           @default("{}")
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  User         User            @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([contactId])
+  @@index([status])
+  @@index([scheduledFor])
+}
+
+enum ScheduledStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+// ============================================
+// CONTACT IMPORT/EXPORT
+// ============================================
+
+model ImportJob {
+  id               String       @id @default(cuid())
+  userId           String
+  fileName         String
+  fileUrl          String?      @db.Text
+  status           ImportStatus @default(PENDING)
+  totalRecords     Int          @default(0)
+  processedRecords Int          @default(0)
+  successCount     Int          @default(0)
+  errorCount       Int          @default(0)
+  errors           Json?        @default("[]")
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  User             User         @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+}
+
+enum ImportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// ============================================
+// TRANSACTIONS / SALES
+// ============================================
+
+model Transaction {
+  id          String            @id @default(cuid())
+  userId      String
+  contactId   String
+  amount      Float
+  description String?           @db.Text
+  status      TransactionStatus @default(PENDING)
+  paidAt      DateTime?
+  metadata    Json?             @default("{}")
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([contactId])
+  @@index([status])
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}

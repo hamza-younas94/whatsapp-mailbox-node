@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - WhatsApp Mailbox</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://whatshub.nexofydigital.com:3000 https://whatshub.nexofydigital.com:3000;">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <script>
+        if (!localStorage.getItem('authToken')) window.location.href = '/login.html';
+    </script>
+    <script src="/js/navbar.js"></script>
+
+    <div class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        <!-- Time Range Filter -->
+        <div class="flex justify-between items-center">
+            <h1 class="text-3xl font-bold text-gray-800">📊 Analytics</h1>
+            <div class="flex space-x-2">
+                <select id="timeRange" class="px-4 py-2 border rounded-lg">
+                    <option value="7">Last 7 days</option>
+                    <option value="30">Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                </select>
+                <button onclick="exportReport()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+                    <i class="fas fa-download mr-2"></i>Export
+                </button>
+            </div>
+        </div>
+        <!-- Overview Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Total Messages</p>
+                        <p id="totalMessages" class="text-3xl font-bold text-gray-800 mt-2">-</p>
+                    </div>
+                    <div class="bg-blue-100 p-3 rounded-full">
+                        <i class="fas fa-envelope text-blue-600 text-2xl"></i>
+                    </div>
+                </div>
+                <p id="messagesChange" class="text-sm text-green-600 mt-2">-</p>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Response Rate</p>
+                        <p id="responseRate" class="text-3xl font-bold text-gray-800 mt-2">-</p>
+                    </div>
+                    <div class="bg-green-100 p-3 rounded-full">
+                        <i class="fas fa-reply text-green-600 text-2xl"></i>
+                    </div>
+                </div>
+                <p id="responseChange" class="text-sm text-green-600 mt-2">-</p>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Avg Response Time</p>
+                        <p id="avgResponseTime" class="text-3xl font-bold text-gray-800 mt-2">-</p>
+                    </div>
+                    <div class="bg-yellow-100 p-3 rounded-full">
+                        <i class="fas fa-clock text-yellow-600 text-2xl"></i>
+                    </div>
+                </div>
+                <p id="timeChange" class="text-sm text-green-600 mt-2">-</p>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Active Contacts</p>
+                        <p id="activeContacts" class="text-3xl font-bold text-gray-800 mt-2">-</p>
+                    </div>
+                    <div class="bg-purple-100 p-3 rounded-full">
+                        <i class="fas fa-users text-purple-600 text-2xl"></i>
+                    </div>
+                </div>
+                <p id="contactsChange" class="text-sm text-green-600 mt-2">-</p>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Message Volume Chart -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Message Volume</h3>
+                <div id="messageVolumeChart" class="h-64 flex items-center justify-center text-gray-400">
+                    <i class="fas fa-chart-line text-4xl"></i>
+                </div>
+            </div>
+
+            <!-- Message Types -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Message Types</h3>
+                <div id="messageTypesChart" class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">Text</span>
+                        <div class="flex items-center space-x-2">
+                            <div class="w-32 bg-gray-200 rounded-full h-2">
+                                <div class="bg-blue-500 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                            <span class="text-gray-800 font-semibold w-12">0</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">Image</span>
+                        <div class="flex items-center space-x-2">
+                            <div class="w-32 bg-gray-200 rounded-full h-2">
+                                <div class="bg-green-500 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                            <span class="text-gray-800 font-semibold w-12">0</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">Document</span>
+                        <div class="flex items-center space-x-2">
+                            <div class="w-32 bg-gray-200 rounded-full h-2">
+                                <div class="bg-yellow-500 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                            <span class="text-gray-800 font-semibold w-12">0</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">Other</span>
+                        <div class="flex items-center space-x-2">
+                            <div class="w-32 bg-gray-200 rounded-full h-2">
+                                <div class="bg-purple-500 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                            <span class="text-gray-800 font-semibold w-12">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Campaigns Performance -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Campaign Performance</h3>
+            <div id="campaignsTable" class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Campaign</th>
+                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Sent</th>
+                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Delivered</th>
+                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Read</th>
+                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Delivery Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody id="campaignsBody" class="divide-y">
+                        <tr>
+                            <td colspan="5" class="px-4 py-8 text-center text-gray-500">
+                                <i class="fas fa-spinner fa-spin mr-2"></i>Loading campaigns...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Top Contacts -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Most Active Contacts</h3>
+            <div id="topContacts" class="space-y-3">
+                <div class="text-center text-gray-500 py-4">
+                    <i class="fas fa-spinner fa-spin mr-2"></i>Loading contacts...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api/v1';
+        
+        async function fetchWithAuth(url, options = {}) {
+            const token = localStorage.getItem('authToken');
+            const headers = {
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` }),
+                ...options.headers
+            };
+            const response = await fetch(url, { ...options, headers });
+            if (response.status === 401) {
+                localStorage.removeItem('authToken');
+                window.location.href = '/login.html';
+            }
+            return response;
+        }
+
+        async function loadAnalytics() {
+            const days = document.getElementById('timeRange').value;
+            const response = await fetchWithAuth(`${API_BASE}/analytics/overview?days=${days}`);
+            
+            if (response.ok) {
+                const data = await response.json();
+                displayOverview(data);
+            }
+        }
+
+        async function loadCampaigns() {
+            const response = await fetchWithAuth(`${API_BASE}/analytics/campaigns`);
+            if (response.ok) {
+                const data = await response.json();
+                displayCampaigns(data.data || []);
+            }
+        }
+
+        async function loadTopContacts() {
+            const response = await fetchWithAuth(`${API_BASE}/analytics/top-contacts`);
+            if (response.ok) {
+                const data = await response.json();
+                displayTopContacts(data.data || []);
+            }
+        }
+
+        function displayOverview(data) {
+            document.getElementById('totalMessages').textContent = data.totalMessages || 0;
+            document.getElementById('responseRate').textContent = (data.responseRate || 0) + '%';
+            document.getElementById('avgResponseTime').textContent = formatTime(data.avgResponseTime || 0);
+            document.getElementById('activeContacts').textContent = data.activeContacts || 0;
+
+            // Display changes
+            document.getElementById('messagesChange').textContent = 
+                `${data.messagesChange > 0 ? '+' : ''}${data.messagesChange || 0}% from last period`;
+            document.getElementById('responseChange').textContent = 
+                `${data.responseChange > 0 ? '+' : ''}${data.responseChange || 0}% from last period`;
+        }
+
+        function displayCampaigns(campaigns) {
+            const tbody = document.getElementById('campaignsBody');
+            if (campaigns.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-4 py-8 text-center text-gray-500">
+                            No campaign data available
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = campaigns.map(campaign => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-gray-800">${campaign.name}</td>
+                    <td class="px-4 py-3 text-gray-600">${campaign.sentCount || 0}</td>
+                    <td class="px-4 py-3 text-gray-600">${campaign.deliveredCount || 0}</td>
+                    <td class="px-4 py-3 text-gray-600">${campaign.readCount || 0}</td>
+                    <td class="px-4 py-3">
+                        <span class="text-green-600 font-semibold">
+                            ${calculateRate(campaign.deliveredCount, campaign.sentCount)}%
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function displayTopContacts(contacts) {
+            const container = document.getElementById('topContacts');
+            if (contacts.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 py-4">No contact data available</p>';
+                return;
+            }
+
+            container.innerHTML = contacts.map(contact => `
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="bg-green-100 w-10 h-10 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-green-600"></i>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-gray-800">${contact.name || contact.phoneNumber}</p>
+                            <p class="text-sm text-gray-500">${contact.messageCount || 0} messages</p>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function formatTime(seconds) {
+            if (seconds < 60) return `${seconds}s`;
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes}m`;
+            const hours = Math.floor(minutes / 60);
+            return `${hours}h`;
+        }
+
+        function calculateRate(delivered, sent) {
+            if (!sent) return 0;
+            return Math.round((delivered / sent) * 100);
+        }
+
+        async function exportReport() {
+            const days = document.getElementById('timeRange').value;
+            const response = await fetchWithAuth(`${API_BASE}/analytics/export?days=${days}`);
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `analytics-report-${Date.now()}.csv`;
+                a.click();
+            }
+        }
+
+        // Event listeners
+        document.getElementById('timeRange').addEventListener('change', loadAnalytics);
+
+        // Initial load
+        loadAnalytics();
+        loadCampaigns();
+        loadTopContacts();
+    </script>
+</body>
+</html>

@@ -1,0 +1,131 @@
+.app-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  background-color: var(--color-bg);
+  overflow: hidden;
+}
+
+.mailbox-main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.list-panel {
+  width: 320px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-panel {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.empty-chat-desktop {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #fff;
+}
+
+.empty-content {
+  text-align: center;
+  color: var(--color-text-light);
+}
+
+.empty-icon {
+  font-size: 80px;
+  opacity: 0.3;
+  margin-bottom: var(--spacing-lg);
+}
+
+.empty-content h2 {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: 28px;
+  color: var(--color-text);
+}
+
+.empty-content p {
+  margin: 0;
+  font-size: var(--font-size-lg);
+}
+
+.chat-header-mobile {
+  display: none;
+}
+
+.back-button {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-size-md);
+  color: var(--color-primary);
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.back-button:hover {
+  color: var(--color-primary-dark);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .list-panel,
+  .chat-panel {
+    width: 100%;
+    position: absolute;
+    height: calc(100% - 60px);
+    top: 60px;
+    left: 0;
+    right: 0;
+  }
+
+  .chat-panel {
+    flex-direction: column;
+  }
+
+  .chat-header-mobile {
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-md);
+    background-color: #fff;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .empty-chat-desktop {
+    display: none;
+  }
+
+  .mailbox-main {
+    position: relative;
+  }
+}
+
+@media (max-width: 480px) {
+  .list-panel,
+  .chat-panel {
+    height: calc(100% - 50px);
+    top: 50px;
+  }
+
+  .empty-icon {
+    font-size: 60px;
+  }
+
+  .empty-content h2 {
+    font-size: 24px;
+  }
+}

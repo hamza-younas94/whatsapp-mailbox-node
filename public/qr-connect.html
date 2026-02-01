@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Connect - WhatsApp Mailbox</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://whatshub.nexofydigital.com:3000 https://whatshub.nexofydigital.com:3000;">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <script>
+        if (!localStorage.getItem('authToken')) window.location.href = '/login.html';
+    </script>
+
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <a href="/" class="text-gray-600 hover:text-gray-800">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                    <h1 class="text-2xl font-bold text-gray-800">WhatsApp QR Connect</h1>
+                </div>
+                <div id="statusBadge" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700">
+                    <i class="fas fa-circle text-gray-400 mr-2"></i>Checking...
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto px-4 py-6">
+        <!-- Connection Status Card -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-semibold text-gray-800">Connection Status</h2>
+                <button onclick="refreshStatus()" class="text-blue-600 hover:text-blue-800">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+
+            <div id="connectionStatus" class="text-center py-8">
+                <i class="fas fa-spinner fa-spin text-4xl text-gray-400 mb-4"></i>
+                <p class="text-gray-600">Checking connection status...</p>
+            </div>
+        </div>
+
+        <!-- QR Code Card -->
+        <div id="qrCodeCard" class="bg-white rounded-lg shadow p-6 hidden">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Scan QR Code</h2>
+            
+            <div class="bg-gray-50 rounded-lg p-8 mb-4">
+                <div id="qrCodeContainer" class="flex justify-center">
+                    <div class="text-center text-gray-400">
+                        <i class="fas fa-qrcode text-6xl mb-4"></i>
+                        <p>Generating QR code...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 class="font-semibold text-blue-900 mb-2">
+                    <i class="fas fa-info-circle mr-2"></i>How to connect
+                </h3>
+                <ol class="list-decimal list-inside space-y-1 text-blue-800 text-sm">
+                    <li>Open WhatsApp on your phone</li>
+                    <li>Tap Menu or Settings and select "Linked Devices"</li>
+                    <li>Tap "Link a Device"</li>
+                    <li>Point your phone at this screen to capture the QR code</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Connected Info Card -->
+        <div id="connectedCard" class="bg-white rounded-lg shadow p-6 hidden">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-semibold text-gray-800">Connected Account</h2>
+                <button onclick="disconnectWhatsApp()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
+                    <i class="fas fa-unlink mr-2"></i>Disconnect
+                </button>
+            </div>
+
+            <div class="flex items-center space-x-4 p-4 bg-green-50 rounded-lg">
+                <div class="bg-green-500 w-16 h-16 rounded-full flex items-center justify-center">
+                    <i class="fas fa-whatsapp text-white text-3xl"></i>
+                </div>
+                <div>
+                    <p class="text-lg font-semibold text-gray-800" id="phoneNumber">Loading...</p>
+                    <p class="text-sm text-gray-600">Successfully connected</p>
+                </div>
+            </div>
+
+            <div class="mt-6 grid grid-cols-2 gap-4">
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <p class="text-gray-600 text-sm">Battery Level</p>
+                    <p class="text-2xl font-bold text-gray-800" id="batteryLevel">-</p>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <p class="text-gray-600 text-sm">Connection Quality</p>
+                    <p class="text-2xl font-bold text-gray-800" id="connectionQuality">-</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sessions List -->
+        <div class="bg-white rounded-lg shadow p-6 mt-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Active Sessions</h2>
+            <div id="sessionsList">
+                <div class="text-center text-gray-500 py-4">
+                    <i class="fas fa-spinner fa-spin mr-2"></i>Loading sessions...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api/v1';
+        let statusInterval;
+        
+        async function fetchWithAuth(url, options = {}) {
+            const token = localStorage.getItem('authToken');
+            const headers = {
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` }),
+                ...options.headers
+            };
+            const response = await fetch(url, { ...options, headers });
+            if (response.status === 401) {
+                localStorage.removeItem('authToken');
+                window.location.href = '/login.html';
+            }
+            return response;
+        }
+
+        async function checkStatus() {
+            try {
+                const response = await fetchWithAuth(`${API_BASE}/whatsapp-web/status`);
+                if (response.ok) {
+                    const data = await response.json();
+                    updateUI(data);
+                }
+            } catch (error) {
+                console.error('Error checking status:', error);
+            }
+        }
+
+        function updateUI(data) {
+            const statusBadge = document.getElementById('statusBadge');
+            const connectionStatus = document.getElementById('connectionStatus');
+            const qrCodeCard = document.getElementById('qrCodeCard');
+            const connectedCard = document.getElementById('connectedCard');
+
+            if (data.isConnected) {
+                // Show connected state
+                statusBadge.innerHTML = '<i class="fas fa-circle text-green-500 mr-2"></i>Connected';
+                statusBadge.className = 'px-4 py-2 rounded-lg bg-green-100 text-green-700';
+                
+                connectionStatus.innerHTML = `
+                    <i class="fas fa-check-circle text-5xl text-green-500 mb-4"></i>
+                    <p class="text-xl font-semibold text-gray-800">WhatsApp Connected!</p>
+                    <p class="text-gray-600 mt-2">Your WhatsApp is successfully linked and ready to use</p>
+                `;
+
+                qrCodeCard.classList.add('hidden');
+                connectedCard.classList.remove('hidden');
+
+                if (data.phoneNumber) {
+                    document.getElementById('phoneNumber').textContent = data.phoneNumber;
+                }
+                if (data.battery) {
+                    document.getElementById('batteryLevel').textContent = data.battery + '%';
+                }
+                document.getElementById('connectionQuality').textContent = 'Excellent';
+
+            } else if (data.qr) {
+                // Show QR code
+                statusBadge.innerHTML = '<i class="fas fa-circle text-yellow-500 mr-2"></i>Scan QR Code';
+                statusBadge.className = 'px-4 py-2 rounded-lg bg-yellow-100 text-yellow-700';
+                
+                connectionStatus.innerHTML = `
+                    <i class="fas fa-qrcode text-5xl text-blue-500 mb-4"></i>
+                    <p class="text-xl font-semibold text-gray-800">Ready to Connect</p>
+                    <p class="text-gray-600 mt-2">Scan the QR code below with your WhatsApp mobile app</p>
+                `;
+
+                qrCodeCard.classList.remove('hidden');
+                connectedCard.classList.add('hidden');
+
+                // Display QR code as image
+                const qrContainer = document.getElementById('qrCodeContainer');
+                qrContainer.innerHTML = `<img src="${data.qr}" alt="QR Code" class="max-w-xs">`;
+
+            } else {
+                // Disconnected or initializing
+                statusBadge.innerHTML = '<i class="fas fa-circle text-red-500 mr-2"></i>Disconnected';
+                statusBadge.className = 'px-4 py-2 rounded-lg bg-red-100 text-red-700';
+                
+                connectionStatus.innerHTML = `
+                    <i class="fas fa-unlink text-5xl text-red-500 mb-4"></i>
+                    <p class="text-xl font-semibold text-gray-800">Not Connected</p>
+                    <p class="text-gray-600 mt-2 mb-4">Click the button below to start the connection process</p>
+                    <button onclick="initializeConnection()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg">
+                        <i class="fas fa-link mr-2"></i>Initialize Connection
+                    </button>
+                `;
+
+                qrCodeCard.classList.add('hidden');
+                connectedCard.classList.add('hidden');
+            }
+        }
+
+        async function initializeConnection() {
+            try {
+                const response = await fetchWithAuth(`${API_BASE}/whatsapp-web/initialize`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    // Start polling for status
+                    startStatusPolling();
+                    setTimeout(checkStatus, 2000);
+                }
+            } catch (error) {
+                console.error('Error initializing connection:', error);
+                alert('Failed to initialize connection. Please try again.');
+            }
+        }
+
+        async function disconnectWhatsApp() {
+            if (!confirm('Are you sure you want to disconnect WhatsApp?')) return;
+            
+            try {
+                const response = await fetchWithAuth(`${API_BASE}/whatsapp-web/disconnect`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    stopStatusPolling();
+                    checkStatus();
+                }
+            } catch (error) {
+                console.error('Error disconnecting:', error);
+                alert('Failed to disconnect. Please try again.');
+            }
+        }
+
+        async function loadSessions() {
+            try {
+                const response = await fetchWithAuth(`${API_BASE}/whatsapp-web/sessions`);
+                if (response.ok) {
+                    const data = await response.json();
+                    displaySessions(data.data || []);
+                }
+            } catch (error) {
+                console.error('Error loading sessions:', error);
+            }
+        }
+
+        function displaySessions(sessions) {
+            const container = document.getElementById('sessionsList');
+            
+            if (sessions.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-gray-500 py-4">
+                        <i class="fas fa-inbox mr-2"></i>No active sessions
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = sessions.map(session => `
+                <div class="flex items-center justify-between p-4 border rounded-lg mb-2">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-mobile-alt text-green-600"></i>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-gray-800">${session.name || 'Session ' + session.id}</p>
+                            <p class="text-sm text-gray-600">Started ${new Date(session.createdAt).toLocaleString()}</p>
+                        </div>
+                    </div>
+                    <span class="px-3 py-1 rounded text-sm ${session.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+                        ${session.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        function startStatusPolling() {
+            if (statusInterval) clearInterval(statusInterval);
+            statusInterval = setInterval(checkStatus, 5000);
+        }
+
+        function stopStatusPolling() {
+            if (statusInterval) {
+                clearInterval(statusInterval);
+                statusInterval = null;
+            }
+        }
+
+        function refreshStatus() {
+            checkStatus();
+            loadSessions();
+        }
+
+        // Initial load
+        checkStatus();
+        loadSessions();
+        startStatusPolling();
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            stopStatusPolling();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messages - WhatsApp Mailbox</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://whatshub.nexofydigital.com:3000 https://whatshub.nexofydigital.com:3000;">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <script>
+        if (!localStorage.getItem('authToken')) window.location.href = '/login.html';
+    </script>
+    <script src="/js/navbar.js"></script>
+
+    <div class="max-w-7xl mx-auto px-4 py-6">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">💬 Messages</h1>
+                <p class="text-gray-600 mt-1">View and manage all your WhatsApp messages</p>
+            </div>
+            <button onclick="document.getElementById('newMessageModal').classList.remove('hidden')" 
+                class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+                <i class="fas fa-plus mr-2"></i>New Message
+            </button>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm">
+            <!-- Filters -->
+            <div class="p-4 border-b flex flex-wrap gap-4">
+                <input type="text" id="searchInput" placeholder="Search messages..." 
+                    class="flex-1 px-4 py-2 border rounded-lg">
+                <select id="filterDirection" class="px-4 py-2 border rounded-lg">
+                    <option value="">All Directions</option>
+                    <option value="inbound">Inbound</option>
+                    <option value="outbound">Outbound</option>
+                </select>
+                <select id="filterStatus" class="px-4 py-2 border rounded-lg">
+                    <option value="">All Status</option>
+                    <option value="sent">Sent</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="read">Read</option>
+                    <option value="failed">Failed</option>
+                </select>
+            </div>
+
+            <!-- Messages List -->
+            <div id="messagesList" class="divide-y">
+                <div class="p-8 text-center text-gray-500">
+                    <i class="fas fa-spinner fa-spin text-4xl mb-2"></i>
+                    <p>Loading messages...</p>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <div id="pagination" class="p-4 border-t flex justify-between items-center"></div>
+        </div>
+    </div>
+
+    <!-- New Message Modal -->
+    <div id="newMessageModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg max-w-md w-full p-6">
+            <h2 class="text-2xl font-bold mb-4">Send New Message</h2>
+            <form id="newMessageForm" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 mb-2">Phone Number</label>
+                    <input type="tel" id="phoneNumber" required
+                        class="w-full px-4 py-2 border rounded-lg"
+                        placeholder="+1234567890">
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">Message</label>
+                    <textarea id="messageContent" required rows="4"
+                        class="w-full px-4 py-2 border rounded-lg"
+                        placeholder="Type your message..."></textarea>
+                </div>
+                <div class="flex space-x-4">
+                    <button type="submit" class="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg">
+                        Send
+                    </button>
+                    <button type="button" onclick="document.getElementById('newMessageModal').classList.add('hidden')"
+                        class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 rounded-lg">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api/v1';
+        let currentPage = 1;
+        
+        async function fetchWithAuth(url, options = {}) {
+            const token = localStorage.getItem('authToken');
+            const headers = {
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` }),
+                ...options.headers
+            };
+            const response = await fetch(url, { ...options, headers });
+            if (response.status === 401) {
+                localStorage.removeItem('authToken');
+                window.location.href = '/login.html';
+            }
+            return response;
+        }
+
+        async function loadMessages(page = 1) {
+            const search = document.getElementById('searchInput').value;
+            const direction = document.getElementById('filterDirection').value;
+            const status = document.getElementById('filterStatus').value;
+            
+            const params = new URLSearchParams({
+                page,
+                limit: 20,
+                ...(search && { search }),
+                ...(direction && { direction }),
+                ...(status && { status })
+            });
+
+            const response = await fetchWithAuth(`${API_BASE}/messages?${params}`);
+            if (response.ok) {
+                const data = await response.json();
+                displayMessages(data.data || []);
+                displayPagination(data);
+            }
+        }
+
+        function displayMessages(messages) {
+            const container = document.getElementById('messagesList');
+            if (messages.length === 0) {
+                container.innerHTML = `
+                    <div class="p-8 text-center text-gray-500">
+                        <i class="fas fa-inbox text-4xl mb-2"></i>
+                        <p>No messages found</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = messages.map(msg => {
+                const contactName = msg.contact?.name || msg.contact?.phoneNumber || 'Unknown';
+                const isOutbound = msg.direction === 'outbound';
+                const isGroup = msg.chatType === 'group' || msg.isGroup;
+                const isChannel = msg.chatType === 'channel' || msg.isChannel;
+                
+                // Determine display name based on direction
+                let displayName, directionLabel;
+                if (isOutbound) {
+                    displayName = contactName;
+                    directionLabel = `<span class="text-green-600 font-medium">You</span> → ${contactName}`;
+                } else {
+                    displayName = contactName;
+                    directionLabel = `${contactName} → <span class="text-green-600 font-medium">You</span>`;
+                }
+
+                // Chat type badge
+                let chatBadge = '';
+                if (isGroup) {
+                    chatBadge = '<span class="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full"><i class="fas fa-users mr-1"></i>Group</span>';
+                } else if (isChannel) {
+                    chatBadge = '<span class="ml-2 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full"><i class="fas fa-broadcast-tower mr-1"></i>Channel</span>';
+                }
+
+                return `
+                <div class="p-4 hover:bg-gray-50">
+                    <div class="flex items-start space-x-4">
+                        <div class="bg-${isOutbound ? 'green' : 'blue'}-100 w-12 h-12 rounded-full flex items-center justify-center">
+                            <i class="fas fa-${isOutbound ? 'arrow-up' : 'arrow-down'} text-${isOutbound ? 'green' : 'blue'}-600"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="font-semibold text-gray-800">${directionLabel}${chatBadge}</h3>
+                                    <p class="text-gray-600 mt-1">${msg.content || msg.body || 'No content'}</p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-xs text-gray-500">${new Date(msg.createdAt).toLocaleString()}</span>
+                                    <div class="mt-1">
+                                        <span class="text-xs px-2 py-1 rounded ${getStatusColor(msg.status)}">
+                                            ${msg.status || 'sent'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                sent: 'bg-blue-100 text-blue-800',
+                delivered: 'bg-green-100 text-green-800',
+                read: 'bg-purple-100 text-purple-800',
+                failed: 'bg-red-100 text-red-800',
+                pending: 'bg-yellow-100 text-yellow-800'
+            };
+            return colors[status] || 'bg-gray-100 text-gray-800';
+        }
+
+        function displayPagination(data) {
+            const container = document.getElementById('pagination');
+            const totalPages = Math.ceil((data.total || 0) / (data.limit || 20));
+            
+            container.innerHTML = `
+                <div class="text-gray-600">
+                    Showing ${data.data?.length || 0} of ${data.total || 0} messages
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="loadMessages(${currentPage - 1})" 
+                        ${currentPage <= 1 ? 'disabled' : ''}
+                        class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50">
+                        Previous
+                    </button>
+                    <button onclick="loadMessages(${currentPage + 1})"
+                        ${currentPage >= totalPages ? 'disabled' : ''}
+                        class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50">
+                        Next
+                    </button>
+                </div>
+            `;
+        }
+
+        document.getElementById('newMessageForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const phoneNumber = document.getElementById('phoneNumber').value.trim();
+            const content = document.getElementById('messageContent').value.trim();
+
+            // Validation
+            if (!phoneNumber || phoneNumber.length < 10) {
+                alert('Please enter a valid phone number (at least 10 digits)');
+                return;
+            }
+
+            if (!content) {
+                alert('Please enter a message');
+                return;
+            }
+
+            try {
+                const response = await fetchWithAuth(`${API_BASE}/messages`, {
+                    method: 'POST',
+                    body: JSON.stringify({ phoneNumber, content })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('newMessageModal').classList.add('hidden');
+                    document.getElementById('newMessageForm').reset();
+                    loadMessages();
+                } else {
+                    const errorMsg = result.error?.message || 'Failed to send message';
+                    alert(`Error: ${errorMsg}`);
+                }
+            } catch (error) {
+                console.error('Error sending message:', error);
+                alert('An error occurred. Please try again.');
+            }
+        });
+
+        // Event listeners
+        document.getElementById('searchInput').addEventListener('input', () => loadMessages(1));
+        document.getElementById('filterDirection').addEventListener('change', () => loadMessages(1));
+        document.getElementById('filterStatus').addEventListener('change', () => loadMessages(1));
+
+        // Initial load
+        loadMessages();
+    </script>
+</body>
+</html>
