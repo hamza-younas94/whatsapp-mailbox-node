@@ -1,10 +1,7 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider        = "prisma-client-js"
+  previewFeatures = ["fullTextIndex", "fullTextSearch"]
   binaryTargets   = ["native", "debian-openssl-3.0.x"]
-  previewFeatures = ["fullTextSearch", "fullTextIndex"]
 }
 
 datasource db {
@@ -12,98 +9,79 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ============================================
-// AUTH & USER MANAGEMENT
-// ============================================
-
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  username     String    @unique
-  passwordHash String
-  name         String?
-  avatarUrl    String?
-  role         UserRole  @default(USER)
-  isActive     Boolean   @default(true)
-  lastLoginAt  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  deletedAt    DateTime?
-
-  // Relations
-  conversations     Conversation[]
-  messages          Message[]
-  contacts          Contact[]
-  tags              Tag[]
-  segments          Segment[]
-  quickReplies      QuickReply[]
-  automations       Automation[]
-  notes             Note[]
+  id                String             @id @default(cuid())
+  email             String             @unique
+  username          String             @unique
+  passwordHash      String
+  name              String?
+  avatarUrl         String?
+  role              UserRole           @default(USER)
+  isActive          Boolean            @default(true)
+  lastLoginAt       DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  deletedAt         DateTime?
   activityLogs      ActivityLog[]
-  dripCampaigns     DripCampaign[]
+  automations       Automation[]
   broadcasts        Broadcast[]
-  labels            Label[]
-  scheduledMessages ScheduledMessage[]
+  contacts          Contact[]
+  conversations     Conversation[]
+  dripCampaigns     DripCampaign[]
   imports           ImportJob[]
+  labels            Label[]
+  messages          Message[]
+  notes             Note[]
+  quickReplies      QuickReply[]
+  SalesTransaction  SalesTransaction[]
+  scheduledMessages ScheduledMessage[]
+  segments          Segment[]
   shops             Shop[]
+  StockMovement     StockMovement[]
+  tags              Tag[]
 
   @@index([email])
   @@index([username])
   @@index([isActive])
 }
 
-enum UserRole {
-  ADMIN
-  MANAGER
-  AGENT
-  USER
-}
-
-// ============================================
-// CONTACTS & CONVERSATIONS
-// ============================================
-
 model Contact {
-  id                String    @id @default(cuid())
+  id                String                 @id @default(cuid())
   userId            String
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  phoneNumber       String    @db.VarChar(20)
-  chatId            String?   @db.VarChar(50) // Full WhatsApp ID: phone@c.us or channel@newsletter
+  phoneNumber       String                 @db.VarChar(20)
+  chatId            String?                @db.VarChar(50)
   name              String?
-  pushName          String? // Contact's WhatsApp display name
-  businessName      String? // For business accounts
   email             String?
-  avatarUrl         String?   @db.Text
-  profilePhotoUrl   String?   @db.Text // WhatsApp profile picture
-  company           String?
-  department        String?
-  contactType       String    @default("individual") // individual, business, group, broadcast
+  avatarUrl         String?                @db.Text
   timezone          String?
   lastMessageAt     DateTime?
+  isBlocked         Boolean                @default(false)
+  metadata          Json?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  pushName          String?
+  businessName      String?
+  profilePhotoUrl   String?                @db.Text
+  company           String?
+  department        String?
+  contactType       String                 @default("individual")
   lastActiveAt      DateTime?
-  engagementScore   Float     @default(0) // 0-100 score
-  engagementLevel   String    @default("inactive") // high, medium, low, inactive
-  messageCount      Int       @default(0)
-  totalInteractions Int       @default(0)
-  isBlocked         Boolean   @default(false)
-  isBusiness        Boolean   @default(false)
-  isVerified        Boolean   @default(false)
-  customFields      Json?     @default("{}") // Flexible custom attributes
-  metadata          Json?     @default("{}")
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-
-  // Relations
-  conversations   Conversation[]
-  messages        Message[]
-  tags            TagOnContact[]
-  notes           Note[]
-  dripEnrollments DripEnrollment[]
-  transactions    Transaction[]
-  dripScheduled   DripScheduledMessage[]
-  orders          Order[]
-  invoices        Invoice[]
-  payments        Payment[]
+  engagementScore   Float                  @default(0)
+  engagementLevel   String                 @default("inactive")
+  messageCount      Int                    @default(0)
+  totalInteractions Int                    @default(0)
+  isBusiness        Boolean                @default(false)
+  isVerified        Boolean                @default(false)
+  customFields      Json?
+  user              User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversations     Conversation[]
+  Customer          Customer[]
+  dripEnrollments   DripEnrollment[]
+  dripScheduled     DripScheduledMessage[]
+  messages          Message[]
+  notes             Note[]
+  tags              TagOnContact[]
+  transactions      Transaction[]
 
   @@unique([userId, phoneNumber])
   @@index([userId])
@@ -114,85 +92,68 @@ model Contact {
 }
 
 model Conversation {
-  id        String  @id @default(cuid())
-  userId    String
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  contactId String
-  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
-
-  isActive      Boolean   @default(true)
-  status        String    @default("open")
-  priority      String    @default("normal")
-  assignedToId  String?
-  unreadCount   Int       @default(0)
-  isArchived    Boolean   @default(false)
-  archivedAt    DateTime?
+  id            String              @id @default(cuid())
+  userId        String
+  contactId     String
+  isActive      Boolean             @default(true)
+  unreadCount   Int                 @default(0)
   lastMessageAt DateTime?
-  metadata      Json?     @default("{}")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  // Relations
-  messages Message[]
-  labels   ConversationLabel[]
+  metadata      Json?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  archivedAt    DateTime?
+  assignedToId  String?
+  isArchived    Boolean             @default(false)
+  priority      String              @default("normal")
+  status        String              @default("open")
+  contact       Contact             @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  labels        ConversationLabel[]
+  messages      Message[]
 
   @@unique([userId, contactId])
   @@index([userId])
   @@index([isActive])
   @@index([status])
   @@index([lastMessageAt])
+  @@index([contactId], map: "Conversation_contactId_fkey")
 }
 
-// ============================================
-// MESSAGING
-// ============================================
-
 model Message {
-  id             String       @id @default(cuid())
-  userId         String
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  contactId      String
-  contact        Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-
-  waMessageId String?          @unique // WhatsApp message ID
-  content     String?          @db.LongText
-  messageType MessageType      @default(TEXT)
-  direction   MessageDirection @default(INCOMING)
-  status      MessageStatus    @default(RECEIVED)
-
-  // Media
-  mediaUrl      String? @db.Text
-  mediaType     String?
-  mediaFileName String?
-
-  // Message context (for replies, groups, etc.)
-  quotedMessageId  String? // ID of quoted/replied message
-  isGroupMessage   Boolean @default(false)
-  groupId          String? // WhatsApp group ID
-  groupName        String? // Group name
-  isStatusUpdate   Boolean @default(false)
-  isChannelMessage Boolean @default(false)
-  channelId        String? // Channel ID
-  senderName       String? // Sender name in group/channel
-
-  // Metadata
-  templateId   String?
-  quickReplyId String?
-  tagIds       Json?   @default("[]")
-  metadata     Json?   @default("{}")
-
-  // Timing
-  scheduledAt DateTime?
-  sendAt      DateTime?
-  readAt      DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  // Relations
-  reactions Reaction[]
-  notes     Note[]
+  id               String           @id @default(cuid())
+  userId           String
+  contactId        String
+  conversationId   String
+  waMessageId      String?          @unique
+  content          String?          @db.LongText
+  messageType      MessageType      @default(TEXT)
+  direction        MessageDirection @default(INCOMING)
+  status           MessageStatus    @default(RECEIVED)
+  mediaUrl         String?          @db.Text
+  mediaType        String?
+  mediaFileName    String?
+  templateId       String?
+  quickReplyId     String?
+  tagIds           Json?
+  metadata         Json?
+  scheduledAt      DateTime?
+  sendAt           DateTime?
+  readAt           DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  quotedMessageId  String?
+  isGroupMessage   Boolean          @default(false)
+  groupId          String?
+  groupName        String?
+  isStatusUpdate   Boolean          @default(false)
+  isChannelMessage Boolean          @default(false)
+  channelId        String?
+  senderName       String?
+  contact          Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  conversation     Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notes            Note[]
+  reactions        Reaction[]
 
   @@index([userId])
   @@index([contactId])
@@ -201,6 +162,696 @@ model Message {
   @@index([status])
   @@index([createdAt])
   @@fulltext([content])
+}
+
+model Reaction {
+  id        String   @id @default(cuid())
+  messageId String
+  emoji     String
+  createdAt DateTime @default(now())
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, emoji])
+  @@index([messageId])
+}
+
+model Tag {
+  id        String         @id @default(cuid())
+  userId    String
+  name      String
+  color     String?        @default("#3B82F6")
+  createdAt DateTime       @default(now())
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contacts  TagOnContact[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model TagOnContact {
+  contactId  String
+  tagId      String
+  assignedAt DateTime @default(now())
+  contact    Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([contactId, tagId])
+  @@index([tagId])
+}
+
+model Segment {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  criteria  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model Campaign {
+  id             String         @id @default(cuid())
+  name           String
+  type           CampaignType
+  status         CampaignStatus @default(DRAFT)
+  templateId     String?
+  content        String?        @db.LongText
+  mediaUrl       String?
+  scheduleTime   DateTime?
+  sentAt         DateTime?
+  completedAt    DateTime?
+  recipientCount Int            @default(0)
+  sentCount      Int            @default(0)
+  failedCount    Int            @default(0)
+  metadata       Json?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model QuickReply {
+  id                 String              @id @default(cuid())
+  userId             String
+  title              String
+  content            String              @db.LongText
+  category           String?
+  shortcut           String?             @unique
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  isActive           Boolean             @default(true)
+  usageCount         Int                 @default(0)
+  usageTodayCount    Int                 @default(0)
+  categoryId         String?
+  lastUsedAt         DateTime?
+  mediaType          String?
+  mediaUrl           String?             @db.Text
+  tags               Json?
+  variables          Json?
+  quickReplyCategory QuickReplyCategory? @relation(fields: [categoryId], references: [id])
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isActive])
+  @@index([categoryId])
+  @@fulltext([title, content])
+}
+
+model MessageTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  category  String
+  language  String   @default("en")
+  content   String   @db.LongText
+  variables Json?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@unique([name, language])
+}
+
+model Automation {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  trigger   String
+  actions   Json
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isActive])
+}
+
+model AutoReply {
+  id        String   @id @default(cuid())
+  isActive  Boolean  @default(true)
+  message   String   @db.LongText
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  userId    String
+  contactId String?
+  messageId String?
+  content   String   @db.LongText
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  contact   Contact? @relation(fields: [contactId], references: [id])
+  message   Message? @relation(fields: [messageId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([contactId])
+  @@index([messageId], map: "Note_messageId_fkey")
+  @@fulltext([content])
+}
+
+model ActivityLog {
+  id           String       @id @default(cuid())
+  userId       String
+  action       ActivityType
+  resourceType String?
+  resourceId   String?
+  details      Json?
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime     @default(now())
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model AppConfig {
+  id        String     @id @default(cuid())
+  key       String     @unique
+  value     String     @db.LongText
+  type      ConfigType
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([key])
+}
+
+model DripCampaign {
+  id           String                 @id @default(cuid())
+  userId       String
+  name         String
+  description  String?                @db.Text
+  triggerType  DripTriggerType
+  triggerValue String?
+  isActive     Boolean                @default(true)
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  user         User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  steps        DripCampaignStep[]
+  enrollments  DripEnrollment[]
+  scheduled    DripScheduledMessage[]
+
+  @@index([userId])
+  @@index([isActive])
+}
+
+model DripCampaignStep {
+  id         String                 @id @default(cuid())
+  campaignId String
+  sequence   Int
+  delayHours Int
+  message    String                 @db.Text
+  mediaUrl   String?
+  mediaType  String?
+  createdAt  DateTime               @default(now())
+  campaign   DripCampaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  scheduled  DripScheduledMessage[]
+
+  @@index([campaignId])
+  @@index([sequence])
+}
+
+model DripEnrollment {
+  id          String               @id @default(cuid())
+  campaignId  String
+  contactId   String
+  currentStep Int                  @default(0)
+  status      DripEnrollmentStatus
+  enrolledAt  DateTime             @default(now())
+  completedAt DateTime?
+  campaign    DripCampaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact     Contact              @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, contactId])
+  @@index([campaignId])
+  @@index([contactId])
+  @@index([status])
+}
+
+model DripScheduledMessage {
+  id           String           @id @default(cuid())
+  campaignId   String
+  stepId       String
+  contactId    String
+  message      String           @db.Text
+  mediaUrl     String?
+  mediaType    String?
+  scheduledFor DateTime
+  status       String           @default("PENDING")
+  sentAt       DateTime?
+  createdAt    DateTime         @default(now())
+  campaign     DripCampaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact      Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  step         DripCampaignStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([contactId])
+  @@index([status])
+  @@index([scheduledFor])
+  @@index([stepId], map: "DripScheduledMessage_stepId_fkey")
+}
+
+model WebhookLog {
+  id        String   @id @default(cuid())
+  event     String
+  payload   Json
+  status    Int
+  error     String?
+  retries   Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([event])
+  @@index([createdAt])
+}
+
+model Broadcast {
+  id             String               @id @default(cuid())
+  userId         String
+  name           String
+  message        String               @db.LongText
+  mediaUrl       String?              @db.Text
+  mediaType      String?
+  status         BroadcastStatus      @default(DRAFT)
+  segmentId      String?
+  tagIds         Json?
+  contactIds     Json?
+  recipientCount Int                  @default(0)
+  sentCount      Int                  @default(0)
+  deliveredCount Int                  @default(0)
+  readCount      Int                  @default(0)
+  failedCount    Int                  @default(0)
+  scheduledFor   DateTime?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  metadata       Json?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  User           User                 @relation(fields: [userId], references: [id])
+  recipients     BroadcastRecipient[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([scheduledFor])
+}
+
+model BroadcastRecipient {
+  id          String                   @id @default(cuid())
+  broadcastId String
+  contactId   String
+  phoneNumber String
+  status      BroadcastRecipientStatus @default(PENDING)
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  readAt      DateTime?
+  failedAt    DateTime?
+  error       String?                  @db.Text
+  retryCount  Int                      @default(0)
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  broadcast   Broadcast                @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+
+  @@index([broadcastId])
+  @@index([contactId])
+  @@index([status])
+}
+
+model Label {
+  id            String              @id @default(cuid())
+  userId        String
+  name          String
+  color         String              @default("#3B82F6")
+  icon          String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  conversations ConversationLabel[]
+  User          User                @relation(fields: [userId], references: [id])
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model ConversationLabel {
+  id             String       @id @default(cuid())
+  conversationId String
+  labelId        String
+  assignedAt     DateTime     @default(now())
+  Conversation   Conversation @relation(fields: [conversationId], references: [id])
+  label          Label        @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, labelId])
+  @@index([conversationId])
+  @@index([labelId])
+}
+
+model QuickReplyCategory {
+  id           String       @id @default(cuid())
+  userId       String
+  name         String
+  description  String?
+  icon         String?
+  color        String?      @default("#6B7280")
+  sortOrder    Int          @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  quickReplies QuickReply[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model QuickReplyUsage {
+  id           String   @id @default(cuid())
+  quickReplyId String
+  userId       String
+  contactId    String?
+  usedAt       DateTime @default(now())
+
+  @@index([quickReplyId])
+  @@index([userId])
+  @@index([usedAt])
+}
+
+model MessageMetrics {
+  id              String   @id @default(cuid())
+  date            DateTime @db.Date
+  userId          String
+  totalMessages   Int      @default(0)
+  incomingCount   Int      @default(0)
+  outgoingCount   Int      @default(0)
+  avgResponseTime Int      @default(0)
+  totalResponses  Int      @default(0)
+  uniqueContacts  Int      @default(0)
+  newContacts     Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([date, userId])
+  @@index([date])
+  @@index([userId])
+}
+
+model CampaignMetrics {
+  id         String   @id @default(cuid())
+  campaignId String
+  date       DateTime @db.Date
+  sent       Int      @default(0)
+  delivered  Int      @default(0)
+  read       Int      @default(0)
+  failed     Int      @default(0)
+  replies    Int      @default(0)
+  clicks     Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([date, campaignId])
+  @@index([date])
+  @@index([campaignId])
+}
+
+model ScheduledMessage {
+  id           String          @id @default(cuid())
+  userId       String
+  contactId    String
+  message      String          @db.LongText
+  mediaUrl     String?         @db.Text
+  mediaType    String?
+  scheduledFor DateTime
+  status       ScheduledStatus @default(PENDING)
+  sentAt       DateTime?
+  error        String?         @db.Text
+  retryCount   Int             @default(0)
+  metadata     Json?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  User         User            @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([contactId])
+  @@index([status])
+  @@index([scheduledFor])
+}
+
+model ImportJob {
+  id               String       @id @default(cuid())
+  userId           String
+  fileName         String
+  fileUrl          String?      @db.Text
+  status           ImportStatus @default(PENDING)
+  totalRecords     Int          @default(0)
+  processedRecords Int          @default(0)
+  successCount     Int          @default(0)
+  errorCount       Int          @default(0)
+  errors           Json?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  User             User         @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Transaction {
+  id          String            @id @default(cuid())
+  userId      String
+  contactId   String
+  amount      Float
+  description String?           @db.Text
+  status      TransactionStatus @default(PENDING)
+  paidAt      DateTime?
+  metadata    Json?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  contact     Contact           @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([contactId])
+  @@index([status])
+}
+
+model Shop {
+  id               String             @id @default(cuid())
+  userId           String
+  name             String
+  description      String?            @db.Text
+  type             String             @default("PHYSICAL") @db.VarChar(50)
+  currency         String             @default("USD") @db.VarChar(10)
+  taxRate          Decimal?           @default(0.00) @db.Decimal(5, 2)
+  address          String?            @db.Text
+  phone            String?            @db.VarChar(20)
+  email            String?
+  website          String?            @db.VarChar(500)
+  logo             String?            @db.VarChar(500)
+  isActive         Boolean            @default(true)
+  metadata         Json?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @default(now()) @updatedAt
+  Customer         Customer[]
+  products         Product[]
+  ProductCategory  ProductCategory[]
+  SalesTransaction SalesTransaction[]
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "Shop_ibfk_1")
+
+  @@unique([userId, name], map: "Shop_userId_name")
+  @@index([userId])
+  @@index([isActive])
+}
+
+model Product {
+  id                String            @id @default(cuid())
+  shopId            String
+  categoryId        String?
+  sku               String?
+  name              String
+  description       String?           @db.Text
+  price             Decimal           @db.Decimal(10, 2)
+  cost              Decimal?          @db.Decimal(10, 2)
+  stock             Int               @default(0)
+  lowStockThreshold Int?
+  unit              String?           @db.VarChar(50)
+  category          String?
+  imageUrl          String?           @db.VarChar(500)
+  isActive          Boolean           @default(true)
+  metadata          Json?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @default(now()) @updatedAt
+  shop              Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "Product_ibfk_1")
+  ProductImage      ProductImage[]
+  ProductVariant    ProductVariant[]
+  StockMovement     StockMovement[]
+  TransactionItem   TransactionItem[]
+
+  @@index([shopId])
+  @@index([sku])
+  @@index([categoryId])
+}
+
+model Customer {
+  id               String             @id
+  shopId           String
+  contactId        String?
+  name             String
+  phone            String             @db.VarChar(20)
+  email            String?
+  address          String?            @db.Text
+  city             String?
+  notes            String?            @db.Text
+  customerGroup    String             @default("retail") @db.VarChar(50)
+  loyaltyPoints    Int                @default(0)
+  totalPurchases   Decimal            @default(0.00) @db.Decimal(10, 2)
+  totalOrders      Int                @default(0)
+  lastPurchaseAt   DateTime?
+  isActive         Boolean            @default(true)
+  tags             Json?
+  metadata         Json?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime
+  Contact          Contact?           @relation(fields: [contactId], references: [id])
+  Shop             Shop               @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  SalesTransaction SalesTransaction[]
+
+  @@index([contactId])
+  @@index([phone])
+  @@index([shopId])
+}
+
+model ProductCategory {
+  id                    String            @id
+  name                  String
+  description           String?           @db.Text
+  parentId              String?
+  imageUrl              String?           @db.VarChar(500)
+  displayOrder          Int               @default(0)
+  isActive              Boolean           @default(true)
+  shopId                String
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime
+  ProductCategory       ProductCategory?  @relation("ProductCategoryToProductCategory", fields: [parentId], references: [id])
+  other_ProductCategory ProductCategory[] @relation("ProductCategoryToProductCategory")
+  Shop                  Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([parentId])
+  @@index([shopId])
+}
+
+model ProductImage {
+  id           String   @id
+  productId    String
+  url          String   @db.VarChar(500)
+  altText      String?
+  isPrimary    Boolean  @default(false)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  Product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model ProductVariant {
+  id              String            @id
+  productId       String
+  name            String
+  sku             String?           @unique(map: "sku")
+  price           Decimal           @db.Decimal(10, 2)
+  stock           Int               @default(0)
+  attributes      Json?
+  imageUrl        String?           @db.VarChar(500)
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime
+  Product         Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  StockMovement   StockMovement[]
+  TransactionItem TransactionItem[]
+
+  @@index([productId])
+  @@index([sku])
+}
+
+model SalesTransaction {
+  id                String                         @id
+  transactionNumber String                         @unique(map: "transactionNumber") @db.VarChar(50)
+  shopId            String
+  customerId        String
+  status            SalesTransaction_status        @default(DRAFT)
+  totalAmount       Decimal                        @default(0.00) @db.Decimal(10, 2)
+  discountAmount    Decimal                        @default(0.00) @db.Decimal(10, 2)
+  taxAmount         Decimal                        @default(0.00) @db.Decimal(10, 2)
+  finalAmount       Decimal                        @default(0.00) @db.Decimal(10, 2)
+  paidAmount        Decimal                        @default(0.00) @db.Decimal(10, 2)
+  paymentStatus     SalesTransaction_paymentStatus @default(UNPAID)
+  paymentMethod     String?                        @db.VarChar(50)
+  notes             String?                        @db.Text
+  deliveryAddress   String?                        @db.Text
+  deliveryDate      DateTime?
+  createdBy         String
+  createdAt         DateTime                       @default(now())
+  updatedAt         DateTime
+  User              User                           @relation(fields: [createdBy], references: [id])
+  Customer          Customer                       @relation(fields: [customerId], references: [id])
+  Shop              Shop                           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  TransactionItem   TransactionItem[]
+
+  @@index([createdAt])
+  @@index([createdBy], map: "SalesTransaction_createdBy_fkey")
+  @@index([customerId])
+  @@index([shopId])
+  @@index([status])
+}
+
+model StockMovement {
+  id             String             @id
+  productId      String
+  variantId      String?
+  type           StockMovement_type
+  quantity       Int
+  reason         String?
+  reference      String?
+  location       String?
+  createdBy      String
+  createdAt      DateTime           @default(now())
+  User           User               @relation(fields: [createdBy], references: [id])
+  Product        Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ProductVariant ProductVariant?    @relation(fields: [variantId], references: [id])
+
+  @@index([createdAt])
+  @@index([createdBy], map: "StockMovement_createdBy_fkey")
+  @@index([productId])
+  @@index([variantId], map: "StockMovement_variantId_fkey")
+}
+
+model TransactionItem {
+  id               String           @id
+  transactionId    String
+  productId        String
+  variantId        String?
+  quantity         Int
+  unitPrice        Decimal          @db.Decimal(10, 2)
+  discount         Decimal          @default(0.00) @db.Decimal(10, 2)
+  taxRate          Decimal          @default(0.00) @db.Decimal(5, 2)
+  totalPrice       Decimal          @db.Decimal(10, 2)
+  createdAt        DateTime         @default(now())
+  Product          Product          @relation(fields: [productId], references: [id])
+  SalesTransaction SalesTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  ProductVariant   ProductVariant?  @relation(fields: [variantId], references: [id])
+
+  @@index([productId])
+  @@index([transactionId])
+  @@index([variantId], map: "TransactionItem_variantId_fkey")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  AGENT
+  USER
 }
 
 enum MessageType {
@@ -237,104 +888,6 @@ enum MessageStatus {
   RECEIVED
 }
 
-enum MessageMediaType {
-  IMAGE
-  VIDEO
-  AUDIO
-  DOCUMENT
-}
-
-enum ScheduledMessageStatus {
-  PENDING
-  SENT
-  FAILED
-  CANCELLED
-}
-
-model Reaction {
-  id        String   @id @default(cuid())
-  messageId String
-  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  emoji     String
-  createdAt DateTime @default(now())
-
-  @@unique([messageId, emoji])
-  @@index([messageId])
-}
-
-// ============================================
-// TAGGING & ORGANIZATION
-// ============================================
-
-model Tag {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name      String
-  color     String?  @default("#3B82F6")
-  createdAt DateTime @default(now())
-
-  // Relations
-  contacts TagOnContact[]
-
-  @@unique([userId, name])
-  @@index([userId])
-}
-
-model TagOnContact {
-  contactId  String
-  contact    Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  tagId      String
-  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
-  assignedAt DateTime @default(now())
-
-  @@id([contactId, tagId])
-  @@index([tagId])
-}
-
-// ============================================
-// SEGMENTS & CAMPAIGNS
-// ============================================
-
-model Segment {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name      String
-  criteria  Json // Saved filter criteria
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, name])
-  @@index([userId])
-}
-
-model Campaign {
-  id     String         @id @default(cuid())
-  name   String
-  type   CampaignType
-  status CampaignStatus @default(DRAFT)
-
-  templateId String?
-  content    String? @db.LongText
-  mediaUrl   String?
-
-  scheduleTime DateTime?
-  sentAt       DateTime?
-  completedAt  DateTime?
-
-  recipientCount Int @default(0)
-  sentCount      Int @default(0)
-  failedCount    Int @default(0)
-
-  metadata  Json?    @default("{}")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([status])
-  @@index([createdAt])
-}
-
 enum CampaignType {
   BROADCAST
   SCHEDULED
@@ -351,116 +904,6 @@ enum CampaignStatus {
   FAILED
 }
 
-// ============================================
-// QUICK REPLIES & TEMPLATES
-// ============================================
-
-model QuickReply {
-  id                 String              @id @default(cuid())
-  userId             String
-  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title              String
-  content            String              @db.LongText
-  category           String?
-  categoryId         String?
-  quickReplyCategory QuickReplyCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  shortcut           String?             @unique
-  variables          Json?               @default("[]")
-  mediaUrl           String?             @db.Text
-  mediaType          String?
-  tags               Json?               @default("[]")
-  isActive           Boolean             @default(true)
-  usageCount         Int                 @default(0)
-  usageTodayCount    Int                 @default(0)
-  lastUsedAt         DateTime?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-
-  @@index([userId])
-  @@index([isActive])
-  @@index([categoryId])
-  @@fulltext([title, content])
-}
-
-model MessageTemplate {
-  id        String   @id @default(cuid())
-  name      String
-  category  String
-  language  String   @default("en")
-  content   String   @db.LongText
-  variables Json?    @default("[]")
-  metadata  Json?    @default("{}")
-  createdAt DateTime @default(now())
-
-  @@unique([name, language])
-}
-
-// ============================================
-// AUTOMATION & WORKFLOWS
-// ============================================
-
-model Automation {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name      String
-  trigger   String // MESSAGE_RECEIVED, CONTACT_ADDED, etc.
-  actions   Json // Array of actions to execute
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@index([isActive])
-}
-
-model AutoReply {
-  id        String   @id @default(cuid())
-  isActive  Boolean  @default(true)
-  message   String   @db.LongText
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// ============================================
-// NOTES & ACTIVITIES
-// ============================================
-
-model Note {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  contactId String?
-  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  messageId String?
-  message   Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
-
-  content   String   @db.LongText
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@index([contactId])
-  @@fulltext([content])
-}
-
-model ActivityLog {
-  id           String       @id @default(cuid())
-  userId       String
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  action       ActivityType
-  resourceType String?
-  resourceId   String?
-  details      Json?        @default("{}")
-  ipAddress    String?
-  userAgent    String?
-  createdAt    DateTime     @default(now())
-
-  @@index([userId])
-  @@index([action])
-  @@index([createdAt])
-}
-
 enum ActivityType {
   LOGIN
   LOGOUT
@@ -474,50 +917,11 @@ enum ActivityType {
   CAMPAIGN_STARTED
 }
 
-// ============================================
-// CONFIGURATION & SETTINGS
-// ============================================
-
-model AppConfig {
-  id        String     @id @default(cuid())
-  key       String     @unique
-  value     String     @db.LongText
-  type      ConfigType
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-
-  @@index([key])
-}
-
 enum ConfigType {
   STRING
   NUMBER
   BOOLEAN
   JSON
-}
-
-// ============================================
-// DRIP CAMPAIGNS
-// ============================================
-
-model DripCampaign {
-  id           String          @id @default(cuid())
-  userId       String
-  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name         String
-  description  String?         @db.Text
-  triggerType  DripTriggerType
-  triggerValue String?
-  isActive     Boolean         @default(true)
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-
-  steps       DripCampaignStep[]
-  enrollments DripEnrollment[]
-  scheduled   DripScheduledMessage[]
-
-  @@index([userId])
-  @@index([isActive])
 }
 
 enum DripTriggerType {
@@ -526,121 +930,10 @@ enum DripTriggerType {
   FORM_SUBMITTED
 }
 
-model DripCampaignStep {
-  id         String       @id @default(cuid())
-  campaignId String
-  campaign   DripCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  sequence   Int
-  delayHours Int
-  message    String       @db.Text
-  mediaUrl   String?
-  mediaType  String?
-  createdAt  DateTime     @default(now())
-
-  scheduled DripScheduledMessage[]
-
-  @@index([campaignId])
-  @@index([sequence])
-}
-
-model DripEnrollment {
-  id          String               @id @default(cuid())
-  campaignId  String
-  campaign    DripCampaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  contactId   String
-  contact     Contact              @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  currentStep Int                  @default(0)
-  status      DripEnrollmentStatus
-  enrolledAt  DateTime             @default(now())
-  completedAt DateTime?
-
-  @@unique([campaignId, contactId])
-  @@index([campaignId])
-  @@index([contactId])
-  @@index([status])
-}
-
 enum DripEnrollmentStatus {
   ACTIVE
   COMPLETED
   CANCELLED
-}
-
-model DripScheduledMessage {
-  id           String           @id @default(cuid())
-  campaignId   String
-  campaign     DripCampaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  stepId       String
-  step         DripCampaignStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
-  contactId    String
-  contact      Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  message      String           @db.Text
-  mediaUrl     String?
-  mediaType    String?
-  scheduledFor DateTime
-  status       String           @default("PENDING")
-  sentAt       DateTime?
-  createdAt    DateTime         @default(now())
-
-  @@index([campaignId])
-  @@index([contactId])
-  @@index([status])
-  @@index([scheduledFor])
-}
-
-model WebhookLog {
-  id        String   @id @default(cuid())
-  event     String
-  payload   Json
-  status    Int
-  error     String?
-  retries   Int      @default(0)
-  createdAt DateTime @default(now())
-
-  @@index([event])
-  @@index([createdAt])
-}
-
-// ============================================
-// BROADCAST SYSTEM
-// ============================================
-
-model Broadcast {
-  id        String          @id @default(cuid())
-  userId    String
-  name      String
-  message   String          @db.LongText
-  mediaUrl  String?         @db.Text
-  mediaType String?
-  status    BroadcastStatus @default(DRAFT)
-
-  // Targeting
-  segmentId  String?
-  tagIds     Json?   @default("[]")
-  contactIds Json?   @default("[]")
-
-  // Metrics
-  recipientCount Int @default(0)
-  sentCount      Int @default(0)
-  deliveredCount Int @default(0)
-  readCount      Int @default(0)
-  failedCount    Int @default(0)
-
-  // Scheduling
-  scheduledFor DateTime?
-  startedAt    DateTime?
-  completedAt  DateTime?
-
-  metadata  Json?    @default("{}")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  recipients BroadcastRecipient[]
-  User       User                 @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-  @@index([status])
-  @@index([scheduledFor])
 }
 
 enum BroadcastStatus {
@@ -652,27 +945,6 @@ enum BroadcastStatus {
   CANCELLED
 }
 
-model BroadcastRecipient {
-  id          String                   @id @default(cuid())
-  broadcastId String
-  broadcast   Broadcast                @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
-  contactId   String
-  phoneNumber String
-  status      BroadcastRecipientStatus @default(PENDING)
-  sentAt      DateTime?
-  deliveredAt DateTime?
-  readAt      DateTime?
-  failedAt    DateTime?
-  error       String?                  @db.Text
-  retryCount  Int                      @default(0)
-  createdAt   DateTime                 @default(now())
-  updatedAt   DateTime                 @updatedAt
-
-  @@index([broadcastId])
-  @@index([contactId])
-  @@index([status])
-}
-
 enum BroadcastRecipientStatus {
   PENDING
   SENDING
@@ -682,177 +954,11 @@ enum BroadcastRecipientStatus {
   FAILED
 }
 
-// ============================================
-// CONVERSATION LABELS & MANAGEMENT
-// ============================================
-
-model Label {
-  id        String   @id @default(cuid())
-  userId    String
-  name      String
-  color     String   @default("#3B82F6")
-  icon      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  conversations ConversationLabel[]
-  User          User                @relation(fields: [userId], references: [id])
-
-  @@unique([userId, name])
-  @@index([userId])
-}
-
-model ConversationLabel {
-  id             String       @id @default(cuid())
-  conversationId String
-  labelId        String
-  label          Label        @relation(fields: [labelId], references: [id], onDelete: Cascade)
-  assignedAt     DateTime     @default(now())
-  Conversation   Conversation @relation(fields: [conversationId], references: [id])
-
-  @@unique([conversationId, labelId])
-  @@index([conversationId])
-  @@index([labelId])
-}
-
-// ============================================
-// QUICK REPLY ENHANCEMENTS
-// ============================================
-
-model QuickReplyCategory {
-  id          String   @id @default(cuid())
-  userId      String
-  name        String
-  description String?
-  icon        String?
-  color       String?  @default("#6B7280")
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  quickReplies QuickReply[]
-
-  @@unique([userId, name])
-  @@index([userId])
-}
-
-model QuickReplyUsage {
-  id           String   @id @default(cuid())
-  quickReplyId String
-  userId       String
-  contactId    String?
-  usedAt       DateTime @default(now())
-
-  @@index([quickReplyId])
-  @@index([userId])
-  @@index([usedAt])
-}
-
-// ============================================
-// ANALYTICS & METRICS
-// ============================================
-
-model MessageMetrics {
-  id     String   @id @default(cuid())
-  date   DateTime @db.Date
-  userId String
-
-  totalMessages Int @default(0)
-  incomingCount Int @default(0)
-  outgoingCount Int @default(0)
-
-  avgResponseTime Int @default(0)
-  totalResponses  Int @default(0)
-
-  uniqueContacts Int @default(0)
-  newContacts    Int @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([date, userId])
-  @@index([date])
-  @@index([userId])
-}
-
-model CampaignMetrics {
-  id         String   @id @default(cuid())
-  campaignId String
-  date       DateTime @db.Date
-
-  sent      Int @default(0)
-  delivered Int @default(0)
-  read      Int @default(0)
-  failed    Int @default(0)
-
-  replies Int @default(0)
-  clicks  Int @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([date, campaignId])
-  @@index([date])
-  @@index([campaignId])
-}
-
-// ============================================
-// SCHEDULED MESSAGES
-// ============================================
-
-model ScheduledMessage {
-  id           String          @id @default(cuid())
-  userId       String
-  contactId    String
-  message      String          @db.LongText
-  mediaUrl     String?         @db.Text
-  mediaType    String?
-  scheduledFor DateTime
-  status       ScheduledStatus @default(PENDING)
-  sentAt       DateTime?
-  error        String?         @db.Text
-  retryCount   Int             @default(0)
-  metadata     Json?           @default("{}")
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  User         User            @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-  @@index([contactId])
-  @@index([status])
-  @@index([scheduledFor])
-}
-
 enum ScheduledStatus {
   PENDING
   SENT
   FAILED
   CANCELLED
-}
-
-// ============================================
-// CONTACT IMPORT/EXPORT
-// ============================================
-
-model ImportJob {
-  id               String       @id @default(cuid())
-  userId           String
-  fileName         String
-  fileUrl          String?      @db.Text
-  status           ImportStatus @default(PENDING)
-  totalRecords     Int          @default(0)
-  processedRecords Int          @default(0)
-  successCount     Int          @default(0)
-  errorCount       Int          @default(0)
-  errors           Json?        @default("[]")
-  startedAt        DateTime?
-  completedAt      DateTime?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
-  User             User         @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-  @@index([status])
 }
 
 enum ImportStatus {
@@ -863,259 +969,34 @@ enum ImportStatus {
   CANCELLED
 }
 
-// ============================================
-// TRANSACTIONS / SALES
-// ============================================
-
-model Transaction {
-  id          String            @id @default(cuid())
-  userId      String
-  contactId   String
-  amount      Float
-  description String?           @db.Text
-  status      TransactionStatus @default(PENDING)
-  paidAt      DateTime?
-  metadata    Json?             @default("{}")
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-
-  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([contactId])
-  @@index([status])
-}
-
 enum TransactionStatus {
   PENDING
   COMPLETED
   CANCELLED
   REFUNDED
 }
-// ============================================
-// INVOICING & SHOP MANAGEMENT
-// ============================================
 
-model Shop {
-  id          String    @id @default(cuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String
-  description String?   @db.Text
-  type        ShopType  @default(PHYSICAL)
-  currency    String    @default("USD")
-  taxRate     Float?    @default(0)
-  address     String?   @db.Text
-  phone       String?
-  email       String?
-  website     String?
-  logo        String?
-  isActive    Boolean   @default(true)
-  metadata    Json?     @default("{}")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  products Product[]
-  orders   Order[]
-  invoices Invoice[]
-  payments Payment[]
-
-  @@unique([userId, name])
-  @@index([userId])
-  @@index([isActive])
+enum StockMovement_type {
+  IN
+  OUT
+  ADJUSTMENT
+  TRANSFER
+  SALE
+  RETURN
 }
 
-enum ShopType {
-  PHYSICAL
-  ONLINE
-  BOTH
-}
-
-model Product {
-  id                String    @id @default(cuid())
-  shopId            String
-  shop              Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  sku               String?
-  name              String
-  description       String?   @db.Text
-  category          String?
-  price             Float     @default(0)
-  cost              Float?    @default(0)
-  stock             Int       @default(0)
-  lowStockThreshold Int?      @default(10)
-  imageUrl          String?
-  isActive          Boolean   @default(true)
-  metadata          Json?     @default("{}")
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-
-  orderItems   OrderItem[]
-  invoiceItems InvoiceItem[]
-
-  @@unique([shopId, sku])
-  @@index([shopId])
-  @@index([sku])
-  @@index([isActive])
-}
-
-model Order {
-  id              String        @id @default(cuid())
-  shopId          String
-  shop            Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  contactId       String
-  contact         Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  orderNumber     String
-  status          OrderStatus   @default(PENDING)
-  subtotal        Float         @default(0)
-  tax             Float         @default(0)
-  discount        Float         @default(0)
-  shipping        Float         @default(0)
-  total           Float         @default(0)
-  notes           String?       @db.Text
-  shippingAddress String?       @db.Text
-  paymentMethod   String?
-  paymentStatus   PaymentStatus @default(PENDING)
-  metadata        Json?         @default("{}")
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  items    OrderItem[]
-  invoices Invoice[]
-  payments Payment[]
-
-  @@unique([shopId, orderNumber])
-  @@index([shopId])
-  @@index([contactId])
-  @@index([orderNumber])
-  @@index([status])
-  @@index([paymentStatus])
-}
-
-enum OrderStatus {
-  PENDING
+enum SalesTransaction_status {
+  DRAFT
   CONFIRMED
   PROCESSING
+  PACKED
   SHIPPED
   DELIVERED
   CANCELLED
 }
 
-model OrderItem {
-  id          String   @id @default(cuid())
-  orderId     String
-  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId   String?
-  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
-  name        String
-  description String?  @db.Text
-  quantity    Int      @default(1)
-  unitPrice   Float    @default(0)
-  discount    Float    @default(0)
-  total       Float    @default(0)
-  metadata    Json?    @default("{}")
-  createdAt   DateTime @default(now())
-
-  @@index([orderId])
-  @@index([productId])
-}
-
-model Invoice {
-  id            String        @id @default(cuid())
-  shopId        String
-  shop          Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  orderId       String?
-  order         Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  contactId     String
-  contact       Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  invoiceNumber String
-  status        InvoiceStatus @default(DRAFT)
-  issueDate     DateTime      @default(now())
-  dueDate       DateTime?
-  paidDate      DateTime?
-  subtotal      Float         @default(0)
-  tax           Float         @default(0)
-  discount      Float         @default(0)
-  total         Float         @default(0)
-  amountPaid    Float         @default(0)
-  notes         String?       @db.Text
-  terms         String?       @db.Text
-  metadata      Json?         @default("{}")
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  items    InvoiceItem[]
-  payments Payment[]
-
-  @@unique([shopId, invoiceNumber])
-  @@index([shopId])
-  @@index([contactId])
-  @@index([orderId])
-  @@index([invoiceNumber])
-  @@index([status])
-}
-
-enum InvoiceStatus {
-  DRAFT
-  SENT
+enum SalesTransaction_paymentStatus {
+  UNPAID
+  PARTIAL
   PAID
-  OVERDUE
-  CANCELLED
-}
-
-model InvoiceItem {
-  id          String   @id @default(cuid())
-  invoiceId   String
-  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  productId   String?
-  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
-  description String
-  quantity    Int      @default(1)
-  unitPrice   Float    @default(0)
-  discount    Float    @default(0)
-  total       Float    @default(0)
-  metadata    Json?    @default("{}")
-  createdAt   DateTime @default(now())
-
-  @@index([invoiceId])
-  @@index([productId])
-}
-
-model Payment {
-  id          String        @id @default(cuid())
-  shopId      String
-  shop        Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  invoiceId   String?
-  invoice     Invoice?      @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
-  orderId     String?
-  order       Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  contactId   String
-  contact     Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  amount      Float
-  method      PaymentMethod
-  reference   String?
-  notes       String?       @db.Text
-  paymentDate DateTime      @default(now())
-  metadata    Json?         @default("{}")
-  createdAt   DateTime      @default(now())
-
-  @@index([shopId])
-  @@index([invoiceId])
-  @@index([orderId])
-  @@index([contactId])
-}
-
-enum PaymentMethod {
-  CASH
-  CARD
-  BANK_TRANSFER
-  MOBILE_MONEY
-  CRYPTO
-  OTHER
-}
-
-enum PaymentStatus {
-  PENDING
-  PAID
-  PARTIALLY_PAID
-  REFUNDED
 }
