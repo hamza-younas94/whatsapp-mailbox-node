@@ -461,6 +461,144 @@
         </div>
     </div>
 
+    <!-- Create Product Modal -->
+    <div id="createProductModal" class="modal">
+        <div class="modal-content">
+            <h2>Add New Product</h2>
+            <form id="createProductForm" onsubmit="saveProduct(event)">
+                <div class="form-group">
+                    <label>Product Name *</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>SKU</label>
+                    <input type="text" name="sku">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Price (PKR) *</label>
+                    <input type="number" name="price" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Cost (PKR)</label>
+                    <input type="number" name="cost" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Stock Quantity *</label>
+                    <input type="number" name="stock" value="0" required>
+                </div>
+                <div class="form-group">
+                    <label>Low Stock Threshold</label>
+                    <input type="number" name="lowStockThreshold" value="5">
+                </div>
+                <div class="form-group">
+                    <label>Unit</label>
+                    <input type="text" name="unit" value="pcs">
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button type="button" onclick="hideProductModal()" class="btn" style="background: #ccc;">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Product</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create Customer Modal -->
+    <div id="createCustomerModal" class="modal">
+        <div class="modal-content">
+            <h2>Add New Customer</h2>
+            <form id="createCustomerForm" onsubmit="saveCustomer(event)">
+                <div class="form-group">
+                    <label>Customer Name *</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>Phone *</label>
+                    <input type="tel" name="phone" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email">
+                </div>
+                <div class="form-group">
+                    <label>Address</label>
+                    <textarea name="address"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>City</label>
+                    <input type="text" name="city">
+                </div>
+                <div class="form-group">
+                    <label>Customer Group</label>
+                    <select name="customerGroup">
+                        <option value="retail">Retail</option>
+                        <option value="wholesale">Wholesale</option>
+                        <option value="vip">VIP</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button type="button" onclick="hideCustomerModal()" class="btn" style="background: #ccc;">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Customer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create Transaction Modal -->
+    <div id="createTransactionModal" class="modal">
+        <div class="modal-content">
+            <h2>New Sale Transaction</h2>
+            <form id="createTransactionForm" onsubmit="saveTransaction(event)">
+                <div class="form-group">
+                    <label>Customer</label>
+                    <select name="customerId" id="transactionCustomer" required>
+                        <option value="">Select a customer...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Total Amount (PKR) *</label>
+                    <input type="number" name="totalAmount" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Discount Amount</label>
+                    <input type="number" name="discountAmount" step="0.01" value="0">
+                </div>
+                <div class="form-group">
+                    <label>Payment Method</label>
+                    <select name="paymentMethod">
+                        <option value="cash">Cash</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="card">Card</option>
+                        <option value="mobile_wallet">Mobile Wallet</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Payment Status</label>
+                    <select name="paymentStatus">
+                        <option value="paid">Paid</option>
+                        <option value="partial">Partial</option>
+                        <option value="unpaid">Unpaid</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Paid Amount</label>
+                    <input type="number" name="paidAmount" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea name="notes"></textarea>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button type="button" onclick="hideTransactionModal()" class="btn" style="background: #ccc;">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Transaction</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         let currentShopId = null;
         let shops = [];
@@ -785,8 +923,53 @@
                 alert('Please select a shop first');
                 return;
             }
-            // Product creation feature - remove annoying alert
-            console.log('Add product for shop:', currentShopId);
+            document.getElementById('createProductModal').classList.add('active');
+        }
+
+        function hideProductModal() {
+            document.getElementById('createProductModal').classList.remove('active');
+            document.getElementById('createProductForm').reset();
+        }
+
+        async function saveProduct(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const data = {
+                shopId: currentShopId,
+                name: formData.get('name'),
+                sku: formData.get('sku') || `PRD-${Date.now()}`,
+                description: formData.get('description'),
+                price: parseFloat(formData.get('price')),
+                cost: parseFloat(formData.get('cost')) || 0,
+                stock: parseInt(formData.get('stock')),
+                lowStockThreshold: parseInt(formData.get('lowStockThreshold')) || 5,
+                unit: formData.get('unit') || 'pcs',
+                isActive: true
+            };
+
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch('/api/v1/shop-system/products', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    hideProductModal();
+                    loadProducts(currentShopId);
+                    alert('Product created successfully!');
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + (error.error || 'Failed to create product'));
+                }
+            } catch (error) {
+                console.error('Error creating product:', error);
+                alert('Failed to create product');
+            }
         }
 
         function showCustomerModal() {
@@ -794,8 +977,51 @@
                 alert('Please select a shop first');
                 return;
             }
-            // Customer creation feature - remove annoying alert
-            console.log('Add customer for shop:', currentShopId);
+            document.getElementById('createCustomerModal').classList.add('active');
+        }
+
+        function hideCustomerModal() {
+            document.getElementById('createCustomerModal').classList.remove('active');
+            document.getElementById('createCustomerForm').reset();
+        }
+
+        async function saveCustomer(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const data = {
+                shopId: currentShopId,
+                name: formData.get('name'),
+                phone: formData.get('phone'),
+                email: formData.get('email'),
+                address: formData.get('address'),
+                city: formData.get('city'),
+                customerGroup: formData.get('customerGroup') || 'retail',
+                isActive: true
+            };
+
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch('/api/v1/shop-system/customers', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    hideCustomerModal();
+                    loadCustomers(currentShopId);
+                    alert('Customer created successfully!');
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + (error.error || 'Failed to create customer'));
+                }
+            } catch (error) {
+                console.error('Error creating customer:', error);
+                alert('Failed to create customer');
+            }
         }
 
         function showTransactionModal() {
@@ -803,8 +1029,69 @@
                 alert('Please select a shop first');
                 return;
             }
-            // Transaction creation feature - remove annoying alert
-            console.log('Add transaction for shop:', currentShopId);
+            // Load customers for dropdown
+            const select = document.getElementById('transactionCustomer');
+            select.innerHTML = '<option value=\"\">Select a customer...</option>';
+            customers.forEach(customer => {
+                const option = document.createElement('option');
+                option.value = customer.id;
+                option.textContent = `${customer.name} (${customer.phone})`;
+                select.appendChild(option);
+            });
+            document.getElementById('createTransactionModal').classList.add('active');
+        }
+
+        function hideTransactionModal() {
+            document.getElementById('createTransactionModal').classList.remove('active');
+            document.getElementById('createTransactionForm').reset();
+        }
+
+        async function saveTransaction(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const totalAmount = parseFloat(formData.get('totalAmount'));
+            const discountAmount = parseFloat(formData.get('discountAmount')) || 0;
+            const taxRate = 5.0; // 5% tax
+            const taxAmount = (totalAmount - discountAmount) * (taxRate / 100);
+            const finalAmount = totalAmount - discountAmount + taxAmount;
+            
+            const data = {
+                shopId: currentShopId,
+                customerId: formData.get('customerId'),
+                totalAmount: totalAmount,
+                discountAmount: discountAmount,
+                taxAmount: taxAmount,
+                finalAmount: finalAmount,
+                paidAmount: parseFloat(formData.get('paidAmount')) || finalAmount,
+                paymentMethod: formData.get('paymentMethod'),
+                paymentStatus: formData.get('paymentStatus'),
+                notes: formData.get('notes'),
+                status: 'CONFIRMED'
+            };
+
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch('/api/v1/shop-system/transactions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    hideTransactionModal();
+                    loadTransactions(currentShopId);
+                    alert('Transaction created successfully!');
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + (error.error || 'Failed to create transaction'));
+                }
+            } catch (error) {
+                console.error('Error creating transaction:', error);
+                alert('Failed to create transaction');
+            }
         }
 
         function closeModal(modalId) {

@@ -286,8 +286,8 @@
                         <div class="flex-1">
                             <div class="flex items-center space-x-3 mb-2">
                                 <h3 class="text-xl font-semibold text-gray-800">${campaign.name}</h3>
-                                <span class="px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(campaign.status)}">
-                                    ${campaign.status || 'DRAFT'}
+                                <span class="px-3 py-1 rounded-full text-xs font-semibold ${campaign.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+                                    ${campaign.isActive ? 'ACTIVE' : 'INACTIVE'}
                                 </span>
                             </div>
                             ${campaign.description ? `<p class="text-gray-600 mb-2">${campaign.description}</p>` : ''}
@@ -313,7 +313,7 @@
                                 class="p-2.5 text-purple-600 hover:bg-purple-50 rounded-lg transition-all" title="View Enrollments">
                                 <i class="fas fa-users"></i>
                             </button>
-                            ${campaign.status === 'ACTIVE' ? `
+                            ${campaign.isActive ? `
                                 <button onclick="pauseCampaign('${campaign.id}')" 
                                     class="p-2.5 text-yellow-600 hover:bg-yellow-50 rounded-lg transition-all" title="Pause">
                                     <i class="fas fa-pause"></i>

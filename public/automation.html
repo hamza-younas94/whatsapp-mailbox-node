@@ -257,7 +257,7 @@
                             <div class="flex items-center space-x-6 text-sm text-gray-600">
                                 <span><i class="fas fa-bolt text-blue-500 mr-2"></i>${formatTrigger(automation.trigger)}</span>
                                 <span><i class="fas fa-arrow-right text-gray-400 mr-2"></i></span>
-                                <span><i class="fas fa-cog text-green-500 mr-2"></i>${formatAction(automation.action)}</span>
+                                <span><i class="fas fa-cog text-green-500 mr-2"></i>${formatActions(automation.actions)}</span>
                                 ${automation.delay > 0 ? `
                                     <span><i class="fas fa-clock text-yellow-500 mr-2"></i>${automation.delay}m delay</span>
                                 ` : ''}
@@ -297,23 +297,19 @@
             return map[trigger] || trigger;
         }
 
-        function formatAction(action) {
-            // Handle JSON action objects
-            if (typeof action === 'object' && action !== null) {
-                if (action.type === 'send_message') return 'Send Message';
-                if (action.type === 'add_tag') return 'Add Tag';
-                if (action.type === 'send_template') return 'Send Template';
-                if (action.type === 'webhook') return 'Webhook';
-                return action.type || 'Custom Action';
+        function formatActions(actions) {
+            // Handle actions array
+            if (Array.isArray(actions) && actions.length > 0) {
+                const actionTypes = actions.map(a => {
+                    if (a.type === 'send_message') return 'Send Message';
+                    if (a.type === 'add_tag') return 'Add Tag';
+                    if (a.type === 'send_template') return 'Send Template';
+                    if (a.type === 'webhook') return 'Webhook';
+                    return a.type || 'Action';
+                });
+                return actionTypes.length > 1 ? `${actionTypes[0]} +${actionTypes.length - 1} more` : actionTypes[0];
             }
-            // Handle string actions
-            const map = {
-                send_message: 'Send Message',
-                add_tag: 'Add Tag',
-                send_email: 'Send Email',
-                assign_agent: 'Assign Agent'
-            };
-            return map[action] || action;
+            return 'No actions';
         }
 
         function showCreateModal() {

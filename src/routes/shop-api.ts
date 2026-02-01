@@ -85,4 +85,79 @@ router.get('/analytics/shop/:shopId', authenticate, async (req, res) => {
   }
 });
 
+// Create product
+router.post('/shop-system/products', authenticate, async (req, res) => {
+  try {
+    const product = await prisma.product.create({
+      data: {
+        id: `prod_${Date.now()}`,
+        shopId: req.body.shopId,
+        name: req.body.name,
+        sku: req.body.sku,
+        description: req.body.description,
+        price: req.body.price,
+        cost: req.body.cost || 0,
+        stock: req.body.stock,
+        lowStockThreshold: req.body.lowStockThreshold || 5,
+        unit: req.body.unit || 'pcs',
+        isActive: true,
+      },
+    });
+    res.json({ success: true, data: product });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Create customer
+router.post('/shop-system/customers', authenticate, async (req, res) => {
+  try {
+    const customer = await prisma.customer.create({
+      data: {
+        id: `cust_${Date.now()}`,
+        shopId: req.body.shopId,
+        name: req.body.name,
+        phone: req.body.phone,
+        email: req.body.email,
+        address: req.body.address,
+        city: req.body.city,
+        customerGroup: req.body.customerGroup || 'retail',
+        updatedAt: new Date(),
+        isActive: true,
+      },
+    });
+    res.json({ success: true, data: customer });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Create transaction
+router.post('/shop-system/transactions', authenticate, async (req, res) => {
+  try {
+    const transaction = await prisma.salesTransaction.create({
+      data: {
+        id: `txn_${Date.now()}`,
+        transactionNumber: `TXN-${Date.now()}`,
+        shopId: req.body.shopId,
+        customerId: req.body.customerId,
+        status: req.body.status || 'CONFIRMED',
+        totalAmount: req.body.totalAmount,
+        discountAmount: req.body.discountAmount || 0,
+        taxAmount: req.body.taxAmount,
+        finalAmount: req.body.finalAmount,
+        paidAmount: req.body.paidAmount,
+        paymentStatus: req.body.paymentStatus,
+        paymentMethod: req.body.paymentMethod,
+        notes: req.body.notes,
+        createdBy: req.user!.id,
+        updatedAt: new Date(),
+      },
+    });
+    res.json({ success: true, data: transaction });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;
