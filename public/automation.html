@@ -298,6 +298,15 @@
         }
 
         function formatAction(action) {
+            // Handle JSON action objects
+            if (typeof action === 'object' && action !== null) {
+                if (action.type === 'send_message') return 'Send Message';
+                if (action.type === 'add_tag') return 'Add Tag';
+                if (action.type === 'send_template') return 'Send Template';
+                if (action.type === 'webhook') return 'Webhook';
+                return action.type || 'Custom Action';
+            }
+            // Handle string actions
             const map = {
                 send_message: 'Send Message',
                 add_tag: 'Add Tag',
