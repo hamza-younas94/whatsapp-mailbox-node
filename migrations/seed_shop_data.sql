@@ -207,7 +207,7 @@ VALUES
     'TXN-000003',
     'shop_demo_001',
     'cust_usman',
-    'PROCESSING',
+    'PENDING',
     390000,
     5000,
     19250,
@@ -241,4 +241,4 @@ SELECT '✅ Shop system seed data loaded successfully!' AS Status;
 SELECT 'Shop: Demo Electronics Store' AS Result;
 SELECT '5 Products created (iPhones, Samsung, MacBook, AirPods, Charger)' AS Products;
 SELECT '3 Customers created (Ahmed, Sara, Usman)' AS Customers;
-SELECT '3 Transactions created (2 completed, 1 processing)' AS Transactions;
+SELECT '3 Transactions created (2 completed, 1 pending)' AS Transactions;
