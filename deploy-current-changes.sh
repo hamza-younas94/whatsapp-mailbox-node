@@ -137,6 +137,10 @@ ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_IP" << 'ENDSSH'
     set -e
     echo "📦 Starting full deployment..."
     
+    # Load NVM
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    
     # Navigate to project directory
     cd /root/whatsapp-mailbox-node
     
