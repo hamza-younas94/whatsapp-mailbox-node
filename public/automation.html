@@ -202,7 +202,7 @@
         }
 
         async function loadAutomations() {
-            const response = await fetchWithAuth(`${API_BASE}/automation`);
+            const response = await fetchWithAuth(`${API_BASE}/automations`);
             if (response.ok) {
                 const data = await response.json();
                 displayAutomations(data.data || []);

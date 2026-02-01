@@ -510,6 +510,11 @@
 
     <script src="/js/navbar.js"></script>
     <script>
+        // Check authentication
+        if (!localStorage.getItem('authToken')) {
+            window.location.href = '/login.html';
+        }
+
         let currentShopId = null;
         let shops = [];
         let products = [];
@@ -548,7 +553,7 @@
         // Load shops
         async function loadShops() {
             try {
-                const token = localStorage.getItem('token');
+                const token = localStorage.getItem('authToken');
                 const response = await fetch('/api/v1/shops', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -615,7 +620,7 @@
         // Load analytics
         async function loadAnalytics(shopId) {
             try {
-                const token = localStorage.getItem('token');
+                const token = localStorage.getItem('authToken');
                 const response = await fetch(`/api/v1/analytics/shop/${shopId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -635,7 +640,7 @@
         // Load products
         async function loadProducts(shopId) {
             try {
-                const token = localStorage.getItem('token');
+                const token = localStorage.getItem('authToken');
                 const response = await fetch(`/api/v1/products/shop/${shopId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -691,7 +696,7 @@
         // Load customers
         async function loadCustomers(shopId) {
             try {
-                const token = localStorage.getItem('token');
+                const token = localStorage.getItem('authToken');
                 const response = await fetch(`/api/v1/customers/shop/${shopId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -741,7 +746,7 @@
         // Load transactions
         async function loadTransactions(shopId) {
             try {
-                const token = localStorage.getItem('token');
+                const token = localStorage.getItem('authToken');
                 const response = await fetch(`/api/v1/transactions/shop/${shopId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -801,7 +806,7 @@
             const shopData = Object.fromEntries(formData);
 
             try {
-                const token = localStorage.getItem('token');
+                const token = localStorage.getItem('authToken');
                 const response = await fetch('/api/v1/shops', {
                     method: 'POST',
                     headers: {
