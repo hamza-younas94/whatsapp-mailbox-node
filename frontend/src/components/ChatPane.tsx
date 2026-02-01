@@ -210,12 +210,24 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
         const result = await response.json();
         const contact = result.data || result;
         const tags = contact.tags || [];
-        setContactTags(
-          tags
-            .map((t: any) => t.tag || t)
-            .filter((t: any) => t && t.id && t.name)
-            .map((t: any) => ({ id: t.id, name: t.name }))
-        );
+        
+        // Handle both TagOnContact structure and direct Tag structure
+        const processedTags = tags
+          .map((t: any) => {
+            // If it's a TagOnContact with nested tag, extract it
+            if (t.tag && t.tag.id && t.tag.name) {
+              return { id: t.tag.id, name: t.tag.name };
+            }
+            // If it's already a flat Tag object
+            if (t.id && t.name) {
+              return { id: t.id, name: t.name };
+            }
+            return null;
+          })
+          .filter((t: any) => t !== null);
+        
+        console.log('Loaded contact tags:', processedTags, 'from:', tags);
+        setContactTags(processedTags);
       }
     } catch (error) {
       console.error('Failed to load contact tags:', error);

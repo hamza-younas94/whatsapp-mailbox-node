@@ -27,6 +27,7 @@ import noteRoutes from '@routes/notes';
 import whatsappWebRoutes from '@routes/whatsapp-web';
 import mediaRoutes from '@routes/media';
 import dripCampaignRoutes from '@routes/drip-campaigns';
+import shopRoutes from '@routes/shops';
 import { whatsappWebService } from '@services/whatsapp-web.service';
 import { autoReplyService } from '@services/auto-reply.service';
 import { getContactType } from '@utils/contact-type';
@@ -113,6 +114,7 @@ export function createApp(): Express {
   app.use('/api/v1/notes', noteRoutes);
   app.use('/api/v1/drip-campaigns', dripCampaignRoutes);
   app.use('/api/v1/whatsapp-web', whatsappWebRoutes);
+  app.use('/api/v1', shopRoutes); // Adds /shops, /products, /orders, /invoices, /payments
 
   // Serve index.html for all non-API routes (SPA fallback)
   app.get('*', (req, res) => {
@@ -557,10 +559,11 @@ export async function startServer(): Promise<void> {
     httpServer.listen(env.PORT, '0.0.0.0', () => {
       logger.info({ port: env.PORT, env: env.NODE_ENV }, 'Server started with Socket.IO');
       
-      // Auto-restore WhatsApp sessions after server starts
-      setTimeout(async () => {
+      // Auto-restore WhatsApp sessions IMMEDIATELY on deployment (no delay)
+      // This ensures QR codes or connections are available right away
+      setImmediate(async () => {
         try {
-          logger.info('Attempting to auto-restore WhatsApp sessions...');
+          logger.info('Auto-restoring WhatsApp sessions on deployment...');
           
           // Check for existing session files
           const fs = await import('fs');
@@ -570,29 +573,37 @@ export async function startServer(): Promise<void> {
             const sessionDirs = fs.readdirSync(sessionPath);
             logger.info({ count: sessionDirs.length }, 'Found session directories');
             
-            // Try to restore each session
+            // Try to restore each session in background (non-blocking)
             for (const dir of sessionDirs) {
               if (dir.startsWith('session_')) {
                 const sessionId = dir;
-                logger.info({ sessionId }, 'Restoring session...');
+                logger.info({ sessionId }, 'Initiating session restore...');
                 
-                try {
-                  // Extract userId from sessionId (format: session_<userId>)
-                  const userId = sessionId.replace('session_', '');
-                  await whatsappWebService.initializeSession(userId, sessionId);
-                  logger.info({ sessionId }, 'Session restored successfully');
-                } catch (error) {
-                  logger.error({ sessionId, error }, 'Failed to restore session');
+                // Check if already active
+                if (whatsappWebService.getSession(sessionId)) {
+                  logger.info({ sessionId }, 'Session already active, skipping');
+                  continue;
                 }
+                
+                // Run initialization in background without blocking
+                (async () => {
+                  try {
+                    const userId = sessionId.replace('session_', '');
+                    await whatsappWebService.initializeSession(userId, sessionId);
+                    logger.info({ sessionId }, 'Session restored successfully');
+                  } catch (error) {
+                    logger.error({ sessionId, error }, 'Failed to restore session');
+                  }
+                })();
               }
             }
           } else {
-            logger.info('No existing sessions found');
+            logger.info('No existing sessions found - ready for new connections');
           }
         } catch (error) {
           logger.error({ error }, 'Failed to auto-restore sessions');
         }
-      }, 5000); // Wait 5 seconds after server starts
+      });
     });
 
     // Graceful shutdown

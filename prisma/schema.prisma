@@ -45,6 +45,7 @@ model User {
   labels            Label[]
   scheduledMessages ScheduledMessage[]
   imports           ImportJob[]
+  shops             Shop[]
 
   @@index([email])
   @@index([username])
@@ -100,6 +101,9 @@ model Contact {
   dripEnrollments DripEnrollment[]
   transactions    Transaction[]
   dripScheduled   DripScheduledMessage[]
+  orders          Order[]
+  invoices        Invoice[]
+  payments        Payment[]
 
   @@unique([userId, phoneNumber])
   @@index([userId])
@@ -886,5 +890,232 @@ enum TransactionStatus {
   PENDING
   COMPLETED
   CANCELLED
+  REFUNDED
+}
+// ============================================
+// INVOICING & SHOP MANAGEMENT
+// ============================================
+
+model Shop {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?   @db.Text
+  type        ShopType  @default(PHYSICAL)
+  currency    String    @default("USD")
+  taxRate     Float?    @default(0)
+  address     String?   @db.Text
+  phone       String?
+  email       String?
+  website     String?
+  logo        String?
+  isActive    Boolean   @default(true)
+  metadata    Json?     @default("{}")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products Product[]
+  orders   Order[]
+  invoices Invoice[]
+  payments Payment[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([isActive])
+}
+
+enum ShopType {
+  PHYSICAL
+  ONLINE
+  BOTH
+}
+
+model Product {
+  id                String    @id @default(cuid())
+  shopId            String
+  shop              Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  sku               String?
+  name              String
+  description       String?   @db.Text
+  category          String?
+  price             Float     @default(0)
+  cost              Float?    @default(0)
+  stock             Int       @default(0)
+  lowStockThreshold Int?      @default(10)
+  imageUrl          String?
+  isActive          Boolean   @default(true)
+  metadata          Json?     @default("{}")
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  orderItems   OrderItem[]
+  invoiceItems InvoiceItem[]
+
+  @@unique([shopId, sku])
+  @@index([shopId])
+  @@index([sku])
+  @@index([isActive])
+}
+
+model Order {
+  id              String        @id @default(cuid())
+  shopId          String
+  shop            Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  contactId       String
+  contact         Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  orderNumber     String
+  status          OrderStatus   @default(PENDING)
+  subtotal        Float         @default(0)
+  tax             Float         @default(0)
+  discount        Float         @default(0)
+  shipping        Float         @default(0)
+  total           Float         @default(0)
+  notes           String?       @db.Text
+  shippingAddress String?       @db.Text
+  paymentMethod   String?
+  paymentStatus   PaymentStatus @default(PENDING)
+  metadata        Json?         @default("{}")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  items    OrderItem[]
+  invoices Invoice[]
+  payments Payment[]
+
+  @@unique([shopId, orderNumber])
+  @@index([shopId])
+  @@index([contactId])
+  @@index([orderNumber])
+  @@index([status])
+  @@index([paymentStatus])
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  name        String
+  description String?  @db.Text
+  quantity    Int      @default(1)
+  unitPrice   Float    @default(0)
+  discount    Float    @default(0)
+  total       Float    @default(0)
+  metadata    Json?    @default("{}")
+  createdAt   DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  shopId        String
+  shop          Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  orderId       String?
+  order         Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  contactId     String
+  contact       Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  invoiceNumber String
+  status        InvoiceStatus @default(DRAFT)
+  issueDate     DateTime      @default(now())
+  dueDate       DateTime?
+  paidDate      DateTime?
+  subtotal      Float         @default(0)
+  tax           Float         @default(0)
+  discount      Float         @default(0)
+  total         Float         @default(0)
+  amountPaid    Float         @default(0)
+  notes         String?       @db.Text
+  terms         String?       @db.Text
+  metadata      Json?         @default("{}")
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  items    InvoiceItem[]
+  payments Payment[]
+
+  @@unique([shopId, invoiceNumber])
+  @@index([shopId])
+  @@index([contactId])
+  @@index([orderId])
+  @@index([invoiceNumber])
+  @@index([status])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  description String
+  quantity    Int      @default(1)
+  unitPrice   Float    @default(0)
+  discount    Float    @default(0)
+  total       Float    @default(0)
+  metadata    Json?    @default("{}")
+  createdAt   DateTime @default(now())
+
+  @@index([invoiceId])
+  @@index([productId])
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  shopId      String
+  shop        Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  invoiceId   String?
+  invoice     Invoice?      @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  orderId     String?
+  order       Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  contactId   String
+  contact     Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  amount      Float
+  method      PaymentMethod
+  reference   String?
+  notes       String?       @db.Text
+  paymentDate DateTime      @default(now())
+  metadata    Json?         @default("{}")
+  createdAt   DateTime      @default(now())
+
+  @@index([shopId])
+  @@index([invoiceId])
+  @@index([orderId])
+  @@index([contactId])
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  MOBILE_MONEY
+  CRYPTO
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  PARTIALLY_PAID
   REFUNDED
 }
