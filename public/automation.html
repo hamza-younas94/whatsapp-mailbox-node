@@ -454,4 +454,10 @@
                 console.log(message);
             }
         }
+
+        // Load automations on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAutomations();
+            loadTags();
+        });
 </script></body></html>
