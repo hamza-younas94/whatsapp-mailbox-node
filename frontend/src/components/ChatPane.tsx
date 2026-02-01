@@ -6,6 +6,7 @@ import MessageBubble from '@/components/MessageBubble';
 import MessageComposer from '@/components/MessageComposer';
 import '@/styles/chat-pane.css';
 import '@/styles/contact-type-badge.css';
+import '@/styles/contact-modal.css';
 
 interface Message {
   id: string;
@@ -517,10 +518,10 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
     return (
       <div className="chat-pane empty-chat">
         <div className="empty-state-content">
-          <div className="empty-icon">💬</div>
+          <div className="empty-icon">💬</div></div>
           <p className="empty-text">Select a conversation to start chatting</p>
-        </div>
-      </div>
+        </div></div>
+      </div></div>
     );
   }
 
@@ -532,14 +533,14 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
             {profilePic ? (
               <img src={profilePic} alt={contactName || 'Contact'} className="header-avatar-img" />
             ) : (
-              <div className="header-avatar-placeholder">{contactName?.[0] || '?'}</div>
+              <div className="header-avatar-placeholder">{contactName?.[0] || '?'}</div></div>
             )}
-          </div>
+          </div></div>
           <div className="chat-header-text">
             <h3 className="contact-name">{contactName || 'Unknown'}</h3>
             {phoneNumber && !phoneNumber.includes('@g.us') && <p className="contact-phone">{phoneNumber}</p>}
-          </div>
-        </div>
+          </div></div>
+        </div></div>
         <div className="chat-header-actions">
           <button 
             className="icon-button" 
@@ -555,73 +556,73 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
           >
             ℹ️
           </button>
-        </div>
-      </div>
+        </div></div>
+      </div></div>
 
-      {/* CRM Drawer/Modal */}
+      {/* CRM Modal */}
       {showContactInfo && (
-        <div className="crm-drawer-overlay" onClick={() => setShowContactInfo(false)}>
-          <div className="crm-drawer" onClick={(e) => e.stopPropagation()}>
-            <div className="drawer-header">
-              <div className="drawer-header-content">
+        <div className="modal-overlay" onClick={() => setShowContactInfo(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-header-content">
                 {profilePic ? (
-                  <img src={profilePic} alt={contactName || 'Contact'} className="drawer-avatar" />
+                  <img src={profilePic} alt={contactName || 'Contact'} className="modal-avatar" />
                 ) : (
-                  <div className="drawer-avatar-placeholder">{contactName?.[0] || '?'}</div>
+                  <div className="modal-avatar-placeholder">{contactName?.[0] || '?'}</div></div>
                 )}
-                <div className="drawer-title">
+                <div className="modal-title">
                   <h3>{contactName || 'Unknown'}</h3>
                   {phoneNumber && <p>{phoneNumber}</p>}
-                  <span className={`drawer-badge ${badgeClass}`}>
+                  <span className={`modal-badge ${badgeClass}`}>
                     {typeInfo.icon} {typeInfo.label}
                   </span>
-                </div>
-              </div>
-              <button className="drawer-close" onClick={() => setShowContactInfo(false)}>
+                </div></div>
+              </div></div>
+              <button className="modal-close" onClick={() => setShowContactInfo(false)}>
                 ✕
               </button>
-            </div>
+            </div></div>
 
             {/* Navigation Tabs */}
-            <div className="drawer-tabs">
+            <div className="modal-tabs">
               <button 
-                className={`drawer-tab ${activeTab === 'info' ? 'active' : ''}`}
+                className={`modal-tab ${activeTab === 'info' ? 'active' : ''}`}
                 onClick={() => setActiveTab('info')}
               >
                 <span className="tab-icon">🏷️</span>
-                <span className="tab-label">Tags</span>
+                <span className="tab-label">TAGS</span>
               </button>
               <button 
-                className={`drawer-tab ${activeTab === 'notes' ? 'active' : ''}`}
+                className={`modal-tab ${activeTab === 'notes' ? 'active' : ''}`}
                 onClick={() => setActiveTab('notes')}
               >
                 <span className="tab-icon">📝</span>
-                <span className="tab-label">Notes</span>
+                <span className="tab-label">NOTES</span>
               </button>
               <button 
-                className={`drawer-tab ${activeTab === 'transactions' ? 'active' : ''}`}
+                className={`modal-tab ${activeTab === 'transactions' ? 'active' : ''}`}
                 onClick={() => setActiveTab('transactions')}
               >
                 <span className="tab-icon">💰</span>
-                <span className="tab-label">Sales</span>
+                <span className="tab-label">SALES</span>
               </button>
               <button 
-                className={`drawer-tab ${activeTab === 'automations' ? 'active' : ''}`}
+                className={`modal-tab ${activeTab === 'automations' ? 'active' : ''}`}
                 onClick={() => setActiveTab('automations')}
               >
                 <span className="tab-icon">⚡</span>
-                <span className="tab-label">Auto</span>
+                <span className="tab-label">AUTO</span>
               </button>
-            </div>
+            </div></div>
 
-            <div className="drawer-content">
+            <div className="modal-body">
               {/* Tags Tab */}
               {activeTab === 'info' && (
-                <div className="drawer-section">
+                <div className="modal-section">
                   <div className="section-header">
                     <h4>Contact Tags</h4>
                     <span className="badge-count">{contactTags.length}</span>
-                  </div>
+                  </div></div>
                   
                   <div className="tags-grid">
                     {contactTags.length === 0 ? (
@@ -634,7 +635,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                         </span>
                       ))
                     )}
-                  </div>
+                  </div></div>
 
                   <div className="add-input-group">
                     <input 
@@ -647,24 +648,24 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                     <button onClick={handleAddTag} disabled={!newTag.trim()}>
                       Add
                     </button>
-                  </div>
+                  </div></div>
 
                   {chatId && (
                     <div className="info-detail">
                       <label>Chat ID</label>
                       <code>{chatId}</code>
-                    </div>
+                    </div></div>
                   )}
-                </div>
+                </div></div>
               )}
 
               {/* Notes Tab */}
               {activeTab === 'notes' && (
-                <div className="drawer-section">
+                <div className="modal-section">
                   <div className="section-header">
                     <h4>Notes</h4>
                     <span className="badge-count">{notes.length}</span>
-                  </div>
+                  </div></div>
 
                   <div className="add-note-form">
                     <textarea
@@ -676,14 +677,14 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                     <button onClick={handleAddNote} disabled={!newNote.trim()}>
                       💾 Save Note
                     </button>
-                  </div>
+                  </div></div>
 
                   <div className="notes-list-container">
                     {notes.length === 0 ? (
                       <div className="empty-state-small">
                         <span>📝</span>
                         <p>No notes yet</p>
-                      </div>
+                      </div></div>
                     ) : (
                       notes.map((note) => (
                         <div key={note.id} className="note-card">
@@ -691,17 +692,17 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                           <div className="note-footer">
                             <span>{new Date(note.createdAt).toLocaleDateString()}</span>
                             <button onClick={() => handleDeleteNote(note.id)}>🗑️</button>
-                          </div>
-                        </div>
+                          </div></div>
+                        </div></div>
                       ))
                     )}
-                  </div>
-                </div>
+                  </div></div>
+                </div></div>
               )}
 
               {/* Transactions Tab */}
               {activeTab === 'transactions' && (
-                <div className="drawer-section">
+                <div className="modal-section">
                   <div className="section-header">
                     <h4>Sales & Transactions</h4>
                     <button 
@@ -710,7 +711,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                     >
                       + Add
                     </button>
-                  </div>
+                  </div></div>
 
                   <div className="transactions-list-container">
                     {transactions.length === 0 ? (
@@ -718,31 +719,31 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                         <span>💰</span>
                         <p>No transactions yet</p>
                         <button onClick={() => setShowTransactionModal(true)}>Add First Transaction</button>
-                      </div>
+                      </div></div>
                     ) : (
                       transactions.map((tx) => (
                         <div key={tx.id} className="tx-card">
-                          <div className="tx-card-amount">${tx.amount.toFixed(2)}</div>
+                          <div className="tx-card-amount">${tx.amount.toFixed(2)}</div></div>
                           <div className="tx-card-info">
                             <span className="tx-desc">{tx.description || 'No description'}</span>
                             <span className={`tx-badge tx-${tx.status}`}>{tx.status}</span>
-                          </div>
+                          </div></div>
                           <div className="tx-card-date">
                             {new Date(tx.createdAt).toLocaleDateString()}
-                          </div>
-                        </div>
+                          </div></div>
+                        </div></div>
                       ))
                     )}
-                  </div>
-                </div>
+                  </div></div>
+                </div></div>
               )}
 
               {/* Automations Tab */}
               {activeTab === 'automations' && (
-                <div className="drawer-section">
+                <div className="modal-section">
                   <div className="section-header">
                     <h4>Automations</h4>
-                  </div>
+                  </div></div>
 
                   <div className="automations-list-container">
                     {automations.length === 0 ? (
@@ -750,11 +751,11 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                         <span>⚡</span>
                         <p>No automations available</p>
                         <a href="/automation.html" target="_blank">Create Automation</a>
-                      </div>
+                      </div></div>
                     ) : (
                       automations.map((auto) => (
                         <div key={auto.id} className="automation-card">
-                          <div className={`auto-indicator ${auto.isActive ? 'active' : ''}`}></div>
+                          <div className={`auto-indicator ${auto.isActive ? 'active' : ''}`}></div></div>
                           <span className="auto-card-name">{auto.name}</span>
                           <button 
                             className="btn-enroll"
@@ -762,10 +763,10 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                           >
                             Enroll
                           </button>
-                        </div>
+                        </div></div>
                       ))
                     )}
-                  </div>
+                  </div></div>
 
                   <div className="quick-links">
                     <a href="/automation.html" target="_blank" className="quick-link">
@@ -774,12 +775,12 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                     <a href="/drip-campaigns.html" target="_blank" className="quick-link">
                       💧 Drip Campaigns
                     </a>
-                  </div>
-                </div>
+                  </div></div>
+                </div></div>
               )}
-            </div>
-          </div>
-        </div>
+            </div></div>
+          </div></div>
+        </div></div>
       )}
 
       {/* Transaction Modal */}
@@ -795,7 +796,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                 onChange={(e) => setNewTransaction(prev => ({ ...prev, amount: e.target.value }))}
                 placeholder="0.00"
               />
-            </div>
+            </div></div>
             <div className="form-group">
               <label>Description</label>
               <input
@@ -804,7 +805,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                 onChange={(e) => setNewTransaction(prev => ({ ...prev, description: e.target.value }))}
                 placeholder="Product/Service description"
               />
-            </div>
+            </div></div>
             <div className="form-group">
               <label>Status</label>
               <select
@@ -816,7 +817,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                 <option value="cancelled">Cancelled</option>
                 <option value="refunded">Refunded</option>
               </select>
-            </div>
+            </div></div>
             <div className="modal-actions">
               <button onClick={() => setShowTransactionModal(false)} className="btn-cancel">
                 Cancel
@@ -824,13 +825,13 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
               <button onClick={handleAddTransaction} className="btn-save">
                 Save Transaction
               </button>
-            </div>
-          </div>
-        </div>
+            </div></div>
+          </div></div>
+        </div></div>
       )}
 
       <div className="messages-container" ref={scrollRef} onScroll={handleScroll}>
-        {loading && <div className="loading-indicator">Loading messages...</div>}
+        {loading && <div className="loading-indicator">Loading messages...</div></div>}
         
         <div className="messages-list">
           {messages.map((msg) => (
@@ -841,22 +842,22 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
             />
           ))}
           <div ref={messagesEndRef} />
-        </div>
-      </div>
+        </div></div>
+      </div></div>
 
       {/* Check if this is a group or channel - they typically don't support direct messaging from bots */}
       {(chatId?.includes('@g.us') || chatId?.includes('@broadcast') || contactTypeResolved === 'GROUP' || contactTypeResolved === 'CHANNEL') ? (
         <div className="group-chat-notice">
-          <div className="notice-icon">👥</div>
+          <div className="notice-icon">👥</div></div>
           <div className="notice-content">
             <strong>{contactTypeResolved === 'GROUP' ? 'Group Chat' : contactTypeResolved === 'CHANNEL' ? 'Channel' : 'Broadcast List'}</strong>
             <p>Sending messages to groups/channels is limited. Messages are received but may require WhatsApp Business API for sending.</p>
-          </div>
-        </div>
+          </div></div>
+        </div></div>
       ) : (
         <MessageComposer onSend={handleSend} isLoading={sending} disabled={sending} />
       )}
-    </div>
+    </div></div>
   );
 };
 
