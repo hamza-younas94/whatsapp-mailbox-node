@@ -1080,7 +1080,7 @@ model Order {
   deliveryInstructions  String?            @db.Text
   estimatedDeliveryTime DateTime?
   actualDeliveryTime    DateTime?
-  paymentStatus         OrderPaymentStatus @default(PENDING)
+  paymentStatus         OrderPaymentStatus @default(ORDER_PAYMENT_PENDING)
   notes                 String?            @db.Text
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
@@ -1376,7 +1376,7 @@ model Task {
   title       String
   description String?      @db.Text
   dueDate     DateTime?
-  priority    TaskPriority @default(MEDIUM)
+  priority    TaskPriority @default(TASK_MEDIUM)
   status      TaskStatus   @default(TASK_PENDING)
   completedAt DateTime?
   createdAt   DateTime     @default(now())
