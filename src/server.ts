@@ -27,8 +27,18 @@ import noteRoutes from '@routes/notes';
 import whatsappWebRoutes from '@routes/whatsapp-web';
 import mediaRoutes from '@routes/media';
 import dripCampaignRoutes from '@routes/drip-campaigns';
-// import shopRoutes from '@routes/shops'; // Disabled - using shop-api instead
-import shopApiRoutes from './routes/shop-api';
+import productRoutes from '@routes/products';
+import invoiceRoutes from '@routes/invoices';
+import orderRoutes from '@routes/orders';
+import serviceTicketRoutes from '@routes/service-tickets';
+import appointmentRoutes from '@routes/appointments';
+import expenseRoutes from '@routes/expenses';
+import customerSubscriptionRoutes from '@routes/customer-subscriptions';
+import autoTagRuleRoutes from '@routes/auto-tag-rules';
+import taskRoutes from '@routes/tasks';
+import { globalLimiter } from '@middleware/rate-limit.middleware';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from '@config/swagger';
 import { whatsappWebService } from '@services/whatsapp-web.service';
 import { autoReplyService } from '@services/auto-reply.service';
 import { getContactType } from '@utils/contact-type';
@@ -84,6 +94,9 @@ export function createApp(): Express {
   app.use(express.static(path.join(__dirname, '../public')));
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
+  // Rate limiting
+  app.use('/api/', globalLimiter);
+
   // Logging middleware
   app.use((req, _res, next) => {
     logger.info({ method: req.method, path: req.path }, `${req.method} ${req.path}`);
@@ -98,6 +111,12 @@ export function createApp(): Express {
       environment: env.NODE_ENV,
     });
   });
+
+  // Swagger API Documentation
+  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'WhatsApp Mailbox API Docs',
+  }));
 
   // API routes
   app.use('/api/v1/auth', authRoutes);
@@ -115,8 +134,17 @@ export function createApp(): Express {
   app.use('/api/v1/notes', noteRoutes);
   app.use('/api/v1/drip-campaigns', dripCampaignRoutes);
   app.use('/api/v1/whatsapp-web', whatsappWebRoutes);
-  // app.use('/api/v1', shopRoutes); // Disabled - using shop-api instead
-  app.use('/api/v1', shopApiRoutes); // Shop automation system with proper Prisma types
+
+  // Business feature routes
+  app.use('/api/v1/products', productRoutes);
+  app.use('/api/v1/invoices', invoiceRoutes);
+  app.use('/api/v1/orders', orderRoutes);
+  app.use('/api/v1/service-tickets', serviceTicketRoutes);
+  app.use('/api/v1/appointments', appointmentRoutes);
+  app.use('/api/v1/expenses', expenseRoutes);
+  app.use('/api/v1/customer-subscriptions', customerSubscriptionRoutes);
+  app.use('/api/v1/auto-tag-rules', autoTagRuleRoutes);
+  app.use('/api/v1/tasks', taskRoutes);
 
   // Serve index.html for all non-API routes (SPA fallback)
   app.get('*', (req, res) => {
@@ -561,11 +589,10 @@ export async function startServer(): Promise<void> {
     httpServer.listen(env.PORT, '0.0.0.0', () => {
       logger.info({ port: env.PORT, env: env.NODE_ENV }, 'Server started with Socket.IO');
       
-      // Auto-restore WhatsApp sessions IMMEDIATELY on deployment (no delay)
-      // This ensures QR codes or connections are available right away
-      setImmediate(async () => {
+      // Auto-restore WhatsApp sessions after server starts
+      setTimeout(async () => {
         try {
-          logger.info('Auto-restoring WhatsApp sessions on deployment...');
+          logger.info('Attempting to auto-restore WhatsApp sessions...');
           
           // Check for existing session files
           const fs = await import('fs');
@@ -575,37 +602,29 @@ export async function startServer(): Promise<void> {
             const sessionDirs = fs.readdirSync(sessionPath);
             logger.info({ count: sessionDirs.length }, 'Found session directories');
             
-            // Try to restore each session in background (non-blocking)
+            // Try to restore each session
             for (const dir of sessionDirs) {
               if (dir.startsWith('session_')) {
                 const sessionId = dir;
-                logger.info({ sessionId }, 'Initiating session restore...');
+                logger.info({ sessionId }, 'Restoring session...');
                 
-                // Check if already active
-                if (whatsappWebService.getSession(sessionId)) {
-                  logger.info({ sessionId }, 'Session already active, skipping');
-                  continue;
+                try {
+                  // Extract userId from sessionId (format: session_<userId>)
+                  const userId = sessionId.replace('session_', '');
+                  await whatsappWebService.initializeSession(userId, sessionId);
+                  logger.info({ sessionId }, 'Session restored successfully');
+                } catch (error) {
+                  logger.error({ sessionId, error }, 'Failed to restore session');
                 }
-                
-                // Run initialization in background without blocking
-                (async () => {
-                  try {
-                    const userId = sessionId.replace('session_', '');
-                    await whatsappWebService.initializeSession(userId, sessionId);
-                    logger.info({ sessionId }, 'Session restored successfully');
-                  } catch (error) {
-                    logger.error({ sessionId, error }, 'Failed to restore session');
-                  }
-                })();
               }
             }
           } else {
-            logger.info('No existing sessions found - ready for new connections');
+            logger.info('No existing sessions found');
           }
         } catch (error) {
           logger.error({ error }, 'Failed to auto-restore sessions');
         }
-      });
+      }, 5000); // Wait 5 seconds after server starts
     });
 
     // Graceful shutdown

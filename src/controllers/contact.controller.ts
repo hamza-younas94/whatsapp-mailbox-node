@@ -134,4 +134,39 @@ export class ContactController {
       data: contact,
     });
   });
+
+  // Bulk operations
+  bulkTag = asyncHandler(async (req: Request, res: Response) => {
+    const userId = requireUserId(req);
+    const { contactIds, tagId } = req.body;
+    const result = await this.contactService.bulkTag(userId, contactIds, tagId);
+    res.status(200).json({ success: true, data: result });
+  });
+
+  bulkStage = asyncHandler(async (req: Request, res: Response) => {
+    const userId = requireUserId(req);
+    const { contactIds, stage } = req.body;
+    const result = await this.contactService.bulkUpdateStage(userId, contactIds, stage);
+    res.status(200).json({ success: true, data: result });
+  });
+
+  bulkDelete = asyncHandler(async (req: Request, res: Response) => {
+    const userId = requireUserId(req);
+    const { contactIds } = req.body;
+    const result = await this.contactService.bulkDelete(userId, contactIds);
+    res.status(200).json({ success: true, data: result });
+  });
+
+  findDuplicates = asyncHandler(async (req: Request, res: Response) => {
+    const userId = requireUserId(req);
+    const duplicates = await this.contactService.findDuplicates(userId);
+    res.status(200).json({ success: true, data: duplicates });
+  });
+
+  mergeContacts = asyncHandler(async (req: Request, res: Response) => {
+    const userId = requireUserId(req);
+    const { primaryId, secondaryId } = req.body;
+    const contact = await this.contactService.mergeContacts(userId, primaryId, secondaryId);
+    res.status(200).json({ success: true, data: contact });
+  });
 }

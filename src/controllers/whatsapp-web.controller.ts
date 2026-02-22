@@ -4,6 +4,7 @@
 import { Request, Response } from 'express';
 import { whatsappWebService } from '@services/whatsapp-web.service';
 import { asyncHandler } from '@middleware/error.middleware';
+import logger from '@utils/logger';
 
 export class WhatsAppWebController {
   private getPreferredSession(userId: string) {
@@ -22,7 +23,7 @@ export class WhatsAppWebController {
     const userId = req.user?.id || req.user?.userId;
     
     if (!userId) {
-      console.error('ERROR: userId is undefined in initializeDefaultSession', { user: req.user });
+      logger.error({ user: req.user }, 'userId is undefined in initializeDefaultSession');
       return res.status(401).json({
         success: false,
         message: 'Authentication required - userId not found',
@@ -114,7 +115,7 @@ export class WhatsAppWebController {
     const userId = req.user?.id || req.user?.userId;
     
     if (!userId) {
-      console.error('ERROR: userId is undefined in getDefaultStatus', { user: req.user });
+      logger.error({ user: req.user }, 'userId is undefined in getDefaultStatus');
       return res.status(401).json({
         success: false,
         message: 'Authentication required - userId not found',

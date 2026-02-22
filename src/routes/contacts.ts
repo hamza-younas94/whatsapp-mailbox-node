@@ -68,6 +68,9 @@ export function createContactRoutes(): Router {
     controller.searchContacts,
   );
 
+  // Bulk & utility routes (must come before /:contactId to avoid param matching)
+  router.get('/duplicates', authMiddleware, controller.findDuplicates);
+
   router.get(
     '/:contactId',
     authMiddleware,
@@ -92,6 +95,31 @@ export function createContactRoutes(): Router {
     authMiddleware,
     controller.blockContact,
   );
+
+  // Bulk operations
+  const bulkTagSchema = z.object({
+    contactIds: z.array(z.string()).min(1),
+    tagId: z.string().min(1),
+  });
+
+  const bulkStageSchema = z.object({
+    contactIds: z.array(z.string()).min(1),
+    stage: z.string().min(1),
+  });
+
+  const bulkDeleteSchema = z.object({
+    contactIds: z.array(z.string()).min(1),
+  });
+
+  const mergeSchema = z.object({
+    primaryId: z.string().min(1),
+    secondaryId: z.string().min(1),
+  });
+
+  router.post('/bulk-tag', authMiddleware, validate(bulkTagSchema), controller.bulkTag);
+  router.post('/bulk-stage', authMiddleware, validate(bulkStageSchema), controller.bulkStage);
+  router.post('/bulk-delete', authMiddleware, validate(bulkDeleteSchema), controller.bulkDelete);
+  router.post('/merge', authMiddleware, validate(mergeSchema), controller.mergeContacts);
 
   return router;
 }
