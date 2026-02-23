@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Tickets - WhatsApp Mailbox</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://whatshub.nexofydigital.com:3000 https://whatshub.nexofydigital.com:3000;">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-btn { background: linear-gradient(135deg, #128C7E 0%, #25D366 100%); }
+        .gradient-btn:hover { background: linear-gradient(135deg, #0d6b5f 0%, #1fb855 100%); }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <script>
+        if (!localStorage.getItem('authToken')) window.location.href = '/login.html';
+    </script>
+    <script src="/js/navbar.js"></script>
+
+    <div class="max-w-7xl mx-auto px-4 py-6">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">&#127915; Service Tickets</h1>
+                <p class="text-gray-600 mt-1">Track and manage service requests and repairs</p>
+            </div>
+            <button onclick="showCreateModal()"
+                class="gradient-btn text-white px-6 py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+                <i class="fas fa-plus mr-2"></i>Create Ticket
+            </button>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-gray-400">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-3xl font-bold text-gray-800" id="totalTickets">0</div>
+                        <div class="text-sm text-gray-500">Total Tickets</div>
+                    </div>
+                    <div class="p-3 bg-gray-100 rounded-full">
+                        <i class="fas fa-ticket text-gray-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-blue-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-3xl font-bold text-blue-600" id="openTickets">0</div>
+                        <div class="text-sm text-gray-500">Open</div>
+                    </div>
+                    <div class="p-3 bg-blue-100 rounded-full">
+                        <i class="fas fa-folder-open text-blue-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-yellow-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-3xl font-bold text-yellow-600" id="inProgressTickets">0</div>
+                        <div class="text-sm text-gray-500">In Progress</div>
+                    </div>
+                    <div class="p-3 bg-yellow-100 rounded-full">
+                        <i class="fas fa-spinner text-yellow-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-green-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-3xl font-bold text-green-600" id="completedTickets">0</div>
+                        <div class="text-sm text-gray-500">Completed</div>
+                    </div>
+                    <div class="p-3 bg-green-100 rounded-full">
+                        <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="bg-white rounded-xl shadow-sm mb-6">
+            <div class="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="relative">
+                    <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                    <input type="text" id="searchInput" placeholder="Search tickets..."
+                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        oninput="debounceSearch()">
+                </div>
+                <select id="statusFilter"
+                    class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    onchange="loadTickets(1)">
+                    <option value="">All Statuses</option>
+                    <option value="OPEN">Open</option>
+                    <option value="IN_PROGRESS">In Progress</option>
+                    <option value="WAITING_PARTS">Waiting Parts</option>
+                    <option value="TESTING">Testing</option>
+                    <option value="TICKET_COMPLETED">Completed</option>
+                    <option value="TICKET_CANCELLED">Cancelled</option>
+                    <option value="ON_HOLD">On Hold</option>
+                </select>
+                <select id="priorityFilter"
+                    class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    onchange="loadTickets(1)">
+                    <option value="">All Priorities</option>
+                    <option value="LOW">Low</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="HIGH">High</option>
+                    <option value="URGENT">Urgent</option>
+                </select>
+                <input type="text" id="categoryFilter" placeholder="Filter by category..."
+                    class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    oninput="debounceSearch()">
+            </div>
+        </div>
+
+        <!-- Tickets List -->
+        <div id="ticketsList">
+            <div class="bg-white rounded-xl shadow-sm p-8 text-center text-gray-500">
+                <i class="fas fa-spinner fa-spin text-4xl mb-2"></i>
+                <p>Loading tickets...</p>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div id="pagination" class="mt-6 flex justify-between items-center"></div>
+    </div>
+
+    <!-- Create/Edit Ticket Modal -->
+    <div id="ticketModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="ticketModalTitle" class="text-2xl font-bold text-gray-800">Create Service Ticket</h2>
+                <button onclick="hideModal('ticketModal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <form id="ticketForm" onsubmit="saveTicket(event)" class="space-y-4">
+                <input type="hidden" id="editTicketId">
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">Contact *</label>
+                    <select id="ticketContactId" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                        <option value="">Select a contact...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">Title *</label>
+                    <input type="text" id="ticketTitle" required maxlength="200"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                        placeholder="Brief description of the issue">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">Description</label>
+                    <textarea id="ticketDescription" rows="3"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                        placeholder="Detailed description..."></textarea>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">Category</label>
+                        <input type="text" id="ticketCategory"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                            placeholder="e.g. Phone Repair, Laptop">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">Priority</label>
+                        <select id="ticketPriority"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                            <option value="LOW">Low</option>
+                            <option value="MEDIUM" selected>Medium</option>
+                            <option value="HIGH">High</option>
+                            <option value="URGENT">Urgent</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">Device Type</label>
+                        <input type="text" id="ticketDeviceType"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                            placeholder="e.g. Phone, Laptop">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">Device Model</label>
+                        <input type="text" id="ticketDeviceModel"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                            placeholder="e.g. iPhone 15 Pro">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">Serial Number</label>
+                        <input type="text" id="ticketSerialNumber"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                            placeholder="Device serial #">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">Problem Description</label>
+                    <textarea id="ticketProblemDescription" rows="3"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                        placeholder="Describe the problem in detail..."></textarea>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">Estimated Cost</label>
+                        <input type="number" id="ticketEstimatedCost" step="0.01" min="0"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                            placeholder="0.00">
+                    </div>
+                    <div id="editStatusGroup" class="hidden">
+                        <label class="block text-gray-700 font-medium mb-1">Status</label>
+                        <select id="ticketStatus"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                            <option value="OPEN">Open</option>
+                            <option value="IN_PROGRESS">In Progress</option>
+                            <option value="WAITING_PARTS">Waiting Parts</option>
+                            <option value="TESTING">Testing</option>
+                            <option value="TICKET_COMPLETED">Completed</option>
+                            <option value="TICKET_CANCELLED">Cancelled</option>
+                            <option value="ON_HOLD">On Hold</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex space-x-4 pt-4">
+                    <button type="submit"
+                        class="flex-1 gradient-btn text-white py-3 rounded-lg font-medium hover:shadow-lg transition-all">
+                        <i class="fas fa-save mr-2"></i><span id="ticketSubmitText">Create Ticket</span>
+                    </button>
+                    <button type="button" onclick="hideModal('ticketModal')"
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-lg font-medium transition-all">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Ticket Detail Modal -->
+    <div id="detailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800"><i class="fas fa-ticket mr-2"></i>Ticket Details</h2>
+                <button onclick="hideModal('detailModal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <div id="detailContent">
+                <div class="p-8 text-center text-gray-500">
+                    <i class="fas fa-spinner fa-spin text-4xl mb-2"></i>
+                    <p>Loading ticket details...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Update Modal -->
+    <div id="updateModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl max-w-lg w-full p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Add Update</h2>
+                <button onclick="hideModal('updateModal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <form id="updateForm" onsubmit="saveUpdate(event)" class="space-y-4">
+                <input type="hidden" id="updateTicketId">
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">Update Type</label>
+                    <select id="updateType"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                        onchange="toggleNewStatusField()">
+                        <option value="NOTE">Note</option>
+                        <option value="STATUS_CHANGE">Status Change</option>
+                        <option value="DIAGNOSIS">Diagnosis</option>
+                        <option value="CUSTOMER_CONTACT">Customer Contact</option>
+                    </select>
+                </div>
+                <div id="newStatusGroup" class="hidden">
+                    <label class="block text-gray-700 font-medium mb-1">New Status</label>
+                    <select id="updateNewStatus"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                        <option value="OPEN">Open</option>
+                        <option value="IN_PROGRESS">In Progress</option>
+                        <option value="WAITING_PARTS">Waiting Parts</option>
+                        <option value="TESTING">Testing</option>
+                        <option value="TICKET_COMPLETED">Completed</option>
+                        <option value="TICKET_CANCELLED">Cancelled</option>
+                        <option value="ON_HOLD">On Hold</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">Content</label>
+                    <textarea id="updateContent" rows="4"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                        placeholder="Enter update details..."></textarea>
+                </div>
+                <div class="flex space-x-4 pt-2">
+                    <button type="submit"
+                        class="flex-1 gradient-btn text-white py-3 rounded-lg font-medium hover:shadow-lg transition-all">
+                        <i class="fas fa-plus mr-2"></i>Add Update
+                    </button>
+                    <button type="button" onclick="hideModal('updateModal')"
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-lg font-medium transition-all">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Part Modal -->
+    <div id="partModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl max-w-lg w-full p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Add Part</h2>
+                <button onclick="hideModal('partModal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <form id="partForm" onsubmit="savePart(event)" class="space-y-4">
+                <input type="hidden" id="partTicketId">
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">Part Name *</label>
+                    <input type="text" id="partName" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                        placeholder="e.g. LCD Screen, Battery">
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">Quantity *</label>
+                        <input type="number" id="partQuantity" required min="1" value="1"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">Cost *</label>
+                        <input type="number" id="partCost" required step="0.01" min="0"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                            placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">Price *</label>
+                        <input type="number" id="partPrice" required step="0.01" min="0"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                            placeholder="0.00">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">Status</label>
+                    <select id="partStatus"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                        <option value="REQUIRED">Required</option>
+                        <option value="ORDERED">Ordered</option>
+                        <option value="RECEIVED">Received</option>
+                        <option value="INSTALLED">Installed</option>
+                    </select>
+                </div>
+                <div class="flex space-x-4 pt-2">
+                    <button type="submit"
+                        class="flex-1 gradient-btn text-white py-3 rounded-lg font-medium hover:shadow-lg transition-all">
+                        <i class="fas fa-plus mr-2"></i>Add Part
+                    </button>
+                    <button type="button" onclick="hideModal('partModal')"
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-lg font-medium transition-all">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api/v1';
+        let currentPage = 1;
+        let contacts = [];
+        let searchTimeout = null;
+
+        // Fetch with auth helper
+        async function fetchWithAuth(url, options = {}) {
+            const token = localStorage.getItem('authToken');
+            const headers = {
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` }),
+                ...options.headers
+            };
+            const response = await fetch(url, { ...options, headers });
+            if (response.status === 401) {
+                localStorage.removeItem('authToken');
+                window.location.href = '/login.html';
+            }
+            return response;
+        }
+
+        // Notification helper
+        function showNotification(message, type = 'info') {
+            const colors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                info: 'bg-blue-500'
+            };
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+        }
+
+        // Debounce search
+        function debounceSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => loadTickets(1), 400);
+        }
+
+        // Modal helpers
+        function showModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function hideModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        // Toggle new status field in update modal
+        function toggleNewStatusField() {
+            const type = document.getElementById('updateType').value;
+            document.getElementById('newStatusGroup').classList.toggle('hidden', type !== 'STATUS_CHANGE');
+        }
+
+        // Priority badge helper
+        function getPriorityBadge(priority) {
+            const map = {
+                URGENT: 'bg-red-100 text-red-700',
+                HIGH: 'bg-orange-100 text-orange-700',
+                MEDIUM: 'bg-yellow-100 text-yellow-700',
+                LOW: 'bg-blue-100 text-blue-700'
+            };
+            return `<span class="px-2 py-1 rounded-full text-xs font-semibold ${map[priority] || 'bg-gray-100 text-gray-700'}">${priority}</span>`;
+        }
+
+        // Status badge helper
+        function getStatusBadge(status) {
+            const map = {
+                OPEN: 'bg-blue-100 text-blue-700',
+                IN_PROGRESS: 'bg-yellow-100 text-yellow-700',
+                WAITING_PARTS: 'bg-purple-100 text-purple-700',
+                TESTING: 'bg-indigo-100 text-indigo-700',
+                TICKET_COMPLETED: 'bg-green-100 text-green-700',
+                TICKET_CANCELLED: 'bg-red-100 text-red-700',
+                ON_HOLD: 'bg-gray-100 text-gray-700'
+            };
+            const label = status.replace(/_/g, ' ').replace('TICKET ', '');
+            return `<span class="px-2 py-1 rounded-full text-xs font-semibold ${map[status] || 'bg-gray-100 text-gray-700'}">${label}</span>`;
+        }
+
+        // Update type badge helper
+        function getUpdateTypeBadge(type) {
+            const map = {
+                NOTE: 'bg-gray-100 text-gray-700',
+                STATUS_CHANGE: 'bg-blue-100 text-blue-700',
+                PARTS_ADDED: 'bg-purple-100 text-purple-700',
+                DIAGNOSIS: 'bg-yellow-100 text-yellow-700',
+                CUSTOMER_CONTACT: 'bg-green-100 text-green-700'
+            };
+            const label = (type || 'NOTE').replace(/_/g, ' ');
+            return `<span class="px-2 py-1 rounded-full text-xs font-semibold ${map[type] || 'bg-gray-100 text-gray-700'}">${label}</span>`;
+        }
+
+        // Part status badge
+        function getPartStatusBadge(status) {
+            const map = {
+                REQUIRED: 'bg-red-100 text-red-700',
+                ORDERED: 'bg-yellow-100 text-yellow-700',
+                RECEIVED: 'bg-blue-100 text-blue-700',
+                INSTALLED: 'bg-green-100 text-green-700'
+            };
+            return `<span class="px-2 py-1 rounded-full text-xs font-semibold ${map[status] || 'bg-gray-100 text-gray-700'}">${status}</span>`;
+        }
+
+        // Format date
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            return new Date(dateStr).toLocaleDateString('en-US', {
+                year: 'numeric', month: 'short', day: 'numeric'
+            });
+        }
+
+        // Format datetime
+        function formatDateTime(dateStr) {
+            if (!dateStr) return '-';
+            return new Date(dateStr).toLocaleString('en-US', {
+                year: 'numeric', month: 'short', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        }
+
+        // Load contacts for dropdown
+        async function loadContacts() {
+            try {
+                const res = await fetchWithAuth(`${API_BASE}/contacts?limit=100`);
+                const data = await res.json();
+                if (data.success) {
+                    contacts = data.data || data.items || [];
+                    populateContactDropdown();
+                }
+            } catch (err) {
+                console.error('Error loading contacts:', err);
+            }
+        }
+
+        function populateContactDropdown() {
+            const select = document.getElementById('ticketContactId');
+            select.innerHTML = '<option value="">Select a contact...</option>';
+            contacts.forEach(c => {
+                const name = c.name || c.pushname || 'Unknown';
+                const phone = c.phoneNumber || '';
+                select.innerHTML += `<option value="${c.id}">${name}${phone ? ' (' + phone + ')' : ''}</option>`;
+            });
+        }
+
+        // Load tickets
+        async function loadTickets(page = 1) {
+            currentPage = page;
+            const search = document.getElementById('searchInput').value;
+            const status = document.getElementById('statusFilter').value;
+            const priority = document.getElementById('priorityFilter').value;
+            const category = document.getElementById('categoryFilter').value;
+
+            const params = new URLSearchParams();
+            params.set('page', page);
+            params.set('limit', 20);
+            if (search) params.set('search', search);
+            if (status) params.set('status', status);
+            if (priority) params.set('priority', priority);
+            if (category) params.set('category', category);
+
+            try {
+                const res = await fetchWithAuth(`${API_BASE}/service-tickets?${params}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    const tickets = data.items || data.data || [];
+                    const pagination = data.pagination || {};
+                    updateStats(tickets, pagination.total || tickets.length);
+                    renderTickets(tickets);
+                    renderPagination(pagination);
+                } else {
+                    document.getElementById('ticketsList').innerHTML = `
+                        <div class="bg-white rounded-xl shadow-sm p-8 text-center text-red-500">
+                            <i class="fas fa-exclamation-triangle text-4xl mb-2"></i>
+                            <p>Error loading tickets: ${data.error || 'Unknown error'}</p>
+                        </div>`;
+                }
+            } catch (err) {
+                console.error('Error loading tickets:', err);
+                document.getElementById('ticketsList').innerHTML = `
+                    <div class="bg-white rounded-xl shadow-sm p-8 text-center text-red-500">
+                        <i class="fas fa-exclamation-triangle text-4xl mb-2"></i>
+                        <p>Failed to connect to server</p>
+                    </div>`;
+            }
+        }
+
+        // Update stat cards
+        function updateStats(tickets, total) {
+            document.getElementById('totalTickets').textContent = total || 0;
+            const open = tickets.filter(t => t.status === 'OPEN').length;
+            const inProgress = tickets.filter(t => t.status === 'IN_PROGRESS').length;
+            const completed = tickets.filter(t => t.status === 'TICKET_COMPLETED').length;
+            document.getElementById('openTickets').textContent = open;
+            document.getElementById('inProgressTickets').textContent = inProgress;
+            document.getElementById('completedTickets').textContent = completed;
+        }
+
+        // Render ticket cards
+        function renderTickets(tickets) {
+            const container = document.getElementById('ticketsList');
+
+            if (!tickets || tickets.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white rounded-xl shadow-sm p-12 text-center">
+                        <i class="fas fa-ticket text-6xl text-gray-300 mb-4"></i>
+                        <h3 class="text-xl font-semibold text-gray-500 mb-2">No Service Tickets Found</h3>
+                        <p class="text-gray-400 mb-6">Create your first service ticket to get started.</p>
+                        <button onclick="showCreateModal()"
+                            class="gradient-btn text-white px-6 py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+                            <i class="fas fa-plus mr-2"></i>Create Ticket
+                        </button>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = '<div class="space-y-4">' + tickets.map(ticket => {
+                const contactName = ticket.contact ? (ticket.contact.name || ticket.contact.phoneNumber || 'Unknown') : 'N/A';
+                const updatesCount = ticket._count ? ticket._count.updates : 0;
+                const partsCount = ticket._count ? ticket._count.parts : 0;
+
+                return `
+                <div class="bg-white rounded-xl shadow-sm p-5 hover:shadow-md transition-shadow border border-gray-100">
+                    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-3 mb-2 flex-wrap">
+                                <span class="bg-gray-800 text-white px-3 py-1 rounded-full text-xs font-mono font-semibold">${ticket.ticketNumber || 'N/A'}</span>
+                                ${getPriorityBadge(ticket.priority)}
+                                ${getStatusBadge(ticket.status)}
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-800 mb-1 truncate">${ticket.title}</h3>
+                            <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500 mt-2">
+                                <span><i class="fas fa-user mr-1"></i>${contactName}</span>
+                                ${ticket.category ? `<span><i class="fas fa-folder mr-1"></i>${ticket.category}</span>` : ''}
+                                ${ticket.deviceType || ticket.deviceModel ? `<span><i class="fas fa-laptop mr-1"></i>${[ticket.deviceType, ticket.deviceModel].filter(Boolean).join(' - ')}</span>` : ''}
+                            </div>
+                            <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-400 mt-2">
+                                ${ticket.estimatedCost ? `<span><i class="fas fa-calculator mr-1"></i>Est: PKR ${Number(ticket.estimatedCost).toLocaleString()}</span>` : ''}
+                                ${ticket.actualCost ? `<span><i class="fas fa-money-bill mr-1"></i>Actual: PKR ${Number(ticket.actualCost).toLocaleString()}</span>` : ''}
+                                <span><i class="fas fa-calendar mr-1"></i>${formatDate(ticket.createdAt)}</span>
+                                <span><i class="fas fa-comment mr-1"></i>${updatesCount} updates</span>
+                                <span><i class="fas fa-cog mr-1"></i>${partsCount} parts</span>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-2 flex-shrink-0">
+                            <button onclick="viewTicket('${ticket.id}')"
+                                class="px-3 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors">
+                                <i class="fas fa-eye mr-1"></i>View
+                            </button>
+                            <button onclick="showEditModal('${ticket.id}')"
+                                class="px-3 py-2 bg-yellow-50 text-yellow-600 rounded-lg text-sm font-medium hover:bg-yellow-100 transition-colors">
+                                <i class="fas fa-edit mr-1"></i>Edit
+                            </button>
+                            <button onclick="showUpdateModal('${ticket.id}')"
+                                class="px-3 py-2 bg-green-50 text-green-600 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors">
+                                <i class="fas fa-plus mr-1"></i>Update
+                            </button>
+                            <button onclick="showPartModal('${ticket.id}')"
+                                class="px-3 py-2 bg-purple-50 text-purple-600 rounded-lg text-sm font-medium hover:bg-purple-100 transition-colors">
+                                <i class="fas fa-cog mr-1"></i>Part
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('') + '</div>';
+        }
+
+        // Render pagination
+        function renderPagination(pagination) {
+            const container = document.getElementById('pagination');
+            if (!pagination || !pagination.totalPages || pagination.totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const { page, totalPages, total, perPage } = pagination;
+            const start = ((page - 1) * perPage) + 1;
+            const end = Math.min(page * perPage, total);
+
+            let buttons = '';
+            buttons += `<button onclick="loadTickets(${page - 1})" ${page <= 1 ? 'disabled' : ''}
+                class="px-4 py-2 rounded-lg text-sm font-medium ${page <= 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50 border'}">
+                <i class="fas fa-chevron-left mr-1"></i>Previous
+            </button>`;
+
+            buttons += `<span class="text-sm text-gray-500">Showing ${start}-${end} of ${total} tickets</span>`;
+
+            buttons += `<button onclick="loadTickets(${page + 1})" ${page >= totalPages ? 'disabled' : ''}
+                class="px-4 py-2 rounded-lg text-sm font-medium ${page >= totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50 border'}">
+                Next<i class="fas fa-chevron-right ml-1"></i>
+            </button>`;
+
+            container.innerHTML = buttons;
+        }
+
+        // Show create modal
+        function showCreateModal() {
+            document.getElementById('ticketModalTitle').textContent = 'Create Service Ticket';
+            document.getElementById('ticketSubmitText').textContent = 'Create Ticket';
+            document.getElementById('editTicketId').value = '';
+            document.getElementById('editStatusGroup').classList.add('hidden');
+            document.getElementById('ticketForm').reset();
+            document.getElementById('ticketPriority').value = 'MEDIUM';
+            populateContactDropdown();
+            showModal('ticketModal');
+        }
+
+        // Show edit modal
+        async function showEditModal(id) {
+            try {
+                const res = await fetchWithAuth(`${API_BASE}/service-tickets/${id}`);
+                const data = await res.json();
+                if (!data.success) {
+                    showNotification('Failed to load ticket', 'error');
+                    return;
+                }
+                const ticket = data.data;
+
+                document.getElementById('ticketModalTitle').textContent = 'Edit Service Ticket';
+                document.getElementById('ticketSubmitText').textContent = 'Update Ticket';
+                document.getElementById('editTicketId').value = id;
+                document.getElementById('editStatusGroup').classList.remove('hidden');
+
+                populateContactDropdown();
+                document.getElementById('ticketContactId').value = ticket.contactId || '';
+                document.getElementById('ticketTitle').value = ticket.title || '';
+                document.getElementById('ticketDescription').value = ticket.description || '';
+                document.getElementById('ticketCategory').value = ticket.category || '';
+                document.getElementById('ticketPriority').value = ticket.priority || 'MEDIUM';
+                document.getElementById('ticketDeviceType').value = ticket.deviceType || '';
+                document.getElementById('ticketDeviceModel').value = ticket.deviceModel || '';
+                document.getElementById('ticketSerialNumber').value = ticket.serialNumber || '';
+                document.getElementById('ticketProblemDescription').value = ticket.problemDescription || '';
+                document.getElementById('ticketEstimatedCost').value = ticket.estimatedCost || '';
+                document.getElementById('ticketStatus').value = ticket.status || 'OPEN';
+
+                showModal('ticketModal');
+            } catch (err) {
+                console.error('Error loading ticket:', err);
+                showNotification('Failed to load ticket', 'error');
+            }
+        }
+
+        // Save ticket (create or update)
+        async function saveTicket(event) {
+            event.preventDefault();
+            const editId = document.getElementById('editTicketId').value;
+            const isEdit = !!editId;
+
+            const payload = {};
+
+            if (!isEdit) {
+                // Create: include contactId
+                payload.contactId = document.getElementById('ticketContactId').value;
+            }
+
+            payload.title = document.getElementById('ticketTitle').value;
+            const desc = document.getElementById('ticketDescription').value;
+            if (desc) payload.description = desc;
+            const cat = document.getElementById('ticketCategory').value;
+            if (cat) payload.category = cat;
+            payload.priority = document.getElementById('ticketPriority').value;
+            const deviceType = document.getElementById('ticketDeviceType').value;
+            if (deviceType) payload.deviceType = deviceType;
+            const deviceModel = document.getElementById('ticketDeviceModel').value;
+            if (deviceModel) payload.deviceModel = deviceModel;
+            const serial = document.getElementById('ticketSerialNumber').value;
+            if (serial) payload.serialNumber = serial;
+            const problem = document.getElementById('ticketProblemDescription').value;
+            if (problem) payload.problemDescription = problem;
+            const cost = document.getElementById('ticketEstimatedCost').value;
+            if (cost) payload.estimatedCost = parseFloat(cost);
+
+            if (isEdit) {
+                payload.status = document.getElementById('ticketStatus').value;
+            }
+
+            try {
+                const url = isEdit ? `${API_BASE}/service-tickets/${editId}` : `${API_BASE}/service-tickets`;
+                const method = isEdit ? 'PUT' : 'POST';
+
+                const res = await fetchWithAuth(url, {
+                    method,
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    showNotification(isEdit ? 'Ticket updated successfully' : 'Ticket created successfully', 'success');
+                    hideModal('ticketModal');
+                    loadTickets(currentPage);
+                } else {
+                    showNotification(data.error || 'Failed to save ticket', 'error');
+                }
+            } catch (err) {
+                console.error('Error saving ticket:', err);
+                showNotification('Failed to save ticket', 'error');
+            }
+        }
+
+        // View ticket detail
+        async function viewTicket(id) {
+            showModal('detailModal');
+            document.getElementById('detailContent').innerHTML = `
+                <div class="p-8 text-center text-gray-500">
+                    <i class="fas fa-spinner fa-spin text-4xl mb-2"></i>
+                    <p>Loading ticket details...</p>
+                </div>`;
+
+            try {
+                const res = await fetchWithAuth(`${API_BASE}/service-tickets/${id}`);
+                const data = await res.json();
+
+                if (!data.success) {
+                    document.getElementById('detailContent').innerHTML = `
+                        <div class="p-8 text-center text-red-500">
+                            <i class="fas fa-exclamation-triangle text-4xl mb-2"></i>
+                            <p>Failed to load ticket details</p>
+                        </div>`;
+                    return;
+                }
+
+                const ticket = data.data;
+                renderTicketDetail(ticket);
+            } catch (err) {
+                console.error('Error loading ticket detail:', err);
+                document.getElementById('detailContent').innerHTML = `
+                    <div class="p-8 text-center text-red-500">
+                        <i class="fas fa-exclamation-triangle text-4xl mb-2"></i>
+                        <p>Failed to connect to server</p>
+                    </div>`;
+            }
+        }
+
+        // Render ticket detail
+        function renderTicketDetail(ticket) {
+            const contact = ticket.contact || {};
+            const contactName = contact.name || contact.phoneNumber || 'Unknown';
+            const updates = ticket.updates || [];
+            const parts = ticket.parts || [];
+
+            // Calculate cost summary
+            const partsCost = parts.reduce((sum, p) => sum + (Number(p.cost) * Number(p.quantity)), 0);
+            const partsPrice = parts.reduce((sum, p) => sum + (Number(p.price) * Number(p.quantity)), 0);
+
+            let html = `
+                <!-- Ticket Header -->
+                <div class="bg-gray-50 rounded-xl p-5 mb-6">
+                    <div class="flex items-center gap-3 mb-3 flex-wrap">
+                        <span class="bg-gray-800 text-white px-4 py-1.5 rounded-full text-sm font-mono font-bold">${ticket.ticketNumber || 'N/A'}</span>
+                        ${getPriorityBadge(ticket.priority)}
+                        ${getStatusBadge(ticket.status)}
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">${ticket.title}</h3>
+                    ${ticket.description ? `<p class="text-gray-600 mb-3">${ticket.description}</p>` : ''}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                        <div><span class="text-gray-500 font-medium">Contact:</span> <span class="text-gray-800">${contactName}</span></div>
+                        ${contact.phoneNumber ? `<div><span class="text-gray-500 font-medium">Phone:</span> <span class="text-gray-800">${contact.phoneNumber}</span></div>` : ''}
+                        ${contact.email ? `<div><span class="text-gray-500 font-medium">Email:</span> <span class="text-gray-800">${contact.email}</span></div>` : ''}
+                        ${ticket.category ? `<div><span class="text-gray-500 font-medium">Category:</span> <span class="text-gray-800">${ticket.category}</span></div>` : ''}
+                        ${ticket.deviceType ? `<div><span class="text-gray-500 font-medium">Device Type:</span> <span class="text-gray-800">${ticket.deviceType}</span></div>` : ''}
+                        ${ticket.deviceModel ? `<div><span class="text-gray-500 font-medium">Device Model:</span> <span class="text-gray-800">${ticket.deviceModel}</span></div>` : ''}
+                        ${ticket.serialNumber ? `<div><span class="text-gray-500 font-medium">Serial Number:</span> <span class="text-gray-800 font-mono">${ticket.serialNumber}</span></div>` : ''}
+                        ${ticket.assignedTo ? `<div><span class="text-gray-500 font-medium">Assigned To:</span> <span class="text-gray-800">${ticket.assignedTo}</span></div>` : ''}
+                        <div><span class="text-gray-500 font-medium">Created:</span> <span class="text-gray-800">${formatDateTime(ticket.createdAt)}</span></div>
+                        ${ticket.updatedAt ? `<div><span class="text-gray-500 font-medium">Updated:</span> <span class="text-gray-800">${formatDateTime(ticket.updatedAt)}</span></div>` : ''}
+                        ${ticket.estimatedCompletionDate ? `<div><span class="text-gray-500 font-medium">Est. Completion:</span> <span class="text-gray-800">${formatDate(ticket.estimatedCompletionDate)}</span></div>` : ''}
+                        ${ticket.actualCompletionDate ? `<div><span class="text-gray-500 font-medium">Completed:</span> <span class="text-gray-800">${formatDate(ticket.actualCompletionDate)}</span></div>` : ''}
+                    </div>
+                    ${ticket.problemDescription ? `
+                        <div class="mt-4 p-3 bg-white rounded-lg border">
+                            <div class="text-sm font-medium text-gray-500 mb-1">Problem Description</div>
+                            <p class="text-gray-700">${ticket.problemDescription}</p>
+                        </div>` : ''}
+                    ${ticket.diagnosisNotes ? `
+                        <div class="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                            <div class="text-sm font-medium text-yellow-700 mb-1">Diagnosis Notes</div>
+                            <p class="text-gray-700">${ticket.diagnosisNotes}</p>
+                        </div>` : ''}
+                </div>
+
+                <!-- Cost Summary -->
+                <div class="bg-white border rounded-xl p-5 mb-6">
+                    <h4 class="text-lg font-bold text-gray-800 mb-3"><i class="fas fa-calculator mr-2"></i>Cost Summary</h4>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                        <div class="p-3 bg-blue-50 rounded-lg">
+                            <div class="text-sm text-blue-600 font-medium">Estimated Cost</div>
+                            <div class="text-xl font-bold text-blue-800">PKR ${ticket.estimatedCost ? Number(ticket.estimatedCost).toLocaleString() : '0'}</div>
+                        </div>
+                        <div class="p-3 bg-green-50 rounded-lg">
+                            <div class="text-sm text-green-600 font-medium">Actual Cost</div>
+                            <div class="text-xl font-bold text-green-800">PKR ${ticket.actualCost ? Number(ticket.actualCost).toLocaleString() : '0'}</div>
+                        </div>
+                        <div class="p-3 bg-purple-50 rounded-lg">
+                            <div class="text-sm text-purple-600 font-medium">Parts Cost</div>
+                            <div class="text-xl font-bold text-purple-800">PKR ${partsCost.toLocaleString()}</div>
+                        </div>
+                        <div class="p-3 bg-orange-50 rounded-lg">
+                            <div class="text-sm text-orange-600 font-medium">Parts Price (Customer)</div>
+                            <div class="text-xl font-bold text-orange-800">PKR ${partsPrice.toLocaleString()}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Updates Timeline -->
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-3">
+                        <h4 class="text-lg font-bold text-gray-800"><i class="fas fa-history mr-2"></i>Updates Timeline (${updates.length})</h4>
+                        <button onclick="showUpdateModal('${ticket.id}')"
+                            class="px-3 py-1.5 bg-green-50 text-green-600 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors">
+                            <i class="fas fa-plus mr-1"></i>Add Update
+                        </button>
+                    </div>`;
+
+            if (updates.length === 0) {
+                html += `
+                    <div class="bg-gray-50 rounded-xl p-6 text-center text-gray-400">
+                        <i class="fas fa-stream text-3xl mb-2"></i>
+                        <p>No updates yet</p>
+                    </div>`;
+            } else {
+                html += '<div class="space-y-3">';
+                updates.forEach(update => {
+                    html += `
+                        <div class="bg-gray-50 rounded-lg p-4 border-l-4 ${
+                            update.updateType === 'STATUS_CHANGE' ? 'border-blue-400' :
+                            update.updateType === 'DIAGNOSIS' ? 'border-yellow-400' :
+                            update.updateType === 'CUSTOMER_CONTACT' ? 'border-green-400' :
+                            'border-gray-300'
+                        }">
+                            <div class="flex items-center justify-between mb-2">
+                                ${getUpdateTypeBadge(update.updateType)}
+                                <span class="text-xs text-gray-400">${formatDateTime(update.createdAt)}</span>
+                            </div>
+                            ${update.content ? `<p class="text-gray-700 text-sm">${update.content}</p>` : ''}
+                            ${update.oldStatus && update.newStatus ? `
+                                <div class="mt-2 flex items-center gap-2 text-xs">
+                                    ${getStatusBadge(update.oldStatus)}
+                                    <i class="fas fa-arrow-right text-gray-400"></i>
+                                    ${getStatusBadge(update.newStatus)}
+                                </div>` : ''}
+                        </div>`;
+                });
+                html += '</div>';
+            }
+
+            // Parts List
+            html += `
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-3">
+                        <h4 class="text-lg font-bold text-gray-800"><i class="fas fa-cog mr-2"></i>Parts (${parts.length})</h4>
+                        <button onclick="showPartModal('${ticket.id}')"
+                            class="px-3 py-1.5 bg-purple-50 text-purple-600 rounded-lg text-sm font-medium hover:bg-purple-100 transition-colors">
+                            <i class="fas fa-plus mr-1"></i>Add Part
+                        </button>
+                    </div>`;
+
+            if (parts.length === 0) {
+                html += `
+                    <div class="bg-gray-50 rounded-xl p-6 text-center text-gray-400">
+                        <i class="fas fa-puzzle-piece text-3xl mb-2"></i>
+                        <p>No parts added yet</p>
+                    </div>`;
+            } else {
+                html += `
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="bg-gray-50">
+                                    <th class="text-left p-3 font-semibold text-gray-600">Part Name</th>
+                                    <th class="text-center p-3 font-semibold text-gray-600">Qty</th>
+                                    <th class="text-right p-3 font-semibold text-gray-600">Cost</th>
+                                    <th class="text-right p-3 font-semibold text-gray-600">Price</th>
+                                    <th class="text-center p-3 font-semibold text-gray-600">Status</th>
+                                    <th class="text-center p-3 font-semibold text-gray-600">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y">`;
+
+                parts.forEach(part => {
+                    html += `
+                                <tr class="hover:bg-gray-50">
+                                    <td class="p-3">
+                                        <span class="font-medium text-gray-800">${part.partName}</span>
+                                        ${part.product ? `<span class="text-xs text-gray-400 ml-1">(${part.product.sku || part.product.name})</span>` : ''}
+                                    </td>
+                                    <td class="p-3 text-center">${part.quantity}</td>
+                                    <td class="p-3 text-right">PKR ${Number(part.cost).toLocaleString()}</td>
+                                    <td class="p-3 text-right">PKR ${Number(part.price).toLocaleString()}</td>
+                                    <td class="p-3 text-center">${getPartStatusBadge(part.status || 'REQUIRED')}</td>
+                                    <td class="p-3 text-center">
+                                        <select onchange="updatePartStatus('${ticket.id}', '${part.id}', this.value)"
+                                            class="text-xs border rounded px-2 py-1">
+                                            <option value="" disabled selected>Change status</option>
+                                            <option value="REQUIRED">Required</option>
+                                            <option value="ORDERED">Ordered</option>
+                                            <option value="RECEIVED">Received</option>
+                                            <option value="INSTALLED">Installed</option>
+                                        </select>
+                                    </td>
+                                </tr>`;
+                });
+
+                html += `
+                            </tbody>
+                        </table>
+                    </div>`;
+            }
+
+            html += '</div>';
+            document.getElementById('detailContent').innerHTML = html;
+        }
+
+        // Show update modal
+        function showUpdateModal(ticketId) {
+            document.getElementById('updateTicketId').value = ticketId;
+            document.getElementById('updateForm').reset();
+            document.getElementById('newStatusGroup').classList.add('hidden');
+            showModal('updateModal');
+        }
+
+        // Save update
+        async function saveUpdate(event) {
+            event.preventDefault();
+            const ticketId = document.getElementById('updateTicketId').value;
+            const updateType = document.getElementById('updateType').value;
+            const content = document.getElementById('updateContent').value;
+
+            const payload = { updateType, content };
+
+            try {
+                // If status change, also update ticket status
+                if (updateType === 'STATUS_CHANGE') {
+                    const newStatus = document.getElementById('updateNewStatus').value;
+                    await fetchWithAuth(`${API_BASE}/service-tickets/${ticketId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ status: newStatus })
+                    });
+                }
+
+                const res = await fetchWithAuth(`${API_BASE}/service-tickets/${ticketId}/updates`, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    showNotification('Update added successfully', 'success');
+                    hideModal('updateModal');
+                    loadTickets(currentPage);
+                    // Refresh detail if it's open
+                    if (!document.getElementById('detailModal').classList.contains('hidden')) {
+                        viewTicket(ticketId);
+                    }
+                } else {
+                    showNotification(data.error || 'Failed to add update', 'error');
+                }
+            } catch (err) {
+                console.error('Error adding update:', err);
+                showNotification('Failed to add update', 'error');
+            }
+        }
+
+        // Show part modal
+        function showPartModal(ticketId) {
+            document.getElementById('partTicketId').value = ticketId;
+            document.getElementById('partForm').reset();
+            document.getElementById('partQuantity').value = 1;
+            showModal('partModal');
+        }
+
+        // Save part
+        async function savePart(event) {
+            event.preventDefault();
+            const ticketId = document.getElementById('partTicketId').value;
+
+            const payload = {
+                partName: document.getElementById('partName').value,
+                quantity: parseInt(document.getElementById('partQuantity').value),
+                cost: parseFloat(document.getElementById('partCost').value),
+                price: parseFloat(document.getElementById('partPrice').value)
+            };
+
+            try {
+                const res = await fetchWithAuth(`${API_BASE}/service-tickets/${ticketId}/parts`, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    showNotification('Part added successfully', 'success');
+                    hideModal('partModal');
+                    loadTickets(currentPage);
+                    // Refresh detail if it's open
+                    if (!document.getElementById('detailModal').classList.contains('hidden')) {
+                        viewTicket(ticketId);
+                    }
+                } else {
+                    showNotification(data.error || 'Failed to add part', 'error');
+                }
+            } catch (err) {
+                console.error('Error adding part:', err);
+                showNotification('Failed to add part', 'error');
+            }
+        }
+
+        // Update part status
+        async function updatePartStatus(ticketId, partId, newStatus) {
+            if (!newStatus) return;
+
+            try {
+                const res = await fetchWithAuth(`${API_BASE}/service-tickets/${ticketId}/parts/${partId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    showNotification('Part status updated', 'success');
+                    // Refresh detail view
+                    viewTicket(ticketId);
+                } else {
+                    showNotification(data.error || 'Failed to update part', 'error');
+                }
+            } catch (err) {
+                console.error('Error updating part:', err);
+                showNotification('Failed to update part', 'error');
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadContacts();
+            loadTickets(1);
+        });
+    </script>
+</body>
+</html>

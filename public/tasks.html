@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasks - WhatsApp Mailbox</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://whatshub.nexofydigital.com:3000 https://whatshub.nexofydigital.com:3000;">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-btn { background: linear-gradient(135deg, #128C7E 0%, #25D366 100%); }
+        .gradient-btn:hover { background: linear-gradient(135deg, #0d6b5f 0%, #1fb855 100%); }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <script>
+        if (!localStorage.getItem('authToken')) window.location.href = '/login.html';
+    </script>
+    <script src="/js/navbar.js"></script>
+
+    <div class="max-w-7xl mx-auto px-4 py-6">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">&#10004;&#65039; Tasks</h1>
+                <p class="text-gray-600 mt-1">Manage and track your tasks</p>
+            </div>
+            <button onclick="showCreateModal()"
+                class="gradient-btn text-white px-6 py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+                <i class="fas fa-plus mr-2"></i>Create Task
+            </button>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+            <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-gray-400">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-3xl font-bold text-gray-800" id="totalCount">0</div>
+                        <div class="text-sm text-gray-500">Total Tasks</div>
+                    </div>
+                    <div class="p-3 bg-gray-100 rounded-full">
+                        <i class="fas fa-tasks text-gray-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-yellow-400">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-3xl font-bold text-yellow-600" id="pendingCount">0</div>
+                        <div class="text-sm text-gray-500">Pending</div>
+                    </div>
+                    <div class="p-3 bg-yellow-100 rounded-full">
+                        <i class="fas fa-clock text-yellow-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-blue-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-3xl font-bold text-blue-600" id="inProgressCount">0</div>
+                        <div class="text-sm text-gray-500">In Progress</div>
+                    </div>
+                    <div class="p-3 bg-blue-100 rounded-full">
+                        <i class="fas fa-spinner text-blue-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-green-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-3xl font-bold text-green-600" id="completedCount">0</div>
+                        <div class="text-sm text-gray-500">Completed</div>
+                    </div>
+                    <div class="p-3 bg-green-100 rounded-full">
+                        <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-red-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-3xl font-bold text-red-600" id="overdueCount">0</div>
+                        <div class="text-sm text-gray-500">Overdue</div>
+                    </div>
+                    <div class="p-3 bg-red-100 rounded-full">
+                        <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm">
+            <!-- Filters & Search -->
+            <div class="p-4 border-b grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="md:col-span-2 relative">
+                    <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                    <input type="text" id="searchInput" placeholder="Search tasks..."
+                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                </div>
+                <select id="statusFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                    <option value="">All Status</option>
+                    <option value="TASK_PENDING">Pending</option>
+                    <option value="TASK_IN_PROGRESS">In Progress</option>
+                    <option value="TASK_COMPLETED">Completed</option>
+                    <option value="TASK_CANCELLED">Cancelled</option>
+                </select>
+                <select id="priorityFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                    <option value="">All Priorities</option>
+                    <option value="TASK_LOW">Low</option>
+                    <option value="TASK_MEDIUM">Medium</option>
+                    <option value="TASK_HIGH">High</option>
+                    <option value="TASK_URGENT">Urgent</option>
+                </select>
+            </div>
+
+            <!-- Tasks List -->
+            <div id="tasksList" class="divide-y">
+                <div class="p-8 text-center text-gray-500">
+                    <i class="fas fa-spinner fa-spin text-4xl mb-2"></i>
+                    <p>Loading tasks...</p>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <div id="pagination" class="p-4 border-t flex justify-between items-center"></div>
+        </div>
+    </div>
+
+    <!-- Create/Edit Task Modal -->
+    <div id="taskModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <h2 id="modalTitle" class="text-2xl font-bold text-gray-800">Create Task</h2>
+                <button onclick="hideModal()" class="p-2 hover:bg-gray-100 rounded-full transition-all">
+                    <i class="fas fa-times text-gray-500"></i>
+                </button>
+            </div>
+            <form id="taskForm" class="space-y-4">
+                <input type="hidden" id="taskId">
+
+                <div>
+                    <label class="block text-gray-700 mb-2 font-medium">Title *</label>
+                    <input type="text" id="taskTitle" required
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        placeholder="e.g., Follow up with client">
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 mb-2 font-medium">Description</label>
+                    <textarea id="taskDescription" rows="4"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        placeholder="Task details..."></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2 font-medium">Contact</label>
+                        <select id="taskContact"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                            <option value="">Select Contact</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2 font-medium">Due Date</label>
+                        <input type="datetime-local" id="taskDueDate"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2 font-medium">Priority</label>
+                        <select id="taskPriority"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                            <option value="TASK_LOW">Low</option>
+                            <option value="TASK_MEDIUM" selected>Medium</option>
+                            <option value="TASK_HIGH">High</option>
+                            <option value="TASK_URGENT">Urgent</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2 font-medium">Status</label>
+                        <select id="taskStatus"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                            <option value="TASK_PENDING">Pending</option>
+                            <option value="TASK_IN_PROGRESS">In Progress</option>
+                            <option value="TASK_COMPLETED">Completed</option>
+                            <option value="TASK_CANCELLED">Cancelled</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="border-t pt-4 flex space-x-4">
+                    <button type="submit" class="flex-1 gradient-btn text-white py-3 rounded-lg font-semibold shadow-lg transition-all">
+                        <i class="fas fa-save mr-2"></i>Save Task
+                    </button>
+                    <button type="button" onclick="hideModal()"
+                        class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 rounded-lg font-semibold transition-all">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-trash-alt text-red-600 text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Delete Task</h3>
+                <p class="text-gray-600">Are you sure you want to delete this task? This action cannot be undone.</p>
+            </div>
+            <div class="flex space-x-4">
+                <button onclick="confirmDelete()" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-semibold transition-all">
+                    <i class="fas fa-trash mr-2"></i>Delete
+                </button>
+                <button onclick="hideDeleteModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 rounded-lg font-semibold transition-all">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api/v1';
+        let currentPage = 1;
+        let totalPages = 1;
+        let allContacts = [];
+        let deleteTaskId = null;
+
+        async function fetchWithAuth(url, options = {}) {
+            const token = localStorage.getItem('authToken');
+            const headers = {
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` }),
+                ...options.headers
+            };
+            try {
+                const response = await fetch(url, { ...options, headers });
+                if (response.status === 401) {
+                    localStorage.removeItem('authToken');
+                    window.location.href = '/login.html';
+                }
+                return response;
+            } catch (error) {
+                console.error('Fetch error:', error);
+                throw error;
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500', warning: 'bg-yellow-500' };
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 ${colors[type] || colors.info} text-white px-6 py-3 rounded-lg shadow-lg z-[100] transition-all`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // --- Priority & Status helpers ---
+
+        function getPriorityBadge(priority) {
+            const map = {
+                'TASK_URGENT': { color: 'bg-red-100 text-red-700', label: 'Urgent', icon: 'fa-fire' },
+                'TASK_HIGH':   { color: 'bg-orange-100 text-orange-700', label: 'High', icon: 'fa-arrow-up' },
+                'TASK_MEDIUM': { color: 'bg-yellow-100 text-yellow-700', label: 'Medium', icon: 'fa-minus' },
+                'TASK_LOW':    { color: 'bg-blue-100 text-blue-700', label: 'Low', icon: 'fa-arrow-down' }
+            };
+            const info = map[priority] || map['TASK_MEDIUM'];
+            return `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${info.color}">
+                <i class="fas ${info.icon} mr-1 text-[10px]"></i>${info.label}
+            </span>`;
+        }
+
+        function getStatusBadge(status) {
+            const map = {
+                'TASK_PENDING':     { color: 'bg-yellow-100 text-yellow-700', label: 'Pending' },
+                'TASK_IN_PROGRESS': { color: 'bg-blue-100 text-blue-700', label: 'In Progress' },
+                'TASK_COMPLETED':   { color: 'bg-green-100 text-green-700', label: 'Completed' },
+                'TASK_CANCELLED':   { color: 'bg-gray-100 text-gray-500', label: 'Cancelled' }
+            };
+            const info = map[status] || map['TASK_PENDING'];
+            return `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${info.color}">${info.label}</span>`;
+        }
+
+        function isOverdue(task) {
+            if (!task.dueDate) return false;
+            if (task.status === 'TASK_COMPLETED' || task.status === 'TASK_CANCELLED') return false;
+            return new Date(task.dueDate) < new Date();
+        }
+
+        function formatDueDate(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diff = date - now;
+            const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+
+            const formatted = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+            if (diff < 0) {
+                return `<span class="text-red-600 font-semibold"><i class="fas fa-exclamation-circle mr-1"></i>${formatted} ${time}</span>`;
+            } else if (days <= 1) {
+                return `<span class="text-orange-600 font-semibold"><i class="fas fa-clock mr-1"></i>${formatted} ${time}</span>`;
+            }
+            return `<span class="text-gray-600"><i class="fas fa-calendar mr-1"></i>${formatted} ${time}</span>`;
+        }
+
+        function toLocalDatetimeValue(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            const offset = d.getTimezoneOffset();
+            const local = new Date(d.getTime() - offset * 60000);
+            return local.toISOString().slice(0, 16);
+        }
+
+        // --- Load contacts for dropdown ---
+
+        async function loadContacts() {
+            try {
+                const response = await fetchWithAuth(`${API_BASE}/contacts?limit=100`);
+                if (response.ok) {
+                    const result = await response.json();
+                    allContacts = Array.isArray(result.data) ? result.data : (Array.isArray(result) ? result : []);
+                    populateContactDropdown();
+                }
+            } catch (error) {
+                console.error('Error loading contacts:', error);
+            }
+        }
+
+        function populateContactDropdown() {
+            const select = document.getElementById('taskContact');
+            select.innerHTML = '<option value="">Select Contact</option>' +
+                allContacts.map(c => {
+                    const name = c.name || c.pushName || c.phoneNumber || c.phone || 'Unknown';
+                    const phone = c.phoneNumber || c.phone || '';
+                    return `<option value="${c.id}">${name}${phone ? ' (' + phone + ')' : ''}</option>`;
+                }).join('');
+        }
+
+        function getContactName(contactId) {
+            if (!contactId) return '';
+            const contact = allContacts.find(c => c.id === contactId);
+            if (!contact) return '';
+            return contact.name || contact.pushName || contact.phoneNumber || contact.phone || 'Unknown';
+        }
+
+        // --- Load tasks ---
+
+        async function loadTasks(page = 1) {
+            currentPage = page;
+            const search = document.getElementById('searchInput').value;
+            const status = document.getElementById('statusFilter').value;
+            const priority = document.getElementById('priorityFilter').value;
+
+            const params = new URLSearchParams();
+            params.set('page', page);
+            params.set('limit', 20);
+            if (search) params.set('search', search);
+            if (status) params.set('status', status);
+            if (priority) params.set('priority', priority);
+
+            try {
+                const response = await fetchWithAuth(`${API_BASE}/tasks?${params}`);
+                if (response.ok) {
+                    const result = await response.json();
+                    const tasks = Array.isArray(result.data) ? result.data : (Array.isArray(result) ? result : []);
+                    const pagination = result.pagination || result.meta || {};
+                    totalPages = pagination.totalPages || pagination.pages || 1;
+                    updateStats(tasks, result);
+                    displayTasks(tasks);
+                    renderPagination(pagination);
+                } else {
+                    displayTasks([]);
+                    showNotification('Failed to load tasks', 'error');
+                }
+            } catch (error) {
+                console.error('Error loading tasks:', error);
+                displayTasks([]);
+            }
+        }
+
+        function updateStats(tasks, result) {
+            const stats = result.stats || {};
+            if (stats.total !== undefined) {
+                document.getElementById('totalCount').textContent = stats.total || 0;
+                document.getElementById('pendingCount').textContent = stats.pending || 0;
+                document.getElementById('inProgressCount').textContent = stats.inProgress || 0;
+                document.getElementById('completedCount').textContent = stats.completed || 0;
+                document.getElementById('overdueCount').textContent = stats.overdue || 0;
+            } else {
+                // Calculate from the tasks array if stats not provided
+                const allTasks = tasks;
+                const total = result.pagination?.total || result.meta?.total || allTasks.length;
+                const pending = allTasks.filter(t => t.status === 'TASK_PENDING').length;
+                const inProgress = allTasks.filter(t => t.status === 'TASK_IN_PROGRESS').length;
+                const completed = allTasks.filter(t => t.status === 'TASK_COMPLETED').length;
+                const overdue = allTasks.filter(t => isOverdue(t)).length;
+
+                document.getElementById('totalCount').textContent = total;
+                document.getElementById('pendingCount').textContent = pending;
+                document.getElementById('inProgressCount').textContent = inProgress;
+                document.getElementById('completedCount').textContent = completed;
+                document.getElementById('overdueCount').textContent = overdue;
+            }
+        }
+
+        function displayTasks(tasks) {
+            const container = document.getElementById('tasksList');
+
+            if (tasks.length === 0) {
+                container.innerHTML = `
+                    <div class="p-12 text-center">
+                        <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-tasks text-4xl text-gray-400"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-700 mb-2">No tasks found</h3>
+                        <p class="text-gray-500 mb-6">Create your first task to get started</p>
+                        <button onclick="showCreateModal()" class="gradient-btn text-white px-6 py-3 rounded-lg font-medium shadow-lg">
+                            <i class="fas fa-plus mr-2"></i>Create Task
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = tasks.map(task => {
+                const isComplete = task.status === 'TASK_COMPLETED';
+                const isCancelled = task.status === 'TASK_CANCELLED';
+                const overdue = isOverdue(task);
+                const contactName = getContactName(task.contactId);
+
+                return `
+                <div class="flex items-center px-6 py-4 hover:bg-gray-50 transition-all ${overdue ? 'bg-red-50/50' : ''}">
+                    <!-- Toggle circle -->
+                    <button onclick="toggleTask('${task.id}', '${task.status}')"
+                        class="flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center mr-4 transition-all
+                        ${isComplete
+                            ? 'bg-green-500 border-green-500 text-white hover:bg-green-600'
+                            : isCancelled
+                                ? 'bg-gray-300 border-gray-300 text-white cursor-not-allowed'
+                                : 'border-gray-300 hover:border-green-500 text-transparent hover:text-green-500'}"
+                        ${isCancelled ? 'disabled' : ''}
+                        title="${isComplete ? 'Mark as pending' : isCancelled ? 'Cancelled' : 'Mark as completed'}">
+                        <i class="fas fa-check text-xs"></i>
+                    </button>
+
+                    <!-- Task content -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-3 mb-1">
+                            <h3 class="font-semibold text-gray-800 truncate ${isComplete ? 'line-through text-gray-400' : ''}">${task.title || 'Untitled'}</h3>
+                            ${getPriorityBadge(task.priority)}
+                            ${getStatusBadge(task.status)}
+                        </div>
+                        <div class="flex items-center gap-4 text-sm">
+                            ${contactName ? `<span class="text-gray-500"><i class="fas fa-user mr-1"></i>${contactName}</span>` : ''}
+                            ${task.dueDate ? `<span>${formatDueDate(task.dueDate)}</span>` : ''}
+                            ${task.description ? `<span class="text-gray-400 truncate max-w-xs hidden md:inline">${task.description}</span>` : ''}
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex items-center space-x-1 ml-4 flex-shrink-0">
+                        <button onclick="editTask('${task.id}')"
+                            class="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="showDeleteModal('${task.id}')"
+                            class="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        function renderPagination(pagination) {
+            const container = document.getElementById('pagination');
+            const total = pagination.total || pagination.totalItems || 0;
+            const pages = pagination.totalPages || pagination.pages || 1;
+            const page = pagination.page || pagination.currentPage || currentPage;
+
+            if (pages <= 1) {
+                container.innerHTML = `<span class="text-sm text-gray-500">${total} task${total !== 1 ? 's' : ''}</span>`;
+                return;
+            }
+
+            let pagesHtml = '';
+            const maxVisible = 5;
+            let startPage = Math.max(1, page - Math.floor(maxVisible / 2));
+            let endPage = Math.min(pages, startPage + maxVisible - 1);
+            if (endPage - startPage < maxVisible - 1) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+
+            pagesHtml += `<button onclick="loadTasks(${page - 1})"
+                class="px-3 py-1 rounded-lg text-sm ${page <= 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-100'}"
+                ${page <= 1 ? 'disabled' : ''}>
+                <i class="fas fa-chevron-left"></i>
+            </button>`;
+
+            if (startPage > 1) {
+                pagesHtml += `<button onclick="loadTasks(1)" class="px-3 py-1 rounded-lg text-sm text-gray-600 hover:bg-gray-100">1</button>`;
+                if (startPage > 2) pagesHtml += `<span class="px-2 text-gray-400">...</span>`;
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                pagesHtml += `<button onclick="loadTasks(${i})"
+                    class="px-3 py-1 rounded-lg text-sm ${i === page ? 'bg-green-500 text-white' : 'text-gray-600 hover:bg-gray-100'}">
+                    ${i}
+                </button>`;
+            }
+
+            if (endPage < pages) {
+                if (endPage < pages - 1) pagesHtml += `<span class="px-2 text-gray-400">...</span>`;
+                pagesHtml += `<button onclick="loadTasks(${pages})" class="px-3 py-1 rounded-lg text-sm text-gray-600 hover:bg-gray-100">${pages}</button>`;
+            }
+
+            pagesHtml += `<button onclick="loadTasks(${page + 1})"
+                class="px-3 py-1 rounded-lg text-sm ${page >= pages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-100'}"
+                ${page >= pages ? 'disabled' : ''}>
+                <i class="fas fa-chevron-right"></i>
+            </button>`;
+
+            container.innerHTML = `
+                <span class="text-sm text-gray-500">Showing page ${page} of ${pages} (${total} task${total !== 1 ? 's' : ''})</span>
+                <div class="flex items-center space-x-1">${pagesHtml}</div>
+            `;
+        }
+
+        // --- Quick toggle ---
+
+        async function toggleTask(id, currentStatus) {
+            if (currentStatus === 'TASK_CANCELLED') return;
+            const newStatus = currentStatus === 'TASK_COMPLETED' ? 'TASK_PENDING' : 'TASK_COMPLETED';
+            try {
+                const response = await fetchWithAuth(`${API_BASE}/tasks/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ status: newStatus })
+                });
+                if (response.ok) {
+                    showNotification(newStatus === 'TASK_COMPLETED' ? 'Task completed!' : 'Task reopened', 'success');
+                    loadTasks(currentPage);
+                } else {
+                    showNotification('Failed to update task', 'error');
+                }
+            } catch (error) {
+                console.error('Error toggling task:', error);
+                showNotification('An error occurred', 'error');
+            }
+        }
+
+        // --- Modal ---
+
+        function showCreateModal() {
+            document.getElementById('modalTitle').textContent = 'Create Task';
+            document.getElementById('taskForm').reset();
+            document.getElementById('taskId').value = '';
+            document.getElementById('taskPriority').value = 'TASK_MEDIUM';
+            document.getElementById('taskStatus').value = 'TASK_PENDING';
+            document.getElementById('taskModal').classList.remove('hidden');
+        }
+
+        function hideModal() {
+            document.getElementById('taskModal').classList.add('hidden');
+        }
+
+        async function editTask(id) {
+            try {
+                const response = await fetchWithAuth(`${API_BASE}/tasks/${id}`);
+                if (response.ok) {
+                    const result = await response.json();
+                    const task = result.data || result;
+
+                    document.getElementById('modalTitle').textContent = 'Edit Task';
+                    document.getElementById('taskId').value = task.id || id;
+                    document.getElementById('taskTitle').value = task.title || '';
+                    document.getElementById('taskDescription').value = task.description || '';
+                    document.getElementById('taskContact').value = task.contactId || '';
+                    document.getElementById('taskDueDate').value = toLocalDatetimeValue(task.dueDate);
+                    document.getElementById('taskPriority').value = task.priority || 'TASK_MEDIUM';
+                    document.getElementById('taskStatus').value = task.status || 'TASK_PENDING';
+                    document.getElementById('taskModal').classList.remove('hidden');
+                } else {
+                    showNotification('Failed to load task', 'error');
+                }
+            } catch (error) {
+                console.error('Error loading task:', error);
+                showNotification('An error occurred', 'error');
+            }
+        }
+
+        // --- Delete ---
+
+        function showDeleteModal(id) {
+            deleteTaskId = id;
+            document.getElementById('deleteModal').classList.remove('hidden');
+        }
+
+        function hideDeleteModal() {
+            deleteTaskId = null;
+            document.getElementById('deleteModal').classList.add('hidden');
+        }
+
+        async function confirmDelete() {
+            if (!deleteTaskId) return;
+            try {
+                const response = await fetchWithAuth(`${API_BASE}/tasks/${deleteTaskId}`, {
+                    method: 'DELETE'
+                });
+                if (response.ok) {
+                    hideDeleteModal();
+                    showNotification('Task deleted', 'success');
+                    loadTasks(currentPage);
+                } else {
+                    showNotification('Failed to delete task', 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting task:', error);
+                showNotification('An error occurred', 'error');
+            }
+        }
+
+        // --- Form submit ---
+
+        document.getElementById('taskForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const id = document.getElementById('taskId').value;
+            const title = document.getElementById('taskTitle').value.trim();
+            const description = document.getElementById('taskDescription').value.trim();
+            const contactId = document.getElementById('taskContact').value;
+            const dueDate = document.getElementById('taskDueDate').value;
+            const priority = document.getElementById('taskPriority').value;
+            const status = document.getElementById('taskStatus').value;
+
+            if (!title) {
+                showNotification('Please enter a task title', 'error');
+                return;
+            }
+
+            const data = {
+                title,
+                priority,
+                status,
+                ...(description && { description }),
+                ...(contactId && { contactId }),
+                ...(dueDate && { dueDate: new Date(dueDate).toISOString() })
+            };
+
+            const url = id ? `${API_BASE}/tasks/${id}` : `${API_BASE}/tasks`;
+            const method = id ? 'PUT' : 'POST';
+
+            try {
+                const response = await fetchWithAuth(url, {
+                    method,
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    hideModal();
+                    showNotification(id ? 'Task updated!' : 'Task created!', 'success');
+                    loadTasks(currentPage);
+                } else {
+                    const result = await response.json();
+                    showNotification(`Error: ${result.error?.message || result.message || 'Failed to save task'}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error saving task:', error);
+                showNotification('An error occurred. Please try again.', 'error');
+            }
+        });
+
+        // --- Search debounce ---
+
+        let searchTimeout;
+        document.getElementById('searchInput').addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => loadTasks(1), 400);
+        });
+        document.getElementById('statusFilter').addEventListener('change', () => loadTasks(1));
+        document.getElementById('priorityFilter').addEventListener('change', () => loadTasks(1));
+
+        // --- Initial load ---
+        loadContacts();
+        loadTasks();
+    </script>
+</body>
+</html>
