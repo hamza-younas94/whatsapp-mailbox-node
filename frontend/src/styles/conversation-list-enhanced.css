@@ -36,6 +36,95 @@
   color: #999;
 }
 
+/* Filter Tabs */
+.conv-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.conv-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.conv-tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  background: #f0f0f0;
+  color: #666;
+  font-family: inherit;
+}
+
+.conv-tab:hover {
+  background: #e5e5e5;
+  color: #333;
+}
+
+.conv-tab.active {
+  background: #128C7E;
+  color: white;
+}
+
+.conv-tab-count {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.1);
+  min-width: 18px;
+  text-align: center;
+}
+
+.conv-tab.active .conv-tab-count {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Contact type badges in conversation list */
+.conv-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.conv-name-row .conv-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conv-type-badge {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.conv-type-group {
+  color: #10b981;
+}
+
+.conv-type-channel {
+  color: #f59e0b;
+}
+
+.conv-type-broadcast {
+  color: #8b5cf6;
+}
+
 /* Conversations Scroll Area */
 .conversations-scroll {
   flex: 1;

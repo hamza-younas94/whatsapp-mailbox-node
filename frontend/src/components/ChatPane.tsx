@@ -452,11 +452,6 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
     }
   };
 
-  const handleOpenCRM = () => {
-    // Open CRM page with this contact
-    window.open(`/crm_dashboard.php?contact=${contactId}`, '_blank');
-  };
-
   // Handle send message
   const handleSend = async (content: string, mediaUrl?: string) => {
     if (!contactId || (!content && !mediaUrl)) return;
@@ -507,7 +502,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
     } catch (error) {
       console.error('Failed to send message:', error);
       // Remove optimistic message on error
-      setMessages((prev) => prev.filter(msg => msg.id !== `temp-${Date.now()}`));
+      setMessages((prev) => prev.filter(msg => msg.id !== tempId));
       alert('Failed to send message');
     } finally {
       setSending(false);
@@ -845,13 +840,13 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
         </div>
       </div>
 
-      {/* Check if this is a group or channel - they typically don't support direct messaging from bots */}
-      {(chatId?.includes('@g.us') || chatId?.includes('@broadcast') || contactTypeResolved === 'GROUP' || contactTypeResolved === 'CHANNEL') ? (
+      {/* Only block channels and broadcasts - groups CAN send via whatsapp-web.js */}
+      {(chatId?.includes('@newsletter') || chatId?.includes('@broadcast') || contactTypeResolved === 'channel' || contactTypeResolved === 'broadcast') ? (
         <div className="group-chat-notice">
-          <div className="notice-icon">👥</div>
+          <div className="notice-icon">{contactTypeResolved === 'channel' ? '📢' : '📻'}</div>
           <div className="notice-content">
-            <strong>{contactTypeResolved === 'GROUP' ? 'Group Chat' : contactTypeResolved === 'CHANNEL' ? 'Channel' : 'Broadcast List'}</strong>
-            <p>Sending messages to groups/channels is limited. Messages are received but may require WhatsApp Business API for sending.</p>
+            <strong>{contactTypeResolved === 'channel' ? 'Channel' : 'Broadcast List'}</strong>
+            <p>This is a read-only {contactTypeResolved === 'channel' ? 'channel' : 'broadcast list'}. You can view messages but cannot send.</p>
           </div>
         </div>
       ) : (

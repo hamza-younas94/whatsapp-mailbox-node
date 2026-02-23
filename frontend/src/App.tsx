@@ -70,7 +70,7 @@ const App: React.FC = () => {
       // Trigger refresh by updating search query to force ConversationList to reload
       // This is done by dispatching a custom event that ConversationList listens to
       window.dispatchEvent(new CustomEvent('refreshConversations'));
-    }, 3000); // Sync every 3 seconds
+    }, 10000); // Sync every 10 seconds (Socket.IO handles real-time)
 
     return () => clearInterval(syncInterval);
   }, [autoRefreshEnabled, isAuthenticated]);
@@ -116,8 +116,8 @@ const App: React.FC = () => {
   return (
     <div className="app-container">
       {isAuthenticated && <Navbar onLogout={handleLogout} onSearch={handleSearch} />}
-      
-      <SessionStatus />
+
+      {isAuthenticated && <SessionStatus />}
 
       <div className="mailbox-main">
         {/* Conversation List - visible on desktop or when showList is true on mobile */}

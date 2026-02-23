@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { contactAPI } from '@/api/queries';
-import { getContactTypeFromId, getContactTypeInfo, getContactTypeBadgeClass } from '@/utils/contact-type';
+import { getContactTypeFromId, getContactTypeInfo, ContactTypeEnum } from '@/utils/contact-type';
 import '@/styles/conversation-list-enhanced.css';
-import '@/styles/contact-type-badge.css';
 
 interface Conversation {
   id: string;
@@ -27,6 +26,24 @@ interface ConversationListProps {
   onAutoRefreshChange?: (enabled: boolean) => void;
 }
 
+type TabType = 'all' | 'unread' | 'contacts' | 'groups' | 'channels';
+
+// Avatar gradient by contact type
+const avatarGradients: Record<string, string> = {
+  contact: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+  group: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+  channel: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+  broadcast: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+  unknown: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
+};
+
+// Avatar icon by contact type
+const avatarIcons: Record<string, string> = {
+  group: '👥',
+  channel: '📢',
+  broadcast: '📻',
+};
+
 export const ConversationList: React.FC<ConversationListProps> = ({
   onSelectConversation,
   selectedContactId,
@@ -36,41 +53,36 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState(searchQuery);
+  const [activeTab, setActiveTab] = useState<TabType>('all');
+
+  // Sync search when navbar searchQuery prop changes
+  useEffect(() => {
+    setSearch(searchQuery);
+  }, [searchQuery]);
 
   const loadConversations = async () => {
     try {
       setLoading(true);
       const response = await contactAPI.searchContacts(search || undefined, 100, 0);
-      
-      // Handle both direct array and paginated response
+
       const contacts = Array.isArray(response) ? response : (response?.data || []);
-      
-      // Transform contacts into conversation format
+
       const transformedConversations: Conversation[] = contacts
-        .filter((contact: any) => {
-          // Filter out null/undefined
-          return contact && contact.id;
-        })
+        .filter((contact: any) => contact && contact.id)
         .map((contact: any) => {
-          // Get the last message from the messages array (already sorted by createdAt desc)
-          const lastMessageObj = contact.messages && contact.messages.length > 0 
-            ? contact.messages[0] 
+          const lastMessageObj = contact.messages && contact.messages.length > 0
+            ? contact.messages[0]
             : null;
-          
-          // Format last message preview
+
           let lastMessagePreview: string | undefined = 'No messages yet';
-          
+
           if (lastMessageObj) {
-            // Handle text messages
             if (lastMessageObj.content && lastMessageObj.content.trim()) {
-              // Truncate long messages
               const content = lastMessageObj.content.trim();
-              lastMessagePreview = content.length > 50 
+              lastMessagePreview = content.length > 50
                 ? content.substring(0, 50) + '...'
                 : content;
-            } 
-            // Handle media messages
-            else if (lastMessageObj.messageType && lastMessageObj.messageType !== 'TEXT') {
+            } else if (lastMessageObj.messageType && lastMessageObj.messageType !== 'TEXT') {
               const typeLabels: Record<string, string> = {
                 'IMAGE': '📷 Image',
                 'VIDEO': '🎥 Video',
@@ -80,13 +92,19 @@ export const ConversationList: React.FC<ConversationListProps> = ({
                 'CONTACT': '👤 Contact',
               };
               lastMessagePreview = typeLabels[lastMessageObj.messageType] || '📎 Media';
-            }
-            // If message has no content and no type, show direction indicator
-            else {
-              lastMessagePreview = lastMessageObj.direction === 'INCOMING' 
-                ? '📥 Message received' 
+            } else {
+              lastMessagePreview = lastMessageObj.direction === 'INCOMING'
+                ? '📥 Message received'
                 : '📤 Message sent';
             }
+          }
+
+          // Calculate unread count from incoming messages that aren't READ
+          let unreadCount = 0;
+          if (contact.messages && contact.messages.length > 0) {
+            unreadCount = contact.messages.filter(
+              (m: any) => m.direction === 'INCOMING' && m.status !== 'READ'
+            ).length;
           }
 
           return {
@@ -100,18 +118,17 @@ export const ConversationList: React.FC<ConversationListProps> = ({
               avatarUrl: contact.avatarUrl || null,
               profilePhotoUrl: contact.profilePhotoUrl || null,
             },
-            unreadCount: contact._count?.messages || 0,
+            unreadCount,
             lastMessage: lastMessagePreview,
             lastMessageAt: lastMessageObj?.createdAt || contact.lastMessageAt,
           };
         })
-        // Sort by lastMessageAt descending (most recent first)
-        .sort((a, b) => {
+        .sort((a: Conversation, b: Conversation) => {
           const dateA = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
           const dateB = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
           return dateB - dateA;
         });
-      
+
       setConversations(transformedConversations);
     } catch (err) {
       console.error('Failed to load conversations:', err);
@@ -124,7 +141,6 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   useEffect(() => {
     loadConversations();
 
-    // Listen for refresh events from App component
     const handleRefresh = () => {
       loadConversations();
     };
@@ -133,7 +149,47 @@ export const ConversationList: React.FC<ConversationListProps> = ({
     return () => window.removeEventListener('refreshConversations', handleRefresh);
   }, [search]);
 
-  // Update search when prop changes
+  // Get contact type for a conversation
+  const getConvType = (conv: Conversation): ContactTypeEnum => {
+    return getContactTypeFromId(
+      conv.contact?.chatId,
+      conv.contact?.phoneNumber,
+      conv.contact?.contactType,
+    );
+  };
+
+  // Filter conversations based on active tab
+  const filteredConversations = conversations.filter((conv) => {
+    if (!conv || !conv.contact || !conv.contact.id) return false;
+    const type = getConvType(conv);
+    switch (activeTab) {
+      case 'unread': return conv.unreadCount > 0;
+      case 'contacts': return type === 'contact';
+      case 'groups': return type === 'group';
+      case 'channels': return type === 'channel' || type === 'broadcast';
+      default: return true;
+    }
+  });
+
+  // Count per tab
+  const counts = {
+    all: conversations.length,
+    unread: conversations.filter(c => c.unreadCount > 0).length,
+    contacts: conversations.filter(c => getConvType(c) === 'contact').length,
+    groups: conversations.filter(c => getConvType(c) === 'group').length,
+    channels: conversations.filter(c => {
+      const t = getConvType(c);
+      return t === 'channel' || t === 'broadcast';
+    }).length,
+  };
+
+  const tabs: { key: TabType; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'unread', label: 'Unread' },
+    { key: 'contacts', label: 'Contacts' },
+    { key: 'groups', label: 'Groups' },
+    { key: 'channels', label: 'Channels' },
+  ];
 
   return (
     <div className="conversation-list-container">
@@ -148,95 +204,108 @@ export const ConversationList: React.FC<ConversationListProps> = ({
         />
       </div>
 
+      {/* Filter tabs */}
+      <div className="conv-tabs">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            className={`conv-tab ${activeTab === tab.key ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.key)}
+          >
+            {tab.label}
+            {counts[tab.key] > 0 && (
+              <span className="conv-tab-count">{counts[tab.key]}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
       {/* Conversations */}
       <div className="conversations-scroll">
         {loading && <div className="loading-state">Loading...</div>}
 
-        {!loading && conversations.length === 0 && (
-          <div className="empty-state">No conversations yet</div>
+        {!loading && filteredConversations.length === 0 && (
+          <div className="empty-state">
+            {activeTab === 'all' ? 'No conversations yet' : `No ${activeTab} conversations`}
+          </div>
         )}
 
-        {conversations
-          .filter((conv) => conv && conv.contact && conv.contact.id) // Additional safety check
-          .map((conv) => {
-            // Display name: use the stored contact name which includes group names from backend
-            const displayName = conv.contact?.name || conv.contact?.phoneNumber || 'Unknown';
-            const profilePic = conv.contact?.profilePhotoUrl || conv.contact?.avatarUrl;
-            const contactType = getContactTypeFromId(
-              conv.contact?.chatId,
-              conv.contact?.phoneNumber,
-              conv.contact?.contactType,
-            );
-            const typeInfo = getContactTypeInfo(contactType);
-            const badgeClass = getContactTypeBadgeClass(contactType);
-            
-            const timeAgo = conv.lastMessageAt 
-              ? (() => {
-                  const now = new Date();
-                  const msgDate = new Date(conv.lastMessageAt);
-                  const diffMs = now.getTime() - msgDate.getTime();
-                  const diffMins = Math.floor(diffMs / 60000);
-                  const diffHours = Math.floor(diffMs / 3600000);
-                  const diffDays = Math.floor(diffMs / 86400000);
-                  
-                  if (diffMins < 1) return 'Just now';
-                  if (diffMins < 60) return `${diffMins}m ago`;
-                  if (diffHours < 24) return `${diffHours}h ago`;
-                  if (diffDays < 7) return `${diffDays}d ago`;
-                  return msgDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                })()
-              : '';
+        {filteredConversations.map((conv) => {
+          const displayName = conv.contact?.name || conv.contact?.phoneNumber || 'Unknown';
+          const profilePic = conv.contact?.profilePhotoUrl || conv.contact?.avatarUrl;
+          const contactType = getConvType(conv);
+          const typeInfo = getContactTypeInfo(contactType);
+          const gradient = avatarGradients[contactType] || avatarGradients.unknown;
+          const avatarIcon = avatarIcons[contactType];
 
-            return (
-              <div
-                key={conv.id}
-                className={`conversation-item ${selectedContactId === conv.contact?.id ? 'selected' : ''} ${conv.unreadCount > 0 ? 'has-unread' : ''}`}
-                onClick={() => conv.contact?.id && onSelectConversation(conv.contact.id, conv)}
-              >
-                <div className="conv-avatar">
-                  {profilePic ? (
-                    <img 
-                      src={profilePic} 
-                      alt={displayName} 
-                      className="avatar-image"
-                      onError={(e) => {
-                        // Fallback to text avatar on image load error
-                        e.currentTarget.style.display = 'none';
-                        const textAvatar = e.currentTarget.nextElementSibling;
-                        if (textAvatar) {
-                          (textAvatar as HTMLElement).style.display = 'flex';
-                        }
-                      }}
-                    />
-                  ) : null}
-                  <span className="avatar-text" style={{ display: profilePic ? 'none' : 'flex' }}>
-                    {((conv.contact?.name?.charAt(0) || conv.contact?.phoneNumber?.charAt(0)) || '?').toUpperCase()}
-                  </span>
-                  {conv.unreadCount > 0 && <span className="online-indicator"></span>}
-                </div>
+          const timeAgo = conv.lastMessageAt
+            ? (() => {
+                const now = new Date();
+                const msgDate = new Date(conv.lastMessageAt);
+                const diffMs = now.getTime() - msgDate.getTime();
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMs / 3600000);
+                const diffDays = Math.floor(diffMs / 86400000);
 
-                <div className="conv-content">
-                  <div className="conv-header">
-                    <div className="conv-name">
-                      <span title={displayName}>{displayName}</span>
-                      <span className={badgeClass} title={typeInfo.label}>
-                        {typeInfo.icon} {typeInfo.label}
+                if (diffMins < 1) return 'Just now';
+                if (diffMins < 60) return `${diffMins}m ago`;
+                if (diffHours < 24) return `${diffHours}h ago`;
+                if (diffDays < 7) return `${diffDays}d ago`;
+                return msgDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+              })()
+            : '';
+
+          return (
+            <div
+              key={conv.id}
+              className={`conversation-item ${selectedContactId === conv.contact?.id ? 'selected' : ''} ${conv.unreadCount > 0 ? 'has-unread' : ''}`}
+              onClick={() => conv.contact?.id && onSelectConversation(conv.contact.id, conv)}
+            >
+              <div className="conv-avatar" style={{ background: profilePic ? 'none' : gradient }}>
+                {profilePic ? (
+                  <img
+                    src={profilePic}
+                    alt={displayName}
+                    className="avatar-image"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      const textAvatar = e.currentTarget.nextElementSibling;
+                      if (textAvatar) {
+                        (textAvatar as HTMLElement).style.display = 'flex';
+                      }
+                    }}
+                  />
+                ) : null}
+                <span className="avatar-text" style={{ display: profilePic ? 'none' : 'flex' }}>
+                  {avatarIcon || ((conv.contact?.name?.charAt(0) || conv.contact?.phoneNumber?.charAt(0)) || '?').toUpperCase()}
+                </span>
+                {conv.unreadCount > 0 && <span className="online-indicator"></span>}
+              </div>
+
+              <div className="conv-content">
+                <div className="conv-header">
+                  <div className="conv-name-row">
+                    <span className="conv-name" title={displayName}>{displayName}</span>
+                    {contactType !== 'contact' && (
+                      <span className={`conv-type-badge conv-type-${contactType}`}>
+                        {typeInfo.icon}
                       </span>
-                    </div>
-                    {timeAgo && <span className="conv-time">{timeAgo}</span>}
-                  </div>
-                  <div className="conv-preview-row">
-                    <p className="conv-preview" title={conv.lastMessage}>
-                      {conv.lastMessage || 'No messages yet'}
-                    </p>
-                    {conv.unreadCount > 0 && (
-                      <span className="unread-badge">{conv.unreadCount > 99 ? '99+' : conv.unreadCount}</span>
                     )}
                   </div>
+                  {timeAgo && <span className="conv-time">{timeAgo}</span>}
+                </div>
+                <div className="conv-preview-row">
+                  <p className="conv-preview" title={conv.lastMessage}>
+                    {conv.lastMessage || 'No messages yet'}
+                  </p>
+                  {conv.unreadCount > 0 && (
+                    <span className="unread-badge">{conv.unreadCount > 99 ? '99+' : conv.unreadCount}</span>
+                  )}
                 </div>
               </div>
-            );
-          })}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
