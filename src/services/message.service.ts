@@ -193,30 +193,39 @@ export class MessageService implements IMessageService {
         }
         const chatId = chatIdToUse || `${sanitizedPhone}@c.us`;
 
-        logger.info({ chatId, content: input.content.substring(0, 50) }, 'Sending WhatsApp message');
+        // Determine if this is a group/channel (skip phone number verification for these)
+        const isGroup = chatId.includes('@g.us');
+        const isChannel = chatId.includes('@newsletter') || chatId.includes('@broadcast');
 
-        // Verify number is registered and get numberId
-        const numberId = await withTimeout(
-          activeSession.client.getNumberId(sanitizedPhone),
-          30000,
-          'WhatsApp getNumberId timed out',
-        );
-        
-        if (!numberId) {
-          throw new ValidationError('Phone number is not registered on WhatsApp');
+        if (isChannel) {
+          throw new ValidationError('Cannot send messages to channels or broadcast lists');
         }
 
-        // Log NumberId structure for debugging
-        logger.info({ 
-          numberIdString: typeof numberId === 'string' ? numberId : numberId._serialized,
-          type: typeof numberId,
-          isObject: typeof numberId === 'object'
-        }, 'Number verified, sending message');
+        logger.info({ chatId, isGroup, content: input.content.substring(0, 50) }, 'Sending WhatsApp message');
 
-        // Normalize target chat id for sendMessage
-        const targetChatId = typeof numberId === 'object' ? numberId._serialized : numberId;
-        
-        // Send message (removed sendSeen: false option as it may not be supported)
+        let targetChatId: string;
+
+        if (isGroup) {
+          // Groups use the full chatId directly — no phone number verification needed
+          targetChatId = chatId;
+        } else {
+          // Individual contacts — verify number is registered on WhatsApp
+          const numberId = await withTimeout(
+            activeSession.client.getNumberId(sanitizedPhone),
+            30000,
+            'WhatsApp getNumberId timed out',
+          );
+
+          if (!numberId) {
+            throw new ValidationError('Phone number is not registered on WhatsApp');
+          }
+
+          targetChatId = typeof numberId === 'object' ? numberId._serialized : numberId;
+        }
+
+        logger.info({ targetChatId }, 'Sending message to target');
+
+        // Send message
         let waMessage;
         try {
           waMessage = await withTimeout(

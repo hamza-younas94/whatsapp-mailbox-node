@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { messageAPI } from '@/api/queries';
 import '@/styles/message-bubble-enhanced.css';
 
@@ -36,10 +37,22 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
     minute: '2-digit',
   });
 
-  const hasMedia = message.messageType !== 'TEXT' && message.mediaUrl;
+  const isMediaType = message.messageType !== 'TEXT' && message.messageType !== undefined;
+  const hasMedia = isMediaType && message.mediaUrl;
   const mediaSrc = message.mediaUrl
     ? (message.mediaUrl.startsWith('http') ? message.mediaUrl : `${window.location.origin}${message.mediaUrl}`)
     : undefined;
+
+  // Media type label for fallback display when media URL is missing
+  const mediaTypeLabels: Record<string, string> = {
+    IMAGE: '📷 Image',
+    VIDEO: '🎥 Video',
+    AUDIO: '🎵 Audio',
+    DOCUMENT: '📄 Document',
+    LOCATION: '📍 Location',
+    CONTACT: '👤 Contact',
+    STICKER: '🏷️ Sticker',
+  };
 
   const handleReaction = async (emoji: string) => {
     try {
@@ -116,55 +129,35 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
         {hasMedia && (
           <div className="message-media">
             {message.messageType === 'IMAGE' && (
-              <>
-                <img 
-                  src={mediaSrc} 
-                  alt="Message" 
-                  className="media-image"
-                  onClick={() => setShowImagePreview(true)}
-                  style={{ cursor: 'pointer' }}
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-                {showImagePreview && (
-                  <div 
-                    className="image-preview-modal" 
-                    onClick={() => setShowImagePreview(false)}
-                  >
-                    <div className="image-preview-content">
-                      <button 
-                        className="image-preview-close"
-                        onClick={() => setShowImagePreview(false)}
-                      >
-                        ✕
-                      </button>
-                      <img src={mediaSrc} alt="Full size" className="image-preview-img" />
-                    </div>
-                  </div>
-                )}
-              </>
+              <img
+                src={mediaSrc}
+                alt="Image"
+                className="media-image"
+                onClick={() => setShowImagePreview(true)}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
             )}
             {message.messageType === 'VIDEO' && (
-              <video 
-                src={mediaSrc} 
-                controls 
+              <video
+                src={mediaSrc}
+                controls
                 className="media-video"
+                preload="metadata"
                 onError={(e) => {
                   (e.target as HTMLVideoElement).style.display = 'none';
                 }}
               />
             )}
-            {message.messageType === 'AUDIO' && (
+            {(message.messageType === 'AUDIO' || message.messageType === 'PTT') && (
               <div className="media-audio-wrapper">
                 <div className="audio-icon">🎵</div>
-                <audio 
-                  src={mediaSrc} 
-                  controls 
+                <audio
+                  src={mediaSrc}
+                  controls
                   className="media-audio"
-                  onError={(e) => {
-                    (e.target as HTMLAudioElement).style.display = 'none';
-                  }}
+                  preload="metadata"
                 />
               </div>
             )}
@@ -175,11 +168,23 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
                 <span className="doc-download">↓</span>
               </a>
             )}
+            {message.messageType === 'STICKER' && (
+              <img src={mediaSrc} alt="Sticker" className="media-sticker" />
+            )}
           </div>
         )}
 
-        {/* Text content */}
-        {message.content && <p className="message-text">{message.content}</p>}
+        {/* Fallback label when media type is set but URL is missing */}
+        {isMediaType && !message.mediaUrl && (
+          <div className="media-fallback">
+            {mediaTypeLabels[message.messageType || ''] || `📎 ${message.messageType}`}
+          </div>
+        )}
+
+        {/* Text content — skip if it's just a bracketed media label like [AUDIO] */}
+        {message.content && !/^\[(IMAGE|VIDEO|AUDIO|DOCUMENT|STICKER|PTT|LOCATION|CONTACT)\]$/i.test(message.content.trim()) && (
+          <p className="message-text">{message.content}</p>
+        )}
 
         {/* Message meta */}
         <div className="message-meta">
@@ -222,6 +227,25 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
           </div>
         )}
       </div>
+
+      {/* Image lightbox — rendered via Portal to escape stacking context */}
+      {showImagePreview && mediaSrc && ReactDOM.createPortal(
+        <div
+          className="image-preview-modal"
+          onClick={() => setShowImagePreview(false)}
+        >
+          <div className="image-preview-content" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="image-preview-close"
+              onClick={() => setShowImagePreview(false)}
+            >
+              ✕
+            </button>
+            <img src={mediaSrc} alt="Full size" className="image-preview-img" />
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

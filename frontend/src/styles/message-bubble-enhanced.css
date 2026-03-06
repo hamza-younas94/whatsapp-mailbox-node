@@ -38,7 +38,6 @@
 
 .message-bubble:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  transform: translateY(-1px);
 }
 
 .message-bubble.own {
@@ -157,6 +156,26 @@
 .doc-download {
   font-size: 18px;
   opacity: 0.7;
+}
+
+/* Sticker */
+.media-sticker {
+  max-width: 150px;
+  max-height: 150px;
+}
+
+/* Media fallback when URL is missing */
+.media-fallback {
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  font-size: 13px;
+  opacity: 0.85;
+  margin-bottom: 4px;
+}
+
+.message-bubble.own .media-fallback {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 /* Message Meta */

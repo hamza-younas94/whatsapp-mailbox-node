@@ -305,34 +305,35 @@ function setupIncomingMessageListener(): void {
       const quickReplyRepo = new QuickReplyRepository(db);
 
       // Prepare contact data with proper name resolution
-      const contactDisplayName =
-        contactBusinessName || contactName || contactPushName || sanitizedPhone;
+      // Only use actual name data from WhatsApp — do NOT fall back to phone number
+      // as that would overwrite existing contact names on every outgoing message
+      const hasRealNameData = contactBusinessName || contactName || contactPushName;
+      const contactDisplayName = hasRealNameData
+        ? (contactBusinessName || contactName || contactPushName)
+        : undefined;
 
       // Get or create contact with enriched data
       const contactTypeEnum = getContactType(from, sanitizedPhone);
-      
-      // For outgoing messages, don't overwrite existing contact name if we don't have new data
-      // This prevents the bug where sender's name overwrites recipient's name
       const existingContact = await contactRepo.findByPhoneNumber(userId, sanitizedPhone);
-      const shouldUseFallbackName = !existingContact && !contactDisplayName;
-      
+
       const contact = await contactRepo.findOrCreate(userId, sanitizedPhone, {
-        // Only set name if we have real data OR if this is a new contact with no data
-        ...(contactDisplayName || shouldUseFallbackName ? { name: contactDisplayName || sanitizedPhone } : {}),
+        // Only set name if we have real WhatsApp data, or if brand new contact (use phone as placeholder)
+        ...(contactDisplayName
+          ? { name: contactDisplayName }
+          : (!existingContact ? { name: sanitizedPhone } : {})),
         ...(contactPushName ? { pushName: contactPushName } : {}),
         ...(contactBusinessName ? { businessName: contactBusinessName } : {}),
         ...(profilePhotoUrl ? { profilePhotoUrl } : {}),
         isBusiness: isBusiness || false,
-        chatId: from, // Store full WhatsApp ID (e.g., 123@c.us or 456@newsletter)
-        contactType: contactTypeEnum, // Set contact type based on chatId
+        chatId: from,
+        contactType: contactTypeEnum,
         lastMessageAt: new Date(timestamp * 1000),
         lastActiveAt: new Date(timestamp * 1000),
       });
 
       // Update contact with latest info ONLY if we have genuinely new data
-      // Skip update for outgoing messages if we don't have recipient's actual info
-      const hasNewContactInfo = contactName || contactPushName || profilePhotoUrl;
-      if (hasNewContactInfo && (
+      // Skip update for outgoing messages where we lack recipient's actual info
+      if (hasRealNameData && (
         (contactName && contactName !== contact.name) ||
         (contactPushName && (contactPushName !== (contact as any).pushName)) ||
         (profilePhotoUrl && profilePhotoUrl !== (contact as any).profilePhotoUrl)
