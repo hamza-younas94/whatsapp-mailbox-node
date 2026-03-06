@@ -593,27 +593,29 @@ export async function startServer(): Promise<void> {
       logger.info({ port: env.PORT, env: env.NODE_ENV }, 'Server started with Socket.IO');
       
       // Auto-restore WhatsApp sessions after server starts
+      // LocalAuth stores sessions in directories named "session-<clientId>"
+      // Our clientId format is "session_<userId>", so dirs are "session-session_<userId>"
       setTimeout(async () => {
         try {
           logger.info('Attempting to auto-restore WhatsApp sessions...');
-          
-          // Check for existing session files
+
           const fs = await import('fs');
           const sessionPath = whatsappWebService.getSessionDir();
-          
+
           if (fs.existsSync(sessionPath)) {
-            const sessionDirs = fs.readdirSync(sessionPath);
-            logger.info({ count: sessionDirs.length }, 'Found session directories');
-            
-            // Try to restore each session
+            const sessionDirs = fs.readdirSync(sessionPath)
+              .filter(d => fs.statSync(path.join(sessionPath, d)).isDirectory());
+            logger.info({ count: sessionDirs.length, dirs: sessionDirs }, 'Found session directories');
+
             for (const dir of sessionDirs) {
-              if (dir.startsWith('session_')) {
-                const sessionId = dir;
-                logger.info({ sessionId }, 'Restoring session...');
-                
+              // LocalAuth creates dirs like "session-session_<userId>"
+              // Extract the clientId (everything after the "session-" prefix)
+              if (dir.startsWith('session-session_')) {
+                const sessionId = dir.replace(/^session-/, ''); // "session_<userId>"
+                const userId = sessionId.replace(/^session_/, ''); // "<userId>"
+                logger.info({ sessionId, userId, dir }, 'Restoring session from saved auth...');
+
                 try {
-                  // Extract userId from sessionId (format: session_<userId>)
-                  const userId = sessionId.replace('session_', '');
                   await whatsappWebService.initializeSession(userId, sessionId);
                   logger.info({ sessionId }, 'Session restored successfully');
                 } catch (error) {
@@ -633,6 +635,13 @@ export async function startServer(): Promise<void> {
     // Graceful shutdown
     const gracefulShutdown = async (signal: string) => {
       logger.info({ signal }, 'Received shutdown signal');
+
+      // Disconnect WhatsApp sessions gracefully (preserve auth files for restoration)
+      try {
+        await whatsappWebService.disconnectAllSessions();
+      } catch (error) {
+        logger.error({ error }, 'Error disconnecting WhatsApp sessions during shutdown');
+      }
 
       httpServer.close(async () => {
         await disconnectDatabase();

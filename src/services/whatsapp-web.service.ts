@@ -62,8 +62,8 @@ export class WhatsAppWebService extends EventEmitter {
         logger.info({ userId, sessionId, status: existing.status }, 'Session already exists, returning existing session');
         return existing;
       }
-      // Clean up old disconnected session
-      await this.destroySession(sessionId);
+      // Clean up old disconnected session (preserve auth files for restoration)
+      await this.disconnectSession(sessionId);
     }
 
     // Mark session as being initialized
@@ -483,7 +483,41 @@ export class WhatsAppWebService extends EventEmitter {
   }
 
   /**
-   * Logout and destroy session
+   * Gracefully disconnect a session (close browser WITHOUT logging out).
+   * Preserves auth files in .wwebjs_auth/ so the session can be restored
+   * after PM2 restart without re-scanning the QR code.
+   */
+  async disconnectSession(sessionId: string): Promise<void> {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+
+    try {
+      await session.client.destroy();
+    } catch (error) {
+      logger.error({ error, sessionId }, 'Error during graceful disconnect');
+    }
+
+    session.status = 'DISCONNECTED';
+    this.sessions.delete(sessionId);
+    this.initializingSessions.delete(sessionId);
+    logger.info({ sessionId }, 'Session disconnected (auth preserved)');
+  }
+
+  /**
+   * Gracefully disconnect ALL sessions (for server shutdown).
+   * Preserves auth files so sessions restore on next startup.
+   */
+  async disconnectAllSessions(): Promise<void> {
+    const sessionIds = Array.from(this.sessions.keys());
+    for (const sessionId of sessionIds) {
+      await this.disconnectSession(sessionId);
+    }
+    logger.info({ count: sessionIds.length }, 'All sessions disconnected gracefully');
+  }
+
+  /**
+   * Logout and destroy session (WIPES auth files — user must re-scan QR).
+   * Only use for explicit user logout, NOT for PM2 restart/reconnection.
    */
   async destroySession(sessionId: string): Promise<void> {
     const session = this.sessions.get(sessionId);
@@ -500,7 +534,8 @@ export class WhatsAppWebService extends EventEmitter {
     }
 
     this.sessions.delete(sessionId);
-    logger.info({ sessionId }, 'Session destroyed');
+    this.initializingSessions.delete(sessionId);
+    logger.info({ sessionId }, 'Session destroyed (auth wiped)');
   }
 
   /**
