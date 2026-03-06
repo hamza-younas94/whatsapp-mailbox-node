@@ -609,9 +609,10 @@ export async function startServer(): Promise<void> {
 
             for (const dir of sessionDirs) {
               // LocalAuth creates dirs like "session-session_<userId>"
-              // Extract the clientId (everything after the "session-" prefix)
-              if (dir.startsWith('session-session_')) {
-                const sessionId = dir.replace(/^session-/, ''); // "session_<userId>"
+              // Only restore primary sessions (no UUID suffix from old stale sessions)
+              const match = dir.match(/^session-(session_[a-z0-9]+)$/);
+              if (match) {
+                const sessionId = match[1]; // "session_<userId>"
                 const userId = sessionId.replace(/^session_/, ''); // "<userId>"
                 logger.info({ sessionId, userId, dir }, 'Restoring session from saved auth...');
 
