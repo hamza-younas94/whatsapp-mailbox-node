@@ -247,6 +247,15 @@
   font-weight: 500;
 }
 
+.status-indicator.status-warn {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-indicator.status-warn .status-dot {
+  background: #f59e0b;
+}
+
 /* Menu */
 .menu-wrapper {
   position: relative;

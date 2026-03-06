@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { contactAPI } from '@/api/queries';
 import { getContactTypeFromId, getContactTypeInfo, ContactTypeEnum } from '@/utils/contact-type';
 import '@/styles/conversation-list-enhanced.css';
@@ -53,17 +53,27 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState(searchQuery);
+  const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
   const [activeTab, setActiveTab] = useState<TabType>('all');
+  const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
 
   // Sync search when navbar searchQuery prop changes
   useEffect(() => {
     setSearch(searchQuery);
   }, [searchQuery]);
 
+  // Debounce search input by 300ms
+  useEffect(() => {
+    debounceTimer.current = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(debounceTimer.current);
+  }, [search]);
+
   const loadConversations = async () => {
     try {
       setLoading(true);
-      const response = await contactAPI.searchContacts(search || undefined, 100, 0);
+      const response = await contactAPI.searchContacts(debouncedSearch || undefined, 100, 0);
 
       const contacts = Array.isArray(response) ? response : (response?.data || []);
 
@@ -130,8 +140,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
         });
 
       setConversations(transformedConversations);
-    } catch (err) {
-      console.error('Failed to load conversations:', err);
+    } catch {
       setConversations([]);
     } finally {
       setLoading(false);
@@ -147,7 +156,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
 
     window.addEventListener('refreshConversations', handleRefresh);
     return () => window.removeEventListener('refreshConversations', handleRefresh);
-  }, [search]);
+  }, [debouncedSearch]);
 
   // Get contact type for a conversation
   const getConvType = (conv: Conversation): ContactTypeEnum => {
@@ -171,8 +180,8 @@ export const ConversationList: React.FC<ConversationListProps> = ({
     }
   });
 
-  // Count per tab
-  const counts = {
+  // Count per tab (memoized to avoid recalculation on every render)
+  const counts = useMemo(() => ({
     all: conversations.length,
     unread: conversations.filter(c => c.unreadCount > 0).length,
     contacts: conversations.filter(c => getConvType(c) === 'contact').length,
@@ -181,7 +190,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
       const t = getConvType(c);
       return t === 'channel' || t === 'broadcast';
     }).length,
-  };
+  }), [conversations]);
 
   const tabs: { key: TabType; label: string }[] = [
     { key: 'all', label: 'All' },

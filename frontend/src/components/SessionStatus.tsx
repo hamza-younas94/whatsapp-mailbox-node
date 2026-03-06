@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { subscribeToSessionStatus } from '@/api/socket';
 import { sessionAPI } from '@/api/queries';
 import '@/styles/session-status.css';
 
-type SessionState = 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED' | 'QR_READY' | 'UNKNOWN';
+type SessionState = 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED' | 'QR_READY' | 'INITIALIZING' | 'UNKNOWN';
 
 interface QRData {
   qr: string;
@@ -12,120 +12,113 @@ interface QRData {
 
 interface SessionStatusProps {
   onQRRequired?: (qrData: QRData) => void;
+  onStatusChange?: (status: SessionState) => void;
 }
 
-const SessionStatus: React.FC<SessionStatusProps> = ({ onQRRequired }) => {
+const SessionStatus: React.FC<SessionStatusProps> = ({ onQRRequired, onStatusChange }) => {
   const [status, setStatus] = useState<SessionState>('UNKNOWN');
   const [showQR, setShowQR] = useState(false);
   const [qrData, setQRData] = useState<QRData | null>(null);
   const [message, setMessage] = useState('Initializing...');
   const [isInitializing, setIsInitializing] = useState(false);
-  const [hasInitialized, setHasInitialized] = useState(false);
+  const hasInitializedRef = useRef(false);
+
+  // Notify parent whenever status changes
+  const updateStatus = (newStatus: SessionState) => {
+    setStatus(newStatus);
+    onStatusChange?.(newStatus);
+  };
 
   // Check session status first, then initialize if needed
   useEffect(() => {
     let mounted = true;
-    let timeoutId: NodeJS.Timeout | null = null;
 
     const checkAndInitialize = async () => {
-      // Prevent multiple initialization attempts
-      if (hasInitialized || isInitializing) {
-        console.log('Skipping initialization - already initialized or in progress');
-        return;
-      }
+      if (hasInitializedRef.current || isInitializing) return;
 
       const token = localStorage.getItem('authToken');
       if (!token) {
         if (mounted) {
           setMessage('Please log in first');
-          setStatus('DISCONNECTED');
+          updateStatus('DISCONNECTED');
         }
         return;
       }
 
       try {
         setIsInitializing(true);
-        
-        // First, check current session status
+
         const currentStatus = await sessionAPI.getSessionStatus();
-        console.log('Current session status:', currentStatus);
-        
         if (!mounted) return;
-        
-        // If already connected or ready, update status and STOP
+
+        // Already connected
         if (currentStatus.isConnected || currentStatus.status === 'READY' || currentStatus.status === 'AUTHENTICATED') {
-          setStatus('CONNECTED');
+          updateStatus('CONNECTED');
           setMessage('Connected to WhatsApp');
-          setHasInitialized(true);
+          hasInitializedRef.current = true;
           setIsInitializing(false);
-          console.log('Session is already ready, stopping initialization checks');
           return;
         }
 
-        // If QR code is available, show it
+        // QR code available
         if (currentStatus.qr) {
-          setStatus('QR_READY');
+          updateStatus('QR_READY');
           setMessage('Scan QR code to connect');
           setQRData({ qr: currentStatus.qr, sessionId: currentStatus.sessionId });
           setShowQR(true);
           onQRRequired?.({ qr: currentStatus.qr, sessionId: currentStatus.sessionId });
-          setHasInitialized(true);
+          hasInitializedRef.current = true;
           setIsInitializing(false);
           return;
         }
 
-        // If status is INITIALIZING, wait a bit and check again (but don't call initialize again)
+        // Already initializing on the server side
         if (currentStatus.status === 'INITIALIZING') {
-          console.log('Session is already initializing, waiting...');
           setMessage('Connecting to WhatsApp...');
-          setStatus('INITIALIZING');
-          setHasInitialized(true);
+          updateStatus('INITIALIZING');
+          hasInitializedRef.current = true;
           setIsInitializing(false);
-          // Don't call initialize again - just wait
           return;
         }
 
-        // If QR_READY, just show it and stop
+        // QR_READY status with QR code
         if (currentStatus.status === 'QR_READY' && currentStatus.qr) {
-          setStatus('QR_READY');
+          updateStatus('QR_READY');
           setMessage('Scan QR code to connect');
           setQRData({ qr: currentStatus.qr, sessionId: currentStatus.sessionId });
           setShowQR(true);
           onQRRequired?.({ qr: currentStatus.qr, sessionId: currentStatus.sessionId });
-          setHasInitialized(true);
+          hasInitializedRef.current = true;
           setIsInitializing(false);
           return;
         }
 
-        // Only initialize if no active session and not already initializing
+        // No active session — initialize
         if (!currentStatus.isConnected && currentStatus.status !== 'QR_READY' && currentStatus.status !== 'INITIALIZING') {
           setMessage('Starting WhatsApp session...');
-          console.log('Auto-initializing WhatsApp session...');
-          
+          updateStatus('INITIALIZING');
+
           const result = await sessionAPI.initializeSession();
-          console.log('Session initialization result:', result);
-          
           if (!mounted) return;
-          
-          // If result has QR code, show it
+
           if (result.qr) {
-            setStatus('QR_READY');
+            updateStatus('QR_READY');
             setMessage('Scan QR code to connect');
             setQRData({ qr: result.qr, sessionId: result.sessionId });
             setShowQR(true);
             onQRRequired?.({ qr: result.qr, sessionId: result.sessionId });
           } else if (result.status === 'READY') {
-            setStatus('CONNECTED');
+            updateStatus('CONNECTED');
             setMessage('Connected to WhatsApp');
           }
         }
-        
-        setHasInitialized(true);
+
+        hasInitializedRef.current = true;
       } catch (error: any) {
         console.error('Failed to initialize session:', error);
         if (mounted) {
-          setStatus('DISCONNECTED');
-          setMessage('Failed to initialize session. Click reconnect to try again.');
+          updateStatus('DISCONNECTED');
+          setMessage('Failed to initialize. Click reconnect.');
         }
       } finally {
         if (mounted) {
@@ -134,61 +127,54 @@ const SessionStatus: React.FC<SessionStatusProps> = ({ onQRRequired }) => {
       }
     };
 
-    // Debounce initialization check by 500ms
-    timeoutId = setTimeout(() => {
-      checkAndInitialize();
-    }, 500);
+    // Debounce initialization by 500ms
+    const timeoutId = setTimeout(checkAndInitialize, 500);
 
-    // Set up polling to check session status periodically if not connected
+    // Poll until initialized
     const pollInterval = setInterval(async () => {
-      if (!mounted || hasInitialized) return;
-      
+      if (!mounted || hasInitializedRef.current) return;
+
       const token = localStorage.getItem('authToken');
       if (!token) return;
 
       try {
         const currentStatus = await sessionAPI.getSessionStatus();
-        
         if (!mounted) return;
-        
-        // If connected, update status and stop polling
+
         if (currentStatus.isConnected || currentStatus.status === 'READY' || currentStatus.status === 'AUTHENTICATED') {
-          setStatus('CONNECTED');
+          updateStatus('CONNECTED');
           setMessage('Connected to WhatsApp');
-          setHasInitialized(true);
+          hasInitializedRef.current = true;
           clearInterval(pollInterval);
           return;
         }
-        
-        // If QR code available, show it
+
         if (currentStatus.qr && currentStatus.status === 'QR_READY') {
-          setStatus('QR_READY');
+          updateStatus('QR_READY');
           setMessage('Scan QR code to connect');
           setQRData({ qr: currentStatus.qr, sessionId: currentStatus.sessionId });
           setShowQR(true);
           onQRRequired?.({ qr: currentStatus.qr, sessionId: currentStatus.sessionId });
-          setHasInitialized(true);
+          hasInitializedRef.current = true;
           clearInterval(pollInterval);
         }
-      } catch (error) {
-        console.error('Error polling session status:', error);
+      } catch {
+        // Silently retry on next poll
       }
-    }, 3000); // Poll every 3 seconds
+    }, 3000);
 
     return () => {
       mounted = false;
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
+      clearTimeout(timeoutId);
       clearInterval(pollInterval);
     };
-  }, []); // Empty dependency array - only run once on mount
+  }, []);
 
-  // Subscribe to session status updates via socket
+  // Subscribe to real-time session status via Socket.IO
   useEffect(() => {
     const unsubscribe = subscribeToSessionStatus((data) => {
       const newStatus = (data.status || 'UNKNOWN') as SessionState;
-      setStatus(newStatus);
+      updateStatus(newStatus);
 
       switch (newStatus) {
         case 'CONNECTED':
@@ -221,28 +207,28 @@ const SessionStatus: React.FC<SessionStatusProps> = ({ onQRRequired }) => {
   const handleReconnect = async () => {
     try {
       setIsInitializing(true);
-      setHasInitialized(false); // Reset to allow re-initialization
+      hasInitializedRef.current = false;
       setMessage('Reconnecting to WhatsApp...');
+      updateStatus('CONNECTING');
+
       const result = await sessionAPI.initializeSession();
-      console.log('Reconnection result:', result);
-      
-      // Update status based on result
+
       if (result.qr) {
-        setStatus('QR_READY');
+        updateStatus('QR_READY');
         setMessage('Scan QR code to connect');
         setQRData({ qr: result.qr, sessionId: result.sessionId });
         setShowQR(true);
         onQRRequired?.({ qr: result.qr, sessionId: result.sessionId });
       } else if (result.status === 'READY') {
-        setStatus('CONNECTED');
+        updateStatus('CONNECTED');
         setMessage('Connected to WhatsApp');
       }
-      
-      setHasInitialized(true);
+
+      hasInitializedRef.current = true;
     } catch (error) {
       console.error('Failed to reconnect:', error);
       setMessage('Failed to reconnect. Please try again.');
-      setStatus('DISCONNECTED');
+      updateStatus('DISCONNECTED');
     } finally {
       setIsInitializing(false);
     }

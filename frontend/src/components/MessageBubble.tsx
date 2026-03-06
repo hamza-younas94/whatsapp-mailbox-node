@@ -1,5 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { MessageEvent } from '@/api/socket';
+import React, { useState, useRef } from 'react';
 import { messageAPI } from '@/api/queries';
 import '@/styles/message-bubble-enhanced.css';
 
@@ -55,9 +54,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
       // Update local state
       setSelectedReaction(newReaction);
       setShowReactions(false);
-    } catch (error) {
-      console.error('Failed to send reaction:', error);
-      // Reset state on error
+    } catch {
       setSelectedReaction(selectedReaction);
     } finally {
       setIsLoading(false);
@@ -127,7 +124,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
                   onClick={() => setShowImagePreview(true)}
                   style={{ cursor: 'pointer' }}
                   onError={(e) => {
-                    console.error('Image failed to load:', message.mediaUrl);
                     (e.target as HTMLImageElement).style.display = 'none';
                   }}
                 />
@@ -155,7 +151,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
                 controls 
                 className="media-video"
                 onError={(e) => {
-                  console.error('Video failed to load:', message.mediaUrl);
                   (e.target as HTMLVideoElement).style.display = 'none';
                 }}
               />
@@ -168,7 +163,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
                   controls 
                   className="media-audio"
                   onError={(e) => {
-                    console.error('Audio failed to load:', message.mediaUrl);
                     (e.target as HTMLAudioElement).style.display = 'none';
                   }}
                 />

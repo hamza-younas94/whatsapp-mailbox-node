@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { contactAPI } from '@/api/queries';
 import Navbar from '@/components/Navbar';
 import SessionStatus from '@/components/SessionStatus';
 import ConversationList from '@/components/ConversationList';
@@ -24,6 +23,8 @@ interface Conversation {
   lastMessageAt?: string;
 }
 
+export type SessionState = 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED' | 'QR_READY' | 'INITIALIZING' | 'UNKNOWN';
+
 const App: React.FC = () => {
   const [selectedContactId, setSelectedContactId] = useState<string | undefined>();
   const [selectedConversation, setSelectedConversation] = useState<Conversation | undefined>();
@@ -33,6 +34,7 @@ const App: React.FC = () => {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [sessionStatus, setSessionStatus] = useState<SessionState>('UNKNOWN');
 
   // Check authentication on mount
   useEffect(() => {
@@ -51,10 +53,7 @@ const App: React.FC = () => {
     } else {
       // No token found - redirect to login
       setIsAuthenticated(false);
-      // Redirect to login page
-      const loginUrl = '/login.html';
-      console.log('No auth token found, redirecting to:', loginUrl);
-      window.location.href = loginUrl;
+      window.location.href = '/login.html';
     }
     
     setIsCheckingAuth(false);
@@ -115,9 +114,9 @@ const App: React.FC = () => {
 
   return (
     <div className="app-container">
-      {isAuthenticated && <Navbar onLogout={handleLogout} onSearch={handleSearch} />}
+      {isAuthenticated && <Navbar onLogout={handleLogout} onSearch={handleSearch} sessionStatus={sessionStatus} />}
 
-      {isAuthenticated && <SessionStatus />}
+      {isAuthenticated && <SessionStatus onStatusChange={setSessionStatus} />}
 
       <div className="mailbox-main">
         {/* Conversation List - visible on desktop or when showList is true on mobile */}

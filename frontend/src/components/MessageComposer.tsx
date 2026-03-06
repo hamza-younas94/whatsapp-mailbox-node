@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import api from '@/api/client';
 import '@/styles/message-composer.css';
 
 interface QuickReply {
@@ -55,20 +56,11 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ onSend, isLoad
 
   const loadQuickReplies = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`${window.location.origin}/api/v1/quick-replies?limit=100`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (response.ok) {
-        const result = await response.json();
-        const replies = Array.isArray(result.data) ? result.data : (result.data?.data || []);
-        setQuickReplies(replies);
-      }
-    } catch (error) {
-      console.error('Failed to load quick replies:', error);
+      const { data } = await api.get('/quick-replies?limit=100');
+      const replies = Array.isArray(data.data) ? data.data : (data.data?.data || []);
+      setQuickReplies(replies);
+    } catch {
+      // Failed to load quick replies
     }
   };
 
@@ -104,27 +96,18 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ onSend, isLoad
         for (const mediaFile of mediaFiles) {
           const formData = new FormData();
           formData.append('file', mediaFile.file);
-          
-          // Upload media to server
-          const response = await fetch(`${window.location.origin}/api/v1/media/upload`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-            },
-            body: formData
-          });
-          
-          if (response.ok) {
-            const result = await response.json();
-            // Convert relative path to full URL
-            const mediaUrl = result.data.url.startsWith('http') 
-              ? result.data.url 
-              : `${window.location.origin}${result.data.url}`;
+
+          try {
+            const { data: result } = await api.post('/media/upload', formData, {
+              headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            const url = result.data?.url || result.url;
+            const mediaUrl = url?.startsWith('http')
+              ? url
+              : `${window.location.origin}${url}`;
             await onSend(content.trim(), mediaUrl, mediaFile.type);
-          } else {
-            const errorData = await response.json();
-            console.error('Upload failed:', errorData);
-            alert(`Failed to upload ${mediaFile.file.name}: ${errorData.error || 'Unknown error'}`);
+          } catch {
+            alert(`Failed to upload ${mediaFile.file.name}`);
           }
         }
       } else {
@@ -133,8 +116,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ onSend, isLoad
       
       setContent('');
       setMediaFiles([]);
-    } catch (err) {
-      console.error('Failed to send message:', err);
+    } catch {
       alert('Failed to send message. Please try again.');
     }
   };
@@ -219,8 +201,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ onSend, isLoad
       recordingIntervalRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
-    } catch (error) {
-      console.error('Failed to start recording:', error);
+    } catch {
       alert('Could not access microphone. Please check permissions.');
     }
   };

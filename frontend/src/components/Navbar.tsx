@@ -1,9 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import '@/styles/navbar.css';
 
+type SessionState = 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED' | 'QR_READY' | 'INITIALIZING' | 'UNKNOWN';
+
 interface NavbarProps {
   onLogout?: () => void;
   onSearch?: (query: string) => void;
+  sessionStatus?: SessionState;
 }
 
 interface NavItem {
@@ -44,7 +47,16 @@ const endItems: NavItem[] = [
   { label: 'Analytics', href: '/analytics.html', icon: 'fa-chart-line' },
 ];
 
-const Navbar: React.FC<NavbarProps> = ({ onLogout, onSearch }) => {
+const statusLabels: Record<SessionState, string> = {
+  CONNECTED: 'Connected',
+  CONNECTING: 'Connecting...',
+  DISCONNECTED: 'Disconnected',
+  QR_READY: 'Scan QR',
+  INITIALIZING: 'Starting...',
+  UNKNOWN: 'Checking...',
+};
+
+const Navbar: React.FC<NavbarProps> = ({ onLogout, onSearch, sessionStatus = 'UNKNOWN' }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [searchActive, setSearchActive] = useState(false);
@@ -155,9 +167,9 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onSearch }) => {
 
         {/* Right Actions */}
         <div className="navbar-actions">
-          <div className="status-indicator">
-            <span className="status-dot active"></span>
-            <span className="status-text">Connected</span>
+          <div className={`status-indicator ${sessionStatus === 'CONNECTED' ? '' : 'status-warn'}`}>
+            <span className={`status-dot ${sessionStatus === 'CONNECTED' ? 'active' : ''}`}></span>
+            <span className="status-text">{statusLabels[sessionStatus]}</span>
           </div>
 
           <div className="menu-wrapper" ref={menuRef}>
@@ -177,13 +189,13 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onSearch }) => {
                   <i className="fas fa-qrcode"></i>
                   <span>QR Connect</span>
                 </a>
-                <a href="#settings" className="menu-item">
-                  <i className="fas fa-cog"></i>
-                  <span>Settings</span>
+                <a href="/analytics.html" className="menu-item">
+                  <i className="fas fa-chart-line"></i>
+                  <span>Analytics</span>
                 </a>
-                <a href="#help" className="menu-item">
-                  <i className="fas fa-question-circle"></i>
-                  <span>Help & Support</span>
+                <a href="/automation.html" className="menu-item">
+                  <i className="fas fa-robot"></i>
+                  <span>Automations</span>
                 </a>
                 <hr className="menu-divider" />
                 <button className="menu-item logout-button" onClick={handleLogout}>

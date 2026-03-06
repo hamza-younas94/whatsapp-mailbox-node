@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import api from '@/api/client';
 import { messageAPI } from '@/api/queries';
-import { subscribeToMessage, subscribeToMessageStatus, subscribeToReactionUpdated, getSocket } from '@/api/socket';
+import { subscribeToMessage, subscribeToMessageStatus, subscribeToReactionUpdated } from '@/api/socket';
 import { getContactTypeFromId, getContactTypeInfo, getContactTypeBadgeClass } from '@/utils/contact-type';
 import MessageBubble from '@/components/MessageBubble';
 import MessageComposer from '@/components/MessageComposer';
@@ -33,7 +34,7 @@ interface ChatPaneProps {
   onUnload?: () => void;
 }
 
-const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, contactType, profilePic, phoneNumber, onUnload }) => {
+const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, contactType, profilePic, phoneNumber }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
@@ -62,33 +63,28 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
   const loadMessages = useCallback(
     async (limit = 50, offset = 0) => {
       if (!contactId) return;
-      
+
       try {
         setLoading(true);
         const response = await messageAPI.getMessagesByContact(contactId, limit, offset);
-        
+
         if (offset === 0) {
-          // Initial load: replace messages
-          setMessages(response.data.reverse()); // Reverse to show oldest first
-          
+          setMessages(response.data.reverse());
+
           // Mark unread messages as read
           const unreadMessages = response.data.filter(
             (msg: any) => msg.direction === 'INCOMING' && msg.status !== 'READ'
           );
           unreadMessages.forEach((msg: any) => {
-            messageAPI.markAsRead(msg.id).catch((err) => 
-              console.error('Failed to mark message as read:', err)
-            );
+            messageAPI.markAsRead(msg.id).catch(() => {});
           });
         } else {
-          // Pagination: prepend older messages
           setMessages((prev) => [...response.data.reverse(), ...prev]);
         }
-        
-        // Check if there are more messages to load
+
         setHasMore(response.data.length === limit);
-      } catch (error) {
-        console.error('Failed to load messages:', error);
+      } catch {
+        // Failed to load messages
       } finally {
         setLoading(false);
       }
@@ -103,10 +99,8 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
       return;
     }
 
-    // Load initial messages
     loadMessages(50, 0);
 
-    // Subscribe to new messages (incoming)
     messageSubscriptionRef.current = subscribeToMessage((msg) => {
       if (msg.contactId === contactId) {
         setMessages((prev) => {
@@ -127,7 +121,6 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
       }
     });
 
-    // Subscribe to message status updates
     statusSubscriptionRef.current = subscribeToMessageStatus((update) => {
       setMessages((prev) =>
         prev.map((msg) =>
@@ -136,7 +129,6 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
       );
     });
 
-    // Subscribe to reaction updates
     const unsubscribeReactions = subscribeToReactionUpdated((event) => {
       setMessages((prev) =>
         prev.map((msg) =>
@@ -153,14 +145,12 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
         )
       );
     });
-    
+
     return () => {
       messageSubscriptionRef.current?.();
       statusSubscriptionRef.current?.();
       unsubscribeReactions?.();
     };
-
-    // Cleanup is handled in the subscription setup above
   }, [contactId, loadMessages]);
 
   // Auto-scroll to bottom on new messages
@@ -176,7 +166,6 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
 
     const { scrollTop } = scrollRef.current;
     if (scrollTop < 100) {
-      // Load more when scrolled near top
       loadMessages(50, messages.length);
     }
   }, [loading, hasMore, messages.length, loadMessages]);
@@ -184,14 +173,11 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
   // Handle phone call
   const handleCall = () => {
     if (phoneNumber) {
-      // Open phone dialer with the number
       window.open(`tel:${phoneNumber}`, '_self');
-    } else {
-      alert('Phone number not available for this contact');
     }
   };
 
-  // Load contact tags
+  // Load CRM data when contact info panel opens
   useEffect(() => {
     if (contactId && showContactInfo) {
       loadContactTags();
@@ -203,35 +189,25 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
 
   const loadContactTags = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`${window.location.origin}/api/v1/contacts/${contactId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) {
-        const result = await response.json();
-        const contact = result.data || result;
-        const tags = contact.tags || [];
-        
-        // Handle both TagOnContact structure and direct Tag structure
-        const processedTags = tags
-          .map((t: any) => {
-            // If it's a TagOnContact with nested tag, extract it
-            if (t.tag && t.tag.id && t.tag.name) {
-              return { id: t.tag.id, name: t.tag.name };
-            }
-            // If it's already a flat Tag object
-            if (t.id && t.name) {
-              return { id: t.id, name: t.name };
-            }
-            return null;
-          })
-          .filter((t: any) => t !== null);
-        
-        console.log('Loaded contact tags:', processedTags, 'from:', tags);
-        setContactTags(processedTags);
-      }
-    } catch (error) {
-      console.error('Failed to load contact tags:', error);
+      const { data } = await api.get(`/contacts/${contactId}`);
+      const contact = data.data || data;
+      const tags = contact.tags || [];
+
+      const processedTags = tags
+        .map((t: any) => {
+          if (t.tag && t.tag.id && t.tag.name) {
+            return { id: t.tag.id, name: t.tag.name };
+          }
+          if (t.id && t.name) {
+            return { id: t.id, name: t.name };
+          }
+          return null;
+        })
+        .filter((t: any) => t !== null);
+
+      setContactTags(processedTags);
+    } catch {
+      // Failed to load tags
     }
   };
 
@@ -240,227 +216,126 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
     if (!tagName || !contactId) return;
 
     try {
-      const token = localStorage.getItem('authToken');
-
       // Fetch existing tags to avoid duplicates
-      const listResponse = await fetch(`${window.location.origin}/api/v1/tags`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const { data: listResult } = await api.get('/tags');
+      const tags = listResult.data || [];
+      const existing = tags.find((t: any) => (t.name || '').toLowerCase() === tagName.toLowerCase());
 
-      let tagId: string | undefined;
-      if (listResponse.ok) {
-        const listResult = await listResponse.json();
-        const tags = listResult.data || [];
-        const existing = tags.find((t: any) => (t.name || '').toLowerCase() === tagName.toLowerCase());
-        if (existing) {
-          tagId = existing.id;
-        }
-      }
+      let tagId: string | undefined = existing?.id;
 
       // Create tag if it doesn't exist
       if (!tagId) {
-        const createResponse = await fetch(`${window.location.origin}/api/v1/tags`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ name: tagName })
-        });
-        if (createResponse.ok) {
-          const created = await createResponse.json();
-          tagId = created.data?.id;
-        }
+        const { data: created } = await api.post('/tags', { name: tagName });
+        tagId = created.data?.id;
       }
 
       if (!tagId) return;
 
       // Link tag to contact
-      const linkResponse = await fetch(`${window.location.origin}/api/v1/tags/contacts`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ contactId, tagId })
-      });
-
-      if (linkResponse.ok) {
-        setContactTags((prev) => [...prev, { id: tagId as string, name: tagName }]);
-        setNewTag('');
-      }
-    } catch (error) {
-      console.error('Failed to add tag:', error);
+      await api.post('/tags/contacts', { contactId, tagId });
+      setContactTags((prev) => [...prev, { id: tagId as string, name: tagName }]);
+      setNewTag('');
+    } catch {
+      // Failed to add tag
     }
   };
 
   const handleRemoveTag = async (tagId: string) => {
     if (!contactId) return;
-
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`${window.location.origin}/api/v1/tags/contacts/${contactId}/${tagId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (response.ok) {
-        setContactTags((prev) => prev.filter((t) => t.id !== tagId));
-      }
-    } catch (error) {
-      console.error('Failed to remove tag:', error);
+      await api.delete(`/tags/contacts/${contactId}/${tagId}`);
+      setContactTags((prev) => prev.filter((t) => t.id !== tagId));
+    } catch {
+      // Failed to remove tag
     }
   };
 
-  // Load contact notes
   const loadContactNotes = async () => {
     if (!contactId) return;
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`${window.location.origin}/api/v1/notes?contactId=${contactId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) {
-        const result = await response.json();
-        setNotes(result.data || []);
-      }
-    } catch (error) {
-      console.error('Failed to load notes:', error);
+      const { data } = await api.get(`/notes?contactId=${contactId}`);
+      setNotes(data.data || []);
+    } catch {
+      // Failed to load notes
     }
   };
 
-  // Add note
   const handleAddNote = async () => {
     if (!newNote.trim() || !contactId) return;
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`${window.location.origin}/api/v1/notes`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ contactId, content: newNote })
-      });
-      if (response.ok) {
-        const result = await response.json();
-        setNotes(prev => [result.data || result, ...prev]);
-        setNewNote('');
-      }
-    } catch (error) {
-      console.error('Failed to add note:', error);
+      const { data } = await api.post('/notes', { contactId, content: newNote });
+      setNotes(prev => [data.data || data, ...prev]);
+      setNewNote('');
+    } catch {
+      // Failed to add note
     }
   };
 
-  // Delete note
   const handleDeleteNote = async (noteId: string) => {
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`${window.location.origin}/api/v1/notes/${noteId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) {
-        setNotes(prev => prev.filter(n => n.id !== noteId));
-      }
-    } catch (error) {
-      console.error('Failed to delete note:', error);
+      await api.delete(`/notes/${noteId}`);
+      setNotes(prev => prev.filter(n => n.id !== noteId));
+    } catch {
+      // Failed to delete note
     }
   };
 
-  // Load transactions
   const loadContactTransactions = async () => {
     if (!contactId) return;
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`${window.location.origin}/api/v1/crm/transactions?contactId=${contactId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) {
-        const result = await response.json();
-        setTransactions(result.data || []);
-      }
-    } catch (error) {
-      console.error('Failed to load transactions:', error);
+      const { data } = await api.get(`/crm/transactions?contactId=${contactId}`);
+      setTransactions(data.data || []);
+    } catch {
+      // Failed to load transactions
     }
   };
 
-  // Add transaction
   const handleAddTransaction = async () => {
     if (!newTransaction.amount || !contactId) return;
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`${window.location.origin}/api/v1/crm/transactions`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          contactId,
-          amount: parseFloat(newTransaction.amount),
-          description: newTransaction.description,
-          status: newTransaction.status
-        })
+      const { data } = await api.post('/crm/transactions', {
+        contactId,
+        amount: parseFloat(newTransaction.amount),
+        description: newTransaction.description,
+        status: newTransaction.status
       });
-      if (response.ok) {
-        const result = await response.json();
-        setTransactions(prev => [result.data || result, ...prev]);
-        setNewTransaction({ amount: '', description: '', status: 'pending' });
-        setShowTransactionModal(false);
-      }
-    } catch (error) {
-      console.error('Failed to add transaction:', error);
+      setTransactions(prev => [data.data || data, ...prev]);
+      setNewTransaction({ amount: '', description: '', status: 'pending' });
+      setShowTransactionModal(false);
+    } catch {
+      // Failed to add transaction
     }
   };
 
-  // Load automations
   const loadContactAutomations = async () => {
     if (!contactId) return;
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`${window.location.origin}/api/v1/automations`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) {
-        const result = await response.json();
-        setAutomations(result.data || []);
-      }
-    } catch (error) {
-      console.error('Failed to load automations:', error);
+      const { data } = await api.get('/automations');
+      setAutomations(data.data || []);
+    } catch {
+      // Failed to load automations
     }
   };
 
-  // Enroll in automation
   const handleEnrollInAutomation = async (automationId: string) => {
     if (!contactId) return;
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`${window.location.origin}/api/v1/automations/${automationId}/enroll`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ contactId })
-      });
-      if (response.ok) {
-        alert('Contact enrolled in automation!');
-      }
-    } catch (error) {
-      console.error('Failed to enroll in automation:', error);
+      await api.post(`/automations/${automationId}/enroll`, { contactId });
+      alert('Contact enrolled in automation!');
+    } catch {
+      // Failed to enroll
     }
   };
 
-  // Handle send message
+  // Handle send message — tempId declared before try for proper scope in catch
   const handleSend = async (content: string, mediaUrl?: string) => {
     if (!contactId || (!content && !mediaUrl)) return;
 
+    const tempId = `temp-${Date.now()}`;
+
     try {
       setSending(true);
-      
-      // Add optimistic message immediately
-      const tempId = `temp-${Date.now()}`;
+
       const optimisticMessage: Message = {
         id: tempId,
         contactId,
@@ -471,15 +346,13 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
         mediaUrl,
       };
       setMessages((prev) => [...prev, optimisticMessage]);
-      
-      // Send message
+
       const sentMessage = await messageAPI.sendMessage(contactId, content, mediaUrl);
-      
-      // Replace optimistic message with real message
+
       if (sentMessage) {
-        setMessages((prev) => 
-          prev.map(msg => 
-            msg.id === tempId 
+        setMessages((prev) =>
+          prev.map(msg =>
+            msg.id === tempId
               ? {
                   id: sentMessage.id,
                   contactId: sentMessage.contactId || contactId,
@@ -494,14 +367,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
           )
         );
       }
-      
-      // Reload messages after a short delay to ensure we have the latest from server
-      setTimeout(() => {
-        loadMessages(50, 0);
-      }, 1000);
-    } catch (error) {
-      console.error('Failed to send message:', error);
-      // Remove optimistic message on error
+    } catch {
       setMessages((prev) => prev.filter(msg => msg.id !== tempId));
       alert('Failed to send message');
     } finally {
@@ -537,14 +403,14 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
           </div>
         </div>
         <div className="chat-header-actions">
-          <button 
-            className="icon-button" 
+          <button
+            className="icon-button"
             onClick={handleCall}
             title="Call"
           >
             📞
           </button>
-          <button 
+          <button
             className="icon-button"
             onClick={() => setShowContactInfo(!showContactInfo)}
             title="Contact Info"
@@ -580,28 +446,28 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
 
             {/* Navigation Tabs */}
             <div className="modal-tabs">
-              <button 
+              <button
                 className={`modal-tab ${activeTab === 'info' ? 'active' : ''}`}
                 onClick={() => setActiveTab('info')}
               >
                 <span className="tab-icon">🏷️</span>
                 <span className="tab-label">Tags</span>
               </button>
-              <button 
+              <button
                 className={`modal-tab ${activeTab === 'notes' ? 'active' : ''}`}
                 onClick={() => setActiveTab('notes')}
               >
                 <span className="tab-icon">📝</span>
                 <span className="tab-label">Notes</span>
               </button>
-              <button 
+              <button
                 className={`modal-tab ${activeTab === 'transactions' ? 'active' : ''}`}
                 onClick={() => setActiveTab('transactions')}
               >
                 <span className="tab-icon">💰</span>
                 <span className="tab-label">Sales</span>
               </button>
-              <button 
+              <button
                 className={`modal-tab ${activeTab === 'automations' ? 'active' : ''}`}
                 onClick={() => setActiveTab('automations')}
               >
@@ -618,7 +484,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                     <h4>Contact Tags</h4>
                     <span className="badge-count">{contactTags.length}</span>
                   </div>
-                  
+
                   <div className="tags-grid">
                     {contactTags.length === 0 ? (
                       <p className="empty-hint">No tags added yet</p>
@@ -633,12 +499,12 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                   </div>
 
                   <div className="add-input-group">
-                    <input 
+                    <input
                       type="text"
                       placeholder="Add new tag..."
                       value={newTag}
                       onChange={(e) => setNewTag(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
                     />
                     <button onClick={handleAddTag} disabled={!newTag.trim()}>
                       Add
@@ -700,7 +566,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                 <div className="modal-section">
                   <div className="section-header">
                     <h4>Sales & Transactions</h4>
-                    <button 
+                    <button
                       className="btn-primary-small"
                       onClick={() => setShowTransactionModal(true)}
                     >
@@ -752,7 +618,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                         <div key={auto.id} className="automation-card">
                           <div className={`auto-indicator ${auto.isActive ? 'active' : ''}`}></div>
                           <span className="auto-card-name">{auto.name}</span>
-                          <button 
+                          <button
                             className="btn-enroll"
                             onClick={() => handleEnrollInAutomation(auto.id)}
                           >
@@ -827,7 +693,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
 
       <div className="messages-container" ref={scrollRef} onScroll={handleScroll}>
         {loading && <div className="loading-indicator">Loading messages...</div>}
-        
+
         <div className="messages-list">
           {messages.map((msg) => (
             <MessageBubble
