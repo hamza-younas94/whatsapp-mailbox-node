@@ -614,6 +614,67 @@ function setupIncomingMessageListener(): void {
       }
 
   logger.info({ userId, phoneNumber: sanitizedPhone, contactId: contact.id, hasMedia, mediaUrl, isOutgoing }, isOutgoing ? 'Saved outgoing message to database' : 'Saved incoming message to database');
+
+      // Trigger automations for incoming messages (forwarding, auto-tag, etc.)
+      if (!isOutgoing && body) {
+        try {
+          const { AutomationRepository } = require('@repositories/automation.repository');
+          const { AutomationService } = require('@services/automation.service');
+          const { TagService } = require('@services/tag.service');
+          const { TagRepository } = require('@repositories/tag.repository');
+
+          const automationRepo = new AutomationRepository(db);
+          const tagRepo = new TagRepository(db);
+          const tagService = new TagService(tagRepo);
+          // messageService needs WhatsApp service — use a lightweight proxy
+          const { MessageService } = require('@services/message.service');
+          const messageService = new MessageService(
+            require('@repositories/message.repository').MessageRepository ? new (require('@repositories/message.repository').MessageRepository)(db) : {} as any,
+            {} as any, // whatsapp service placeholder
+            {} as any, // conversation repo placeholder
+          );
+          // Override sendMessage to use the actual WhatsApp session
+          messageService.sendMessage = async (_uid: string, params: any) => {
+            const targetContact = await contactRepo.findById(params.contactId);
+            if (!targetContact) return;
+            const targetChatId = (targetContact as any).chatId || `${targetContact.phoneNumber}@c.us`;
+            const sess = whatsappWebService.getSession(sessionId);
+            if (sess) {
+              await sess.client.sendMessage(targetChatId, params.content || '');
+              logger.info({ targetChatId, content: (params.content || '').substring(0, 50) }, 'Forwarded message via automation');
+            }
+          };
+
+          const automationService = new AutomationService(automationRepo, messageService, tagService);
+
+          // Trigger MESSAGE_RECEIVED automations
+          await automationService.triggerAutomations('message_received', {
+            userId,
+            contactId: contact.id,
+            messageContent: body,
+            mediaUrl,
+            from,
+          });
+
+          // Trigger KEYWORD automations — check if body matches any keyword triggers
+          const keywordAutomations = await automationRepo.findByTrigger('keyword');
+          for (const auto of keywordAutomations) {
+            const conditions = auto.conditions as any;
+            const keyword = conditions?.keyword;
+            if (keyword && body.toLowerCase().includes(keyword.toLowerCase())) {
+              await automationService.executeAutomation(auto.id, {
+                userId,
+                contactId: contact.id,
+                messageContent: body,
+                mediaUrl,
+                from,
+              });
+            }
+          }
+        } catch (autoError) {
+          logger.debug({ error: autoError }, 'Automation trigger failed (non-critical)');
+        }
+      }
     } catch (error) {
       logger.error({ error, event }, 'Failed to save WhatsApp message');
     }

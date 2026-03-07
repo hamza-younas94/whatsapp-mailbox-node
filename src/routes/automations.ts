@@ -38,7 +38,7 @@ const createAutomationSchema = z.object({
   actions: z.union([
     z.array(
       z.object({
-        type: z.enum(['SEND_MESSAGE', 'ADD_TAG', 'REMOVE_TAG', 'WAIT', 'WEBHOOK']),
+        type: z.enum(['SEND_MESSAGE', 'ADD_TAG', 'REMOVE_TAG', 'WAIT', 'WEBHOOK', 'FORWARD_MESSAGE']),
         value: z.string().optional(),
         delay: z.number().optional(),
       }),

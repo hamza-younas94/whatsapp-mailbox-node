@@ -3,6 +3,7 @@ import api from '@/api/client';
 import { messageAPI } from '@/api/queries';
 import { subscribeToMessage, subscribeToMessageStatus, subscribeToReactionUpdated } from '@/api/socket';
 import { getContactTypeFromId, getContactTypeInfo, getContactTypeBadgeClass } from '@/utils/contact-type';
+import { getAvatarUrl, getAvatarInitial } from '@/utils/avatar';
 import MessageBubble from '@/components/MessageBubble';
 import MessageComposer from '@/components/MessageComposer';
 import '@/styles/chat-pane.css';
@@ -62,6 +63,10 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
   const contactTypeResolved = getContactTypeFromId(chatId, undefined, contactType);
   const typeInfo = getContactTypeInfo(contactTypeResolved);
   const badgeClass = getContactTypeBadgeClass(contactTypeResolved);
+
+  // Use local avatar URL to avoid 403 errors from expired CDN URLs
+  const localProfilePic = getAvatarUrl(profilePic, chatId);
+  const avatarInitial = getAvatarInitial(contactName);
 
   // Load messages from API
   const loadMessages = useCallback(
@@ -447,10 +452,10 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
       <div className="chat-header">
         <div className="chat-header-info">
           <div className="chat-header-avatar">
-            {profilePic ? (
+            {localProfilePic ? (
               <>
                 <img
-                  src={profilePic}
+                  src={localProfilePic}
                   alt={contactName || 'Contact'}
                   className="header-avatar-img"
                   onError={(e) => {
@@ -460,11 +465,11 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                   }}
                 />
                 <div className="header-avatar-placeholder" style={{ display: 'none' }}>
-                  {contactName?.[0] || '?'}
+                  {avatarInitial}
                 </div>
               </>
             ) : (
-              <div className="header-avatar-placeholder">{contactName?.[0] || '?'}</div>
+              <div className="header-avatar-placeholder">{avatarInitial}</div>
             )}
           </div>
           <div className="chat-header-text">
@@ -496,10 +501,10 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
           <div className="modal-container" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-header-content">
-                {profilePic ? (
+                {localProfilePic ? (
                   <>
                     <img
-                      src={profilePic}
+                      src={localProfilePic}
                       alt={contactName || 'Contact'}
                       className="modal-avatar"
                       onError={(e) => {
@@ -509,11 +514,11 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                       }}
                     />
                     <div className="modal-avatar-placeholder" style={{ display: 'none' }}>
-                      {contactName?.[0] || '?'}
+                      {avatarInitial}
                     </div>
                   </>
                 ) : (
-                  <div className="modal-avatar-placeholder">{contactName?.[0] || '?'}</div>
+                  <div className="modal-avatar-placeholder">{avatarInitial}</div>
                 )}
                 <div className="modal-title">
                   <h3>{contactName || 'Unknown'}</h3>
@@ -559,18 +564,22 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                 <div className="modal-section">
                   <div className="overview-grid">
                     <div className="overview-card" onClick={() => setActiveTab('orders')}>
+                      <div className="overview-card-icon">📦</div>
                       <div className="overview-value">{orders.length}</div>
                       <div className="overview-label">Orders</div>
                     </div>
                     <div className="overview-card" onClick={() => setActiveTab('transactions')}>
+                      <div className="overview-card-icon">💰</div>
                       <div className="overview-value">{transactions.length}</div>
                       <div className="overview-label">Sales</div>
                     </div>
                     <div className="overview-card" onClick={() => setActiveTab('tasks')}>
+                      <div className="overview-card-icon">📋</div>
                       <div className="overview-value">{tasks.filter(t => t.status !== 'TASK_COMPLETED').length}</div>
                       <div className="overview-label">Open Tasks</div>
                     </div>
                     <div className="overview-card" onClick={() => setActiveTab('notes')}>
+                      <div className="overview-card-icon">📝</div>
                       <div className="overview-value">{notes.length}</div>
                       <div className="overview-label">Notes</div>
                     </div>
@@ -590,12 +599,16 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                     )}
                   </div>
 
-                  <div className="quick-links" style={{ marginTop: 20 }}>
-                    <a href="/orders.html" target="_blank" className="quick-link">📦 Orders</a>
-                    <a href="/tasks.html" target="_blank" className="quick-link">✅ Tasks</a>
-                    <a href="/invoices.html" target="_blank" className="quick-link">🧾 Invoices</a>
-                    <a href="/products.html" target="_blank" className="quick-link">🛍️ Products</a>
-                    <a href="/appointments.html" target="_blank" className="quick-link">📅 Appointments</a>
+                  <div className="section-header" style={{ marginTop: 16 }}>
+                    <h4>Quick Access</h4>
+                  </div>
+                  <div className="quick-links-grid">
+                    <a href="/orders.html" target="_blank" className="quick-link-card">📦 Orders</a>
+                    <a href="/tasks.html" target="_blank" className="quick-link-card">✅ Tasks</a>
+                    <a href="/invoices.html" target="_blank" className="quick-link-card">🧾 Invoices</a>
+                    <a href="/products.html" target="_blank" className="quick-link-card">🛍️ Products</a>
+                    <a href="/appointments.html" target="_blank" className="quick-link-card">📅 Bookings</a>
+                    <a href="/automation.html" target="_blank" className="quick-link-card">⚡ Automation</a>
                   </div>
                 </div>
               )}

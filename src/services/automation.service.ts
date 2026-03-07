@@ -15,7 +15,7 @@ export interface CreateAutomationInput {
 }
 
 export interface AutomationAction {
-  type: 'SEND_MESSAGE' | 'ADD_TAG' | 'REMOVE_TAG' | 'SEND_EMAIL' | 'WEBHOOK' | 'WAIT';
+  type: 'SEND_MESSAGE' | 'ADD_TAG' | 'REMOVE_TAG' | 'SEND_EMAIL' | 'WEBHOOK' | 'WAIT' | 'FORWARD_MESSAGE';
   params: Record<string, any>;
 }
 
@@ -29,7 +29,67 @@ export interface IAutomationService {
   triggerAutomations(trigger: string, context: Record<string, any>): Promise<void>;
 }
 
+// Anti-spam rate limiter for message forwarding
+class ForwardRateLimiter {
+  private targetCounts = new Map<string, { count: number; resetAt: number }>();
+  private globalCount = { count: 0, resetAt: 0 };
+  private contentHashes = new Map<string, number>(); // hash -> timestamp
+
+  // Max 5 forwards to same target per 10 minutes
+  checkTargetLimit(targetId: string): boolean {
+    const now = Date.now();
+    const entry = this.targetCounts.get(targetId);
+    if (!entry || now > entry.resetAt) {
+      this.targetCounts.set(targetId, { count: 1, resetAt: now + 600_000 });
+      return true;
+    }
+    if (entry.count >= 5) return false;
+    entry.count++;
+    return true;
+  }
+
+  // Max 20 forwards per minute globally
+  checkGlobalLimit(): boolean {
+    const now = Date.now();
+    if (now > this.globalCount.resetAt) {
+      this.globalCount = { count: 1, resetAt: now + 60_000 };
+      return true;
+    }
+    if (this.globalCount.count >= 20) return false;
+    this.globalCount.count++;
+    return true;
+  }
+
+  // Skip if same content forwarded in last 5 minutes
+  checkContentDuplicate(content: string, targetId: string): boolean {
+    const hash = `${targetId}:${this.simpleHash(content)}`;
+    const now = Date.now();
+    const lastSent = this.contentHashes.get(hash);
+    if (lastSent && now - lastSent < 300_000) return false;
+    this.contentHashes.set(hash, now);
+    // Cleanup old entries periodically
+    if (this.contentHashes.size > 1000) {
+      for (const [k, v] of this.contentHashes) {
+        if (now - v > 300_000) this.contentHashes.delete(k);
+      }
+    }
+    return true;
+  }
+
+  private simpleHash(str: string): string {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash |= 0;
+    }
+    return hash.toString(36);
+  }
+}
+
 export class AutomationService implements IAutomationService {
+  private forwardLimiter = new ForwardRateLimiter();
+
   constructor(
     private repository: AutomationRepository,
     private messageService: MessageService,
@@ -77,7 +137,21 @@ export class AutomationService implements IAutomationService {
       return;
     }
 
-    const actions = automation.actions as unknown as AutomationAction[];
+    const raw = automation.actions as any;
+
+    // Handle both array format and single object format
+    let actions: AutomationAction[];
+    if (Array.isArray(raw)) {
+      actions = raw;
+    } else if (raw && typeof raw === 'object' && raw.type) {
+      // Single action object (e.g., {type: 'FORWARD_MESSAGE', targets: [...]})
+      actions = [{ type: raw.type, params: raw }];
+    } else if (raw && typeof raw === 'object' && raw.message) {
+      // Legacy format: {message: '...'}
+      actions = [{ type: 'SEND_MESSAGE', params: { content: raw.message } }];
+    } else {
+      actions = [];
+    }
 
     for (const action of actions) {
       await this.executeAction(action, context);
@@ -128,6 +202,51 @@ export class AutomationService implements IAutomationService {
           body: JSON.stringify(context),
         });
         break;
+
+      case 'FORWARD_MESSAGE': {
+        const targets: string[] = action.params.targets || [];
+        const messageContent = context.messageContent || context.body || '';
+        const mediaUrl = context.mediaUrl;
+        const prefix = action.params.prefix || '';
+        const includeMedia = action.params.includeMedia !== false;
+
+        if (!messageContent && !mediaUrl) {
+          logger.warn('FORWARD_MESSAGE: No content to forward');
+          break;
+        }
+
+        const forwardContent = prefix
+          ? `${prefix}\n${messageContent}`
+          : messageContent;
+
+        for (const targetContactId of targets) {
+          // Anti-spam checks
+          if (!this.forwardLimiter.checkGlobalLimit()) {
+            logger.warn('FORWARD_MESSAGE: Global rate limit reached');
+            break;
+          }
+          if (!this.forwardLimiter.checkTargetLimit(targetContactId)) {
+            logger.warn({ targetContactId }, 'FORWARD_MESSAGE: Target rate limit reached');
+            continue;
+          }
+          if (messageContent && !this.forwardLimiter.checkContentDuplicate(messageContent, targetContactId)) {
+            logger.warn({ targetContactId }, 'FORWARD_MESSAGE: Duplicate content skipped');
+            continue;
+          }
+
+          try {
+            await this.messageService.sendMessage(context.userId, {
+              contactId: targetContactId,
+              content: forwardContent,
+              mediaUrl: includeMedia ? mediaUrl : undefined,
+            });
+            logger.info({ targetContactId }, 'Message forwarded');
+          } catch (err) {
+            logger.error({ targetContactId, err }, 'FORWARD_MESSAGE: Failed to forward');
+          }
+        }
+        break;
+      }
 
       default:
         logger.warn({ action: action.type }, 'Unknown action type');

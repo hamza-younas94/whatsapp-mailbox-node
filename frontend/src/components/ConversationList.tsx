@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { contactAPI } from '@/api/queries';
 import { getContactTypeFromId, getContactTypeInfo, ContactTypeEnum } from '@/utils/contact-type';
+import { getAvatarUrl } from '@/utils/avatar';
 import '@/styles/conversation-list-enhanced.css';
 
 interface Conversation {
@@ -215,7 +216,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   // Render a single conversation item
   const renderConversationItem = (conv: Conversation) => {
     const displayName = conv.contact?.name || conv.contact?.phoneNumber || 'Unknown';
-    const profilePic = conv.contact?.profilePhotoUrl || conv.contact?.avatarUrl;
+    const profilePic = getAvatarUrl(conv.contact?.profilePhotoUrl || conv.contact?.avatarUrl, conv.contact?.chatId);
     const contactType = getConvType(conv);
     const typeInfo = getContactTypeInfo(contactType);
     const gradient = avatarGradients[contactType] || avatarGradients.unknown;

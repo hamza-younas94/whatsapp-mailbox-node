@@ -137,6 +137,7 @@
                     <select id="action" required class="w-full px-4 py-2 border rounded-lg">
                         <option value="">Select Action</option>
                         <option value="send_message">Send Message</option>
+                        <option value="forward_message">Forward Message</option>
                         <option value="add_tag">Add Tag</option>
                         <option value="send_email">Send Email Notification</option>
                         <option value="assign_agent">Assign to Agent</option>
@@ -148,6 +149,32 @@
                     <textarea id="message" rows="4"
                         class="w-full px-4 py-2 border rounded-lg"
                         placeholder="Automation message..."></textarea>
+                </div>
+
+                <div id="forwardField" class="hidden">
+                    <label class="block text-gray-700 mb-2">Forward To (select contacts/groups)</label>
+                    <div id="forwardTargetsContainer" class="mb-2">
+                        <input type="text" id="forwardSearch"
+                            class="w-full px-4 py-2 border rounded-lg mb-2"
+                            placeholder="Search contacts or groups...">
+                        <div id="forwardSearchResults" class="max-h-40 overflow-y-auto border rounded-lg hidden"></div>
+                        <div id="selectedTargets" class="flex flex-wrap gap-2 mt-2"></div>
+                    </div>
+                    <div class="flex items-center space-x-4 mt-2">
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" id="includeMedia" checked class="rounded">
+                            <span class="text-gray-700 text-sm">Include media (photos/videos)</span>
+                        </label>
+                    </div>
+                    <div class="mt-2">
+                        <label class="block text-gray-700 mb-1 text-sm">Forward prefix (optional)</label>
+                        <input type="text" id="forwardPrefix"
+                            class="w-full px-4 py-2 border rounded-lg"
+                            placeholder="e.g., [ALERT] or [FORWARDED]">
+                    </div>
+                    <div class="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p class="text-sm text-yellow-800"><i class="fas fa-shield-alt mr-1"></i> <strong>Anti-spam protection:</strong> Max 5 forwards per target/10min, 20 global/min, duplicate content blocked for 5min.</p>
+                    </div>
                 </div>
 
                 <div id="tagField" class="hidden">
@@ -298,17 +325,26 @@
         }
 
         function formatActions(actions) {
+            // Handle forward_message object format
+            if (actions && actions.type === 'FORWARD_MESSAGE') {
+                const count = (actions.targets || []).length;
+                return `Forward to ${count} target${count !== 1 ? 's' : ''}`;
+            }
             // Handle actions array
             if (Array.isArray(actions) && actions.length > 0) {
                 const actionTypes = actions.map(a => {
                     if (a.type === 'send_message') return 'Send Message';
                     if (a.type === 'add_tag') return 'Add Tag';
                     if (a.type === 'send_template') return 'Send Template';
+                    if (a.type === 'FORWARD_MESSAGE' || a.type === 'forward_message') return 'Forward Message';
                     if (a.type === 'webhook') return 'Webhook';
                     return a.type || 'Action';
                 });
                 return actionTypes.length > 1 ? `${actionTypes[0]} +${actionTypes.length - 1} more` : actionTypes[0];
             }
+            // Handle legacy object format
+            if (actions && actions.message) return 'Send Message';
+            if (actions && actions.tagId) return 'Add Tag';
             return 'No actions';
         }
 
@@ -385,7 +421,66 @@
             const action = document.getElementById('action').value;
             document.getElementById('messageField').classList.toggle('hidden', action !== 'send_message');
             document.getElementById('tagField').classList.toggle('hidden', action !== 'add_tag');
+            document.getElementById('forwardField').classList.toggle('hidden', action !== 'forward_message');
         }
+
+        // Forward target search and selection
+        let selectedForwardTargets = [];
+
+        async function searchForwardTargets(query) {
+            if (!query || query.length < 2) {
+                document.getElementById('forwardSearchResults').classList.add('hidden');
+                return;
+            }
+            const response = await fetchWithAuth(`${API_BASE}/contacts?search=${encodeURIComponent(query)}&limit=10`);
+            if (response.ok) {
+                const data = await response.json();
+                const contacts = data.data?.data || data.data || [];
+                const resultsDiv = document.getElementById('forwardSearchResults');
+                if (contacts.length === 0) {
+                    resultsDiv.innerHTML = '<div class="p-3 text-gray-500 text-sm">No contacts found</div>';
+                } else {
+                    resultsDiv.innerHTML = contacts.map(c => {
+                        const isSelected = selectedForwardTargets.some(t => t.id === c.id);
+                        return `<div class="p-3 hover:bg-gray-100 cursor-pointer flex justify-between items-center ${isSelected ? 'bg-green-50' : ''}"
+                            onclick="toggleForwardTarget('${c.id}', '${(c.name || c.phoneNumber || '').replace(/'/g, "\\'")}')">
+                            <span class="text-sm">${c.name || c.phoneNumber || 'Unknown'}</span>
+                            <span class="text-xs text-gray-500">${c.phoneNumber || ''}</span>
+                        </div>`;
+                    }).join('');
+                }
+                resultsDiv.classList.remove('hidden');
+            }
+        }
+
+        function toggleForwardTarget(id, name) {
+            const idx = selectedForwardTargets.findIndex(t => t.id === id);
+            if (idx >= 0) {
+                selectedForwardTargets.splice(idx, 1);
+            } else {
+                selectedForwardTargets.push({ id, name });
+            }
+            renderSelectedTargets();
+            // Re-run search to update selection state
+            const query = document.getElementById('forwardSearch').value;
+            if (query) searchForwardTargets(query);
+        }
+
+        function renderSelectedTargets() {
+            const container = document.getElementById('selectedTargets');
+            container.innerHTML = selectedForwardTargets.map(t =>
+                `<span class="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                    ${t.name}
+                    <button type="button" onclick="toggleForwardTarget('${t.id}', '${t.name.replace(/'/g, "\\'")}')" class="text-green-600 hover:text-green-900">&times;</button>
+                </span>`
+            ).join('');
+        }
+
+        let forwardSearchTimeout;
+        document.getElementById('forwardSearch').addEventListener('input', (e) => {
+            clearTimeout(forwardSearchTimeout);
+            forwardSearchTimeout = setTimeout(() => searchForwardTargets(e.target.value), 300);
+        });
 
         document.getElementById('trigger').addEventListener('change', toggleTriggerFields);
         document.getElementById('action').addEventListener('change', toggleActionFields);
@@ -406,12 +501,12 @@
                 messageContent = document.getElementById('message').value;
             }
 
-            const data = { 
-                name, 
-                trigger, 
-                action, 
-                delay, 
-                isActive, 
+            const data = {
+                name,
+                trigger,
+                action,
+                delay,
+                isActive,
                 conditions: {},
                 actions: {},
                 message: messageContent
@@ -425,6 +520,13 @@
                 data.actions.message = messageContent;
             } else if (action === 'add_tag') {
                 data.actions.tagId = document.getElementById('tagId').value;
+            } else if (action === 'forward_message') {
+                data.actions = {
+                    type: 'FORWARD_MESSAGE',
+                    targets: selectedForwardTargets.map(t => t.id),
+                    includeMedia: document.getElementById('includeMedia').checked,
+                    prefix: document.getElementById('forwardPrefix').value || '',
+                };
             }
 
             const url = id ? `${API_BASE}/automation/${id}` : `${API_BASE}/automation`;

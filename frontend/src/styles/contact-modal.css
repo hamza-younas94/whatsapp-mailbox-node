@@ -1,4 +1,4 @@
-/* Contact Info Modal Styles */
+/* Contact Info Modal — Modern Design */
 
 .modal-overlay {
   position: fixed;
@@ -6,127 +6,138 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10000;
-  animation: fadeIn 0.2s ease;
+  animation: modalFadeIn 0.2s ease;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .modal-container {
-  background: white;
-  width: 90%;
-  max-width: 600px;
-  max-height: 85vh;
-  border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  background: #f5f6f8;
+  width: 92%;
+  max-width: 520px;
+  max-height: 88vh;
+  border-radius: 16px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
   display: flex;
   flex-direction: column;
-  animation: slideUp 0.3s ease;
+  animation: modalSlideUp 0.3s ease;
   overflow: hidden;
 }
 
-@keyframes slideUp {
-  from {
-    transform: translateY(50px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+@keyframes modalSlideUp {
+  from { transform: translateY(40px) scale(0.97); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
 }
 
 /* Modal Header */
 .modal-header {
-  padding: 24px;
-  border-bottom: 1px solid #e0e0e0;
+  padding: 20px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(135deg, #00a884 0%, #008069 100%);
+  background: linear-gradient(135deg, #075E54 0%, #128C7E 50%, #25D366 100%);
   color: white;
+  position: relative;
+}
+
+.modal-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #25D366, #128C7E, #075E54);
 }
 
 .modal-header-content {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   flex: 1;
+  min-width: 0;
 }
 
 .modal-avatar {
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
 }
 
 .modal-avatar-placeholder {
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.18);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 600;
   color: white;
-  border: 3px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+}
+
+.modal-title {
+  min-width: 0;
 }
 
 .modal-title h3 {
   margin: 0;
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 600;
   color: white;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .modal-title p {
-  margin: 4px 0 8px 0;
-  font-size: 13px;
-  opacity: 0.9;
-  color: rgba(255, 255, 255, 0.85);
+  margin: 3px 0 6px 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .modal-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px;
+  padding: 3px 10px;
   border-radius: 12px;
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 10px;
+  font-weight: 600;
   background: rgba(255, 255, 255, 0.2);
   color: white;
+  letter-spacing: 0.3px;
 }
 
 .modal-close {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   border: none;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
   color: white;
-  font-size: 20px;
+  font-size: 18px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
+  flex-shrink: 0;
 }
 
 .modal-close:hover {
@@ -134,59 +145,71 @@
   transform: scale(1.1);
 }
 
-/* Modal Tabs */
+/* Modal Tabs — compact, scrollable */
 .modal-tabs {
   display: flex;
-  border-bottom: 1px solid #e0e0e0;
-  background: #f8f9fa;
+  background: white;
+  border-bottom: 1px solid #e8e8e8;
   overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 0 4px;
+}
+
+.modal-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .modal-tab {
-  flex: 1;
-  padding: 14px 20px;
+  flex: 0 0 auto;
+  padding: 10px 12px;
   border: none;
   background: transparent;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  font-size: 12px;
+  gap: 5px;
+  font-size: 11px;
   font-weight: 600;
-  color: #666;
+  color: #888;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
   transition: all 0.2s;
-  border-bottom: 3px solid transparent;
+  border-bottom: 2px solid transparent;
   white-space: nowrap;
+  margin-bottom: -1px;
 }
 
 .modal-tab:hover {
-  background: #f0f2f5;
-  color: #00a884;
+  color: #128C7E;
+  background: rgba(18, 140, 126, 0.04);
 }
 
 .modal-tab.active {
-  color: #00a884;
-  background: white;
-  border-bottom-color: #00a884;
+  color: #128C7E;
+  border-bottom-color: #128C7E;
 }
 
 .modal-tab .tab-icon {
-  font-size: 16px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.modal-tab .tab-label {
+  font-size: 10px;
 }
 
 /* Modal Body */
 .modal-body {
   flex: 1;
   overflow-y: auto;
-  padding: 24px;
-  background: white;
+  padding: 20px;
+  background: #f5f6f8;
 }
 
 .modal-section {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .modal-section:last-child {
@@ -197,63 +220,65 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .section-header h4 {
   margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
+  font-size: 13px;
+  font-weight: 700;
+  color: #444;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .badge-count {
-  background: #00a884;
+  background: #128C7E;
   color: white;
   padding: 2px 8px;
   border-radius: 10px;
   font-size: 11px;
   font-weight: 600;
+  min-width: 20px;
+  text-align: center;
 }
 
 /* Tags Grid */
 .tags-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
-  min-height: 40px;
+  gap: 6px;
+  margin-bottom: 12px;
+  min-height: 32px;
 }
 
 .tag-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: #e3f2fd;
-  color: #1976d2;
-  border-radius: 16px;
-  font-size: 13px;
+  gap: 5px;
+  padding: 5px 12px;
+  background: linear-gradient(135deg, #128C7E 0%, #075E54 100%);
+  color: white;
+  border-radius: 20px;
+  font-size: 12px;
   font-weight: 500;
   transition: all 0.2s;
 }
 
 .tag-chip:hover {
-  background: #bbdefb;
   transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(18, 140, 126, 0.3);
 }
 
 .tag-chip button {
   background: transparent;
   border: none;
-  color: #1976d2;
-  font-size: 16px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
   cursor: pointer;
   padding: 0;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -262,16 +287,17 @@
 }
 
 .tag-chip button:hover {
-  background: rgba(25, 118, 210, 0.1);
+  color: white;
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .empty-hint {
-  color: #999;
+  color: #aaa;
   font-size: 13px;
   font-style: italic;
-  padding: 20px;
+  padding: 16px;
   text-align: center;
-  background: #f8f9fa;
+  background: white;
   border-radius: 8px;
   border: 1px dashed #ddd;
 }
@@ -287,9 +313,9 @@
   left: 0;
   right: 60px;
   background: white;
-  border: 1px solid #ddd;
+  border: 1px solid #e0e0e0;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   max-height: 160px;
   overflow-y: auto;
   z-index: 10;
@@ -312,7 +338,7 @@
 
 .tag-suggestion-item:hover {
   background: #e8f5e9;
-  color: #00a884;
+  color: #128C7E;
 }
 
 .tag-suggestion-item:not(:last-child) {
@@ -323,136 +349,45 @@
 .add-input-group {
   display: flex;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 10px;
 }
 
 .add-input-group input {
   flex: 1;
-  padding: 10px 14px;
-  border: 1px solid #ddd;
+  padding: 9px 14px;
+  border: 2px solid #e5e5e5;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 13px;
   transition: all 0.2s;
+  background: white;
 }
 
 .add-input-group input:focus {
   outline: none;
-  border-color: #00a884;
-  box-shadow: 0 0 0 3px rgba(0, 168, 132, 0.1);
+  border-color: #128C7E;
+  box-shadow: 0 0 0 3px rgba(18, 140, 126, 0.1);
 }
 
 .add-input-group button {
-  padding: 10px 20px;
-  background: #00a884;
+  padding: 9px 18px;
+  background: #128C7E;
   color: white;
   border: none;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
 }
 
-.add-input-group button:hover {
-  background: #008069;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 168, 132, 0.2);
+.add-input-group button:hover:not(:disabled) {
+  background: #0d6b5f;
 }
 
-.add-input-group button:active {
-  transform: translateY(0);
-}
-
-/* Notes List */
-.notes-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.note-item {
-  background: #f8f9fa;
-  padding: 14px;
-  border-radius: 8px;
-  border-left: 3px solid #00a884;
-  transition: all 0.2s;
-}
-
-.note-item:hover {
-  background: #f0f2f5;
-  transform: translateX(4px);
-}
-
-.note-text {
-  color: #333;
-  font-size: 14px;
-  line-height: 1.5;
-  margin-bottom: 8px;
-  white-space: pre-wrap;
-}
-
-.note-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 11px;
-  color: #999;
-}
-
-.note-delete {
-  background: transparent;
-  border: none;
-  color: #e74c3c;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: all 0.2s;
-  font-size: 12px;
-}
-
-.note-delete:hover {
-  background: #ffe5e5;
-}
-
-/* Transactions */
-.transaction-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.transaction-item {
-  background: #f8f9fa;
-  padding: 14px;
-  border-radius: 8px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  transition: all 0.2s;
-}
-
-.transaction-item:hover {
-  background: #e9ecef;
-  transform: translateX(4px);
-}
-
-.transaction-info h5 {
-  margin: 0 0 4px 0;
-  font-size: 14px;
-  color: #333;
-}
-
-.transaction-info p {
-  margin: 0;
-  font-size: 12px;
-  color: #666;
-}
-
-.transaction-amount {
-  font-size: 16px;
-  font-weight: 600;
-  color: #27ae60;
+.add-input-group button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Responsive */
@@ -461,7 +396,7 @@
     width: 100%;
     max-width: none;
     max-height: 95vh;
-    border-radius: 12px 12px 0 0;
+    border-radius: 16px 16px 0 0;
     align-self: flex-end;
   }
 
@@ -471,25 +406,19 @@
 
   .modal-avatar,
   .modal-avatar-placeholder {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
   }
 
   .modal-title h3 {
-    font-size: 18px;
-  }
-
-  .modal-tabs {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    font-size: 15px;
   }
 
   .modal-tab {
-    flex: 0 0 auto;
-    min-width: 100px;
+    padding: 8px 10px;
   }
 
   .modal-body {
-    padding: 16px;
+    padding: 14px;
   }
 }
