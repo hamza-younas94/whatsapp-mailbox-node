@@ -457,6 +457,22 @@ function setupIncomingMessageListener(): void {
             
             if (session) {
               try {
+                // Simulate human typing to look natural and avoid WhatsApp bot detection
+                try {
+                  const chat = await session.client.getChatById(from);
+                  if (chat) {
+                    await chat.sendStateTyping();
+                    // Random delay: 2-5 seconds base + ~30ms per character (capped at 8s)
+                    const charDelay = Math.min(matchedReply.content.length * 30, 5000);
+                    const randomBase = 2000 + Math.random() * 3000;
+                    const typingDelay = Math.min(randomBase + charDelay, 8000);
+                    await new Promise(resolve => setTimeout(resolve, typingDelay));
+                    await chat.clearState();
+                  }
+                } catch (typingErr) {
+                  logger.debug({ error: typingErr }, 'Typing simulation failed, sending anyway');
+                }
+
                 // Send the auto-reply
                 const sentMsg = await session.client.sendMessage(from, matchedReply.content);
                 
