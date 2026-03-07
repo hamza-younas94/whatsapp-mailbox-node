@@ -67,12 +67,10 @@ export class ContactController {
     } = req.query;
     const userId = requireUserId(req);
 
-    const actualOffset =
-      page && typeof page === 'string'
-        ? (parseInt(page) - 1) * (typeof limit === 'string' ? parseInt(limit) : 20)
-        : typeof offset === 'string'
-          ? parseInt(offset)
-          : 0;
+    const parsedLimit = typeof limit === 'string' ? parseInt(limit) : (typeof limit === 'number' ? limit : 20);
+    const parsedPage = typeof page === 'string' ? parseInt(page) : (typeof page === 'number' ? page : 1);
+    const parsedOffset = typeof offset === 'string' ? parseInt(offset) : (typeof offset === 'number' ? offset : 0);
+    const actualOffset = parsedPage > 1 ? (parsedPage - 1) * parsedLimit : parsedOffset;
 
     const filters = {
       query: search as string,
@@ -86,7 +84,7 @@ export class ContactController {
       ...(contactType && { contactType: contactType as 'individual' | 'business' | 'group' | 'broadcast' }),
       sortBy: (sortBy || 'name') as 'name' | 'lastMessageAt' | 'engagementScore' | 'messageCount',
       sortOrder: (sortOrder || 'asc') as 'asc' | 'desc',
-      limit: typeof limit === 'string' ? parseInt(limit) : 20,
+      limit: parsedLimit,
       offset: actualOffset,
     } as any;
 
