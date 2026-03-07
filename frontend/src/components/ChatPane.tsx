@@ -69,6 +69,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageSubscriptionRef = useRef<(() => void) | null>(null);
   const statusSubscriptionRef = useRef<(() => void) | null>(null);
+  const isContactSwitchRef = useRef(false);
 
   // Get contact type for display
   const contactTypeResolved = getContactTypeFromId(chatId, undefined, contactType);
@@ -85,7 +86,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
       if (!contactId) return;
 
       try {
-        setLoading(true);
+        if (offset > 0) setLoading(true);
         const response = await messageAPI.getMessagesByContact(contactId, limit, offset);
 
         if (offset === 0) {
@@ -119,6 +120,8 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
       return;
     }
 
+    setMessages([]);
+    isContactSwitchRef.current = true;
     loadMessages(50, 0);
 
     messageSubscriptionRef.current = subscribeToMessage((msg) => {
@@ -192,8 +195,10 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current && messages.length > 0) {
+      const behavior = isContactSwitchRef.current ? 'instant' : 'smooth';
+      messagesEndRef.current.scrollIntoView({ behavior: behavior as ScrollBehavior });
+      isContactSwitchRef.current = false;
     }
   }, [messages]);
 
