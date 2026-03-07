@@ -672,21 +672,35 @@ export class WhatsAppWebService extends EventEmitter {
         const result = await page.evaluate(async (id: string, wantDiag: boolean) => {
           try {
             const wStore = (globalThis as any).Store;
-            // Log diagnostics once to understand what's available
+            if (!wStore) return { url: null };
+
+            // Log diagnostics once
             if (wantDiag) {
-              const storeKeys = wStore ? Object.keys(wStore).filter((k: string) => k.toLowerCase().includes('pic') || k.toLowerCase().includes('profile') || k.toLowerCase().includes('thumb')) : [];
-              return { diag: true, hasStore: !!wStore, profileKeys: storeKeys };
+              const storeKeys = Object.keys(wStore).filter((k: string) =>
+                k.toLowerCase().includes('pic') || k.toLowerCase().includes('profile') ||
+                k.toLowerCase().includes('wid') || k.toLowerCase().includes('thumb')
+              );
+              return { diag: true, storeKeys };
             }
 
-            if (wStore?.ProfilePic?.profilePicFind) {
-              const pic = await wStore.ProfilePic.profilePicFind(id);
-              return { url: pic?.eurl || pic?.imgFull || pic?.img || null };
+            // Create proper WID object from string chatId
+            let wid: any = id;
+            if (wStore.WidFactory?.createWid) {
+              wid = wStore.WidFactory.createWid(id);
             }
-            // Try alternative Store paths
-            if (wStore?.Contact) {
-              const contact = wStore.Contact.get(id);
-              if (contact) {
-                return { url: contact.profilePicThumbObj?.eurl || contact.profilePicThumbObj?.imgFull || null };
+
+            if (wStore.ProfilePic?.profilePicFind) {
+              const pic = await wStore.ProfilePic.profilePicFind(wid);
+              if (pic?.eurl || pic?.imgFull || pic?.img) {
+                return { url: pic.eurl || pic.imgFull || pic.img };
+              }
+            }
+
+            // Fallback: check ProfilePicThumb cache
+            if (wStore.ProfilePicThumb?.get) {
+              const thumb = wStore.ProfilePicThumb.get(id);
+              if (thumb?.eurl || thumb?.imgFull) {
+                return { url: thumb.eurl || thumb.imgFull };
               }
             }
           } catch (e: any) {
