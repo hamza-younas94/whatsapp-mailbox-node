@@ -315,7 +315,7 @@ function setupChatSyncListener(): void {
         .filter(id => id !== 'status@broadcast');
       whatsappWebService.fetchAvatarsSlowly(sessionId, chatIdsForAvatars)
         .then(() => logger.info({ sessionId }, 'Background avatar fetch done'))
-        .catch(err => logger.debug({ err, sessionId }, 'Background avatar fetch error'));
+        .catch(err => logger.error({ err, sessionId }, 'Background avatar fetch error'));
 
       // Listen for downloaded avatars and update DB
       whatsappWebService.on('avatar:downloaded', async ({ chatId: avatarChatId, localUrl }) => {

@@ -777,15 +777,26 @@ export class WhatsAppWebService extends EventEmitter {
             if (localUrl) {
               fetched++;
               this.emit('avatar:downloaded', { sessionId, chatId, localUrl });
+            } else {
+              failed++;
             }
           }
         }
-      } catch {
+      } catch (err) {
         failed++;
+        // Log first few failures at info level for debugging
+        if (failed <= 3) {
+          logger.info({ chatId, err: err instanceof Error ? err.message : String(err) }, 'Avatar fetch failed (sample)');
+        }
       }
 
-      // Wait 3 seconds between each to avoid rate limiting
-      await new Promise(r => setTimeout(r, 3000));
+      // Wait 2 seconds between each to avoid rate limiting
+      await new Promise(r => setTimeout(r, 2000));
+
+      // Log progress every 50 contacts
+      if ((fetched + failed) % 50 === 0 && (fetched + failed) > 0) {
+        logger.info({ fetched, failed, processed: fetched + failed, total: chatIds.length }, 'Avatar fetch progress');
+      }
     }
 
     logger.info({ sessionId, fetched, failed, total: chatIds.length }, 'Background avatar fetch completed');
