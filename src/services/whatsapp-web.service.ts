@@ -662,30 +662,55 @@ export class WhatsAppWebService extends EventEmitter {
    * Get profile pic URL using Puppeteer page.evaluate to bypass
    * the 'isNewsletter' bug in WhatsApp's internal JS.
    */
+  private profilePicDiagLogged = false;
+
   async getProfilePicUrlSafe(client: Client, chatId: string): Promise<string | undefined> {
     try {
-      // Try Puppeteer page.evaluate first (bypasses buggy WhatsApp JS)
+      // Try Puppeteer page.evaluate (bypasses buggy WhatsApp JS)
       const page = (client as any).pupPage;
       if (page) {
-        const url = await page.evaluate(async (id: string) => {
+        const result = await page.evaluate(async (id: string, wantDiag: boolean) => {
           try {
-            // Access WhatsApp's internal Store to get profile pic (runs in browser context)
             const wStore = (globalThis as any).Store;
-            if (wStore?.ProfilePic?.profilePicFind) {
-              const result = await wStore.ProfilePic.profilePicFind(id);
-              return result?.eurl || result?.imgFull || null;
+            // Log diagnostics once to understand what's available
+            if (wantDiag) {
+              const storeKeys = wStore ? Object.keys(wStore).filter((k: string) => k.toLowerCase().includes('pic') || k.toLowerCase().includes('profile') || k.toLowerCase().includes('thumb')) : [];
+              return { diag: true, hasStore: !!wStore, profileKeys: storeKeys };
             }
-          } catch {
-            return null;
+
+            if (wStore?.ProfilePic?.profilePicFind) {
+              const pic = await wStore.ProfilePic.profilePicFind(id);
+              return { url: pic?.eurl || pic?.imgFull || pic?.img || null };
+            }
+            // Try alternative Store paths
+            if (wStore?.Contact) {
+              const contact = wStore.Contact.get(id);
+              if (contact) {
+                return { url: contact.profilePicThumbObj?.eurl || contact.profilePicThumbObj?.imgFull || null };
+              }
+            }
+          } catch (e: any) {
+            return { error: e?.message || String(e) };
           }
-          return null;
-        }, chatId);
-        if (url) return url;
+          return { url: null };
+        }, chatId, !this.profilePicDiagLogged);
+
+        if (result?.diag) {
+          logger.info({ hasStore: result.hasStore, profileKeys: result.profileKeys }, 'Profile pic Store diagnostics');
+          this.profilePicDiagLogged = true;
+          // Retry without diagnostics
+          return this.getProfilePicUrlSafe(client, chatId);
+        }
+        if (result?.error) {
+          logger.debug({ chatId, error: result.error }, 'Profile pic evaluate error');
+        }
+        if (result?.url) return result.url;
       }
     } catch {
-      // Puppeteer approach failed, try standard API as fallback
+      // Puppeteer approach failed
     }
 
+    // Fallback to standard API (may throw isNewsletter bug)
     try {
       return await client.getProfilePicUrl(chatId);
     } catch {
