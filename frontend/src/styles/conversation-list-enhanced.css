@@ -150,7 +150,6 @@
 }
 
 /* Loading and Empty States */
-.loading-state,
 .empty-state {
   padding: 40px 20px;
   text-align: center;
@@ -158,8 +157,57 @@
   font-size: 14px;
 }
 
-.loading-state {
-  animation: pulse 1.5s ease-in-out infinite;
+/* Skeleton Loading */
+.skeleton-list {
+  padding: 0;
+}
+
+.skeleton-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  background: white;
+}
+
+.skeleton-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.skeleton-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+.skeleton-line {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-name {
+  width: 55%;
+  height: 14px;
+}
+
+.skeleton-preview {
+  width: 80%;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 /* Conversation Item */

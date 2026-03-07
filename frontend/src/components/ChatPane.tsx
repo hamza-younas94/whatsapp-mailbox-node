@@ -20,7 +20,7 @@ interface Message {
   createdAt: string;
   mediaUrl?: string;
   mediaType?: 'IMAGE' | 'VIDEO' | 'AUDIO' | 'DOCUMENT';
-  reaction?: string | null;
+  reaction?: string;
   metadata?: any;
 }
 
@@ -124,7 +124,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
     statusSubscriptionRef.current = subscribeToMessageStatus((update) => {
       setMessages((prev) =>
         prev.map((msg) =>
-          msg.id === update.messageId ? { ...msg, status: update.status } : msg
+          msg.id === update.id || msg.id === update.waMessageId ? { ...msg, status: update.status } : msg
         )
       );
     });
@@ -135,10 +135,10 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
           msg.id === event.messageId
             ? {
                 ...msg,
-                reaction: event.reaction || null,
+                reaction: event.reaction || undefined,
                 metadata: {
                   ...(typeof msg.metadata === 'object' ? msg.metadata : {}),
-                  reaction: event.reaction || null,
+                  reaction: event.reaction || undefined,
                 },
               }
             : msg
@@ -392,7 +392,21 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
         <div className="chat-header-info">
           <div className="chat-header-avatar">
             {profilePic ? (
-              <img src={profilePic} alt={contactName || 'Contact'} className="header-avatar-img" />
+              <>
+                <img
+                  src={profilePic}
+                  alt={contactName || 'Contact'}
+                  className="header-avatar-img"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const fallback = e.currentTarget.nextElementSibling;
+                    if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                  }}
+                />
+                <div className="header-avatar-placeholder" style={{ display: 'none' }}>
+                  {contactName?.[0] || '?'}
+                </div>
+              </>
             ) : (
               <div className="header-avatar-placeholder">{contactName?.[0] || '?'}</div>
             )}
@@ -427,7 +441,21 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
             <div className="modal-header">
               <div className="modal-header-content">
                 {profilePic ? (
-                  <img src={profilePic} alt={contactName || 'Contact'} className="modal-avatar" />
+                  <>
+                    <img
+                      src={profilePic}
+                      alt={contactName || 'Contact'}
+                      className="modal-avatar"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const fallback = e.currentTarget.nextElementSibling;
+                        if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                      }}
+                    />
+                    <div className="modal-avatar-placeholder" style={{ display: 'none' }}>
+                      {contactName?.[0] || '?'}
+                    </div>
+                  </>
                 ) : (
                   <div className="modal-avatar-placeholder">{contactName?.[0] || '?'}</div>
                 )}
@@ -698,7 +726,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
           {messages.map((msg) => (
             <MessageBubble
               key={msg.id}
-              message={msg}
+              message={{ ...msg, messageType: msg.messageType || 'TEXT' }}
               isOwn={msg.direction === 'OUTGOING'}
             />
           ))}

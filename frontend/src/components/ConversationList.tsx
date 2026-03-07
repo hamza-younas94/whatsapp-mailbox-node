@@ -87,7 +87,24 @@ export const ConversationList: React.FC<ConversationListProps> = ({
           let lastMessagePreview: string | undefined = 'No messages yet';
 
           if (lastMessageObj) {
-            if (lastMessageObj.content && lastMessageObj.content.trim()) {
+            const mediaLabelMap: Record<string, string> = {
+              'IMAGE': '📷 Image',
+              'VIDEO': '🎥 Video',
+              'AUDIO': '🎵 Audio',
+              'DOCUMENT': '📄 Document',
+              'LOCATION': '📍 Location',
+              'CONTACT': '👤 Contact',
+              'STICKER': '🏷️ Sticker',
+              'PTT': '🎤 Voice message',
+            };
+
+            // Check if content is a bracketed media label like [IMAGE], [VIDEO], etc.
+            const bracketMatch = lastMessageObj.content?.trim().match(/^\[(IMAGE|VIDEO|AUDIO|DOCUMENT|STICKER|PTT|LOCATION|CONTACT)\]$/i);
+
+            if (bracketMatch) {
+              // Content is a media label — show emoji version
+              lastMessagePreview = mediaLabelMap[bracketMatch[1].toUpperCase()] || `📎 ${bracketMatch[1]}`;
+            } else if (lastMessageObj.content && lastMessageObj.content.trim()) {
               const content = lastMessageObj.content.trim();
               lastMessagePreview = content.length > 50
                 ? content.substring(0, 50) + '...'
@@ -226,7 +243,19 @@ export const ConversationList: React.FC<ConversationListProps> = ({
 
       {/* Conversations */}
       <div className="conversations-scroll">
-        {loading && <div className="loading-state">Loading...</div>}
+        {loading && (
+          <div className="skeleton-list">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="skeleton-item">
+                <div className="skeleton-avatar"></div>
+                <div className="skeleton-content">
+                  <div className="skeleton-line skeleton-name"></div>
+                  <div className="skeleton-line skeleton-preview"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {!loading && filteredConversations.length === 0 && (
           <div className="empty-state">
@@ -273,6 +302,9 @@ export const ConversationList: React.FC<ConversationListProps> = ({
                     className="avatar-image"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
+                      // Restore gradient background on parent
+                      const parent = e.currentTarget.parentElement;
+                      if (parent) parent.style.background = gradient;
                       const textAvatar = e.currentTarget.nextElementSibling;
                       if (textAvatar) {
                         (textAvatar as HTMLElement).style.display = 'flex';
