@@ -276,6 +276,49 @@
   border: 1px dashed #ddd;
 }
 
+/* Tag Autocomplete */
+.tag-autocomplete-container {
+  position: relative;
+}
+
+.tag-suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 60px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  max-height: 160px;
+  overflow-y: auto;
+  z-index: 10;
+  margin-top: 4px;
+}
+
+.tag-suggestion-item {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  text-align: left;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  color: #333;
+  transition: background 0.15s;
+  font-family: inherit;
+}
+
+.tag-suggestion-item:hover {
+  background: #e8f5e9;
+  color: #00a884;
+}
+
+.tag-suggestion-item:not(:last-child) {
+  border-bottom: 1px solid #f0f0f0;
+}
+
 /* Add Input Group */
 .add-input-group {
   display: flex;

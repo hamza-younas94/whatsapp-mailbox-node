@@ -1388,10 +1388,128 @@
   color: #128C7E;
 }
 
+/* Overview Grid */
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.overview-card {
+  background: #f8f9fa;
+  padding: 16px;
+  border-radius: 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid #eee;
+}
+
+.overview-card:hover {
+  background: #e8f5e9;
+  border-color: #00a884;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 168, 132, 0.15);
+}
+
+.overview-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #00a884;
+}
+
+.overview-label {
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+/* Task Card */
+.task-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  transition: all 0.2s;
+}
+
+.task-card:hover {
+  background: #f0f2f5;
+}
+
+.task-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ffa000;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.task-status-dot.completed {
+  background: #00a884;
+}
+
+.task-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  display: block;
+}
+
+.task-meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 11px;
+  align-items: center;
+}
+
+.task-priority {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.task-priority.priority-low { background: #e3f2fd; color: #1976d2; }
+.task-priority.priority-medium { background: #fff3e0; color: #e65100; }
+.task-priority.priority-high { background: #fce4ec; color: #c62828; }
+.task-priority.priority-urgent { background: #f44336; color: white; }
+
+.task-due {
+  color: #666;
+}
+
 /* Mobile Responsive */
 @media (max-width: 480px) {
   .crm-drawer {
     max-width: 100%;
+  }
+
+  .overview-grid {
+    gap: 8px;
+  }
+
+  .overview-card {
+    padding: 12px;
+  }
+
+  .overview-value {
+    font-size: 22px;
   }
 }
 

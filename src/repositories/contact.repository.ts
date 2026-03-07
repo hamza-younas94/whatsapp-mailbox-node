@@ -45,6 +45,13 @@ export class ContactRepository extends BaseRepository<Contact> implements IConta
     super(prisma);
   }
 
+  async findById(id: string): Promise<Contact | null> {
+    return this.prisma.contact.findUnique({
+      where: { id },
+      include: { tags: { include: { tag: true } } },
+    });
+  }
+
   async findByPhoneNumber(userId: string, phoneNumber: string): Promise<Contact | null> {
     return this.prisma.contact.findUnique({
       where: { userId_phoneNumber: { userId, phoneNumber } },

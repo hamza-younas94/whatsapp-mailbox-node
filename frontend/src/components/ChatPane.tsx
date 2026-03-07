@@ -47,8 +47,12 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
   const [transactions, setTransactions] = useState<Array<{ id: string; amount: number; description: string; status: string; createdAt: string }>>([]);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [newTransaction, setNewTransaction] = useState({ amount: '', description: '', status: 'pending' });
-  const [activeTab, setActiveTab] = useState<'info' | 'notes' | 'transactions' | 'automations'>('info');
+  const [activeTab, setActiveTab] = useState<'overview' | 'info' | 'notes' | 'transactions' | 'orders' | 'tasks' | 'automations'>('overview');
   const [automations, setAutomations] = useState<Array<{ id: string; name: string; isActive: boolean }>>([]);
+  const [allTags, setAllTags] = useState<Array<{ id: string; name: string; color?: string }>>([]);
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
+  const [orders, setOrders] = useState<Array<{ id: string; orderNumber: string; status: string; totalAmount: number; orderDate: string }>>([]);
+  const [tasks, setTasks] = useState<Array<{ id: string; title: string; status: string; priority: string; dueDate?: string }>>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageSubscriptionRef = useRef<(() => void) | null>(null);
@@ -181,9 +185,12 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
   useEffect(() => {
     if (contactId && showContactInfo) {
       loadContactTags();
+      loadAllTags();
       loadContactNotes();
       loadContactTransactions();
       loadContactAutomations();
+      loadContactOrders();
+      loadContactTasks();
     }
   }, [contactId, showContactInfo]);
 
@@ -326,6 +333,55 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
       // Failed to enroll
     }
   };
+
+  const loadAllTags = async () => {
+    try {
+      const { data } = await api.get('/tags');
+      setAllTags(data.data || []);
+    } catch {
+      // Failed to load tags
+    }
+  };
+
+  const loadContactOrders = async () => {
+    if (!contactId) return;
+    try {
+      const { data } = await api.get(`/orders?contactId=${contactId}`);
+      setOrders((data.data?.data || data.data || []).slice(0, 10));
+    } catch {
+      // Failed to load orders
+    }
+  };
+
+  const loadContactTasks = async () => {
+    if (!contactId) return;
+    try {
+      const { data } = await api.get(`/tasks?contactId=${contactId}`);
+      setTasks((data.data?.data || data.data || []).slice(0, 10));
+    } catch {
+      // Failed to load tasks
+    }
+  };
+
+  const handleSelectExistingTag = async (tag: { id: string; name: string }) => {
+    if (!contactId) return;
+    try {
+      await api.post('/tags/contacts', { contactId, tagId: tag.id });
+      setContactTags((prev) => [...prev, { id: tag.id, name: tag.name }]);
+      setNewTag('');
+      setShowTagSuggestions(false);
+    } catch {
+      // Failed to add tag (may already be assigned)
+    }
+  };
+
+  // Filter tag suggestions based on input
+  const filteredSuggestions = newTag.trim()
+    ? allTags.filter((t) => {
+        const assignedIds = new Set(contactTags.map((ct) => ct.id));
+        return !assignedIds.has(t.id) && t.name.toLowerCase().includes(newTag.toLowerCase());
+      })
+    : [];
 
   // Handle send message — tempId declared before try for proper scope in catch
   const handleSend = async (content: string, mediaUrl?: string) => {
@@ -474,37 +530,76 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
 
             {/* Navigation Tabs */}
             <div className="modal-tabs">
-              <button
-                className={`modal-tab ${activeTab === 'info' ? 'active' : ''}`}
-                onClick={() => setActiveTab('info')}
-              >
-                <span className="tab-icon">🏷️</span>
-                <span className="tab-label">Tags</span>
+              <button className={`modal-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
+                <span className="tab-icon">📊</span><span className="tab-label">Overview</span>
               </button>
-              <button
-                className={`modal-tab ${activeTab === 'notes' ? 'active' : ''}`}
-                onClick={() => setActiveTab('notes')}
-              >
-                <span className="tab-icon">📝</span>
-                <span className="tab-label">Notes</span>
+              <button className={`modal-tab ${activeTab === 'info' ? 'active' : ''}`} onClick={() => setActiveTab('info')}>
+                <span className="tab-icon">🏷️</span><span className="tab-label">Tags</span>
               </button>
-              <button
-                className={`modal-tab ${activeTab === 'transactions' ? 'active' : ''}`}
-                onClick={() => setActiveTab('transactions')}
-              >
-                <span className="tab-icon">💰</span>
-                <span className="tab-label">Sales</span>
+              <button className={`modal-tab ${activeTab === 'notes' ? 'active' : ''}`} onClick={() => setActiveTab('notes')}>
+                <span className="tab-icon">📝</span><span className="tab-label">Notes</span>
               </button>
-              <button
-                className={`modal-tab ${activeTab === 'automations' ? 'active' : ''}`}
-                onClick={() => setActiveTab('automations')}
-              >
-                <span className="tab-icon">⚡</span>
-                <span className="tab-label">Auto</span>
+              <button className={`modal-tab ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => setActiveTab('orders')}>
+                <span className="tab-icon">📦</span><span className="tab-label">Orders</span>
+              </button>
+              <button className={`modal-tab ${activeTab === 'transactions' ? 'active' : ''}`} onClick={() => setActiveTab('transactions')}>
+                <span className="tab-icon">💰</span><span className="tab-label">Sales</span>
+              </button>
+              <button className={`modal-tab ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>
+                <span className="tab-icon">✅</span><span className="tab-label">Tasks</span>
+              </button>
+              <button className={`modal-tab ${activeTab === 'automations' ? 'active' : ''}`} onClick={() => setActiveTab('automations')}>
+                <span className="tab-icon">⚡</span><span className="tab-label">Auto</span>
               </button>
             </div>
 
             <div className="modal-body">
+              {/* Overview Tab */}
+              {activeTab === 'overview' && (
+                <div className="modal-section">
+                  <div className="overview-grid">
+                    <div className="overview-card" onClick={() => setActiveTab('orders')}>
+                      <div className="overview-value">{orders.length}</div>
+                      <div className="overview-label">Orders</div>
+                    </div>
+                    <div className="overview-card" onClick={() => setActiveTab('transactions')}>
+                      <div className="overview-value">{transactions.length}</div>
+                      <div className="overview-label">Sales</div>
+                    </div>
+                    <div className="overview-card" onClick={() => setActiveTab('tasks')}>
+                      <div className="overview-value">{tasks.filter(t => t.status !== 'TASK_COMPLETED').length}</div>
+                      <div className="overview-label">Open Tasks</div>
+                    </div>
+                    <div className="overview-card" onClick={() => setActiveTab('notes')}>
+                      <div className="overview-value">{notes.length}</div>
+                      <div className="overview-label">Notes</div>
+                    </div>
+                  </div>
+
+                  <div className="section-header">
+                    <h4>Tags</h4>
+                    <span className="badge-count">{contactTags.length}</span>
+                  </div>
+                  <div className="tags-grid">
+                    {contactTags.length === 0 ? (
+                      <p className="empty-hint">No tags — add from Tags tab</p>
+                    ) : (
+                      contactTags.map((tag) => (
+                        <span key={tag.id} className="tag-chip">{tag.name}</span>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="quick-links" style={{ marginTop: 20 }}>
+                    <a href="/orders.html" target="_blank" className="quick-link">📦 Orders</a>
+                    <a href="/tasks.html" target="_blank" className="quick-link">✅ Tasks</a>
+                    <a href="/invoices.html" target="_blank" className="quick-link">🧾 Invoices</a>
+                    <a href="/products.html" target="_blank" className="quick-link">🛍️ Products</a>
+                    <a href="/appointments.html" target="_blank" className="quick-link">📅 Appointments</a>
+                  </div>
+                </div>
+              )}
+
               {/* Tags Tab */}
               {activeTab === 'info' && (
                 <div className="modal-section">
@@ -526,17 +621,33 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                     )}
                   </div>
 
-                  <div className="add-input-group">
+                  <div className="add-input-group tag-autocomplete-container">
                     <input
                       type="text"
-                      placeholder="Add new tag..."
+                      placeholder="Add or search tags..."
                       value={newTag}
-                      onChange={(e) => setNewTag(e.target.value)}
+                      onChange={(e) => { setNewTag(e.target.value); setShowTagSuggestions(true); }}
                       onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
+                      onFocus={() => setShowTagSuggestions(true)}
+                      onBlur={() => setTimeout(() => setShowTagSuggestions(false), 200)}
                     />
                     <button onClick={handleAddTag} disabled={!newTag.trim()}>
                       Add
                     </button>
+                    {showTagSuggestions && filteredSuggestions.length > 0 && (
+                      <div className="tag-suggestions-dropdown">
+                        {filteredSuggestions.map((tag) => (
+                          <button
+                            key={tag.id}
+                            className="tag-suggestion-item"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => handleSelectExistingTag(tag)}
+                          >
+                            {tag.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {chatId && (
@@ -623,6 +734,80 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                         </div>
                       ))
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* Orders Tab */}
+              {activeTab === 'orders' && (
+                <div className="modal-section">
+                  <div className="section-header">
+                    <h4>Orders</h4>
+                    <span className="badge-count">{orders.length}</span>
+                  </div>
+                  <div className="orders-list-container">
+                    {orders.length === 0 ? (
+                      <div className="empty-state-small">
+                        <span>📦</span>
+                        <p>No orders yet</p>
+                        <a href="/orders.html" target="_blank">Create Order</a>
+                      </div>
+                    ) : (
+                      orders.map((order) => (
+                        <div key={order.id} className="tx-card">
+                          <div className="tx-card-amount">${(order.totalAmount || 0).toFixed(2)}</div>
+                          <div className="tx-card-info">
+                            <span className="tx-desc">#{order.orderNumber}</span>
+                            <span className={`tx-badge tx-${(order.status || '').toLowerCase()}`}>{order.status}</span>
+                          </div>
+                          <div className="tx-card-date">
+                            {new Date(order.orderDate).toLocaleDateString()}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div className="quick-links">
+                    <a href="/orders.html" target="_blank" className="quick-link">📦 Manage All Orders</a>
+                  </div>
+                </div>
+              )}
+
+              {/* Tasks Tab */}
+              {activeTab === 'tasks' && (
+                <div className="modal-section">
+                  <div className="section-header">
+                    <h4>Tasks</h4>
+                    <span className="badge-count">{tasks.length}</span>
+                  </div>
+                  <div className="tasks-list-container">
+                    {tasks.length === 0 ? (
+                      <div className="empty-state-small">
+                        <span>✅</span>
+                        <p>No tasks yet</p>
+                        <a href="/tasks.html" target="_blank">Create Task</a>
+                      </div>
+                    ) : (
+                      tasks.map((task) => (
+                        <div key={task.id} className="task-card">
+                          <div className={`task-status-dot ${task.status === 'TASK_COMPLETED' ? 'completed' : ''}`} />
+                          <div className="task-card-info">
+                            <span className="task-title">{task.title}</span>
+                            <div className="task-meta">
+                              <span className={`task-priority priority-${(task.priority || '').replace('TASK_', '').toLowerCase()}`}>
+                                {(task.priority || '').replace('TASK_', '')}
+                              </span>
+                              {task.dueDate && (
+                                <span className="task-due">Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div className="quick-links">
+                    <a href="/tasks.html" target="_blank" className="quick-link">✅ Manage All Tasks</a>
                   </div>
                 </div>
               )}
