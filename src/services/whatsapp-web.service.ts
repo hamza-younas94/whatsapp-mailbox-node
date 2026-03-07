@@ -316,9 +316,9 @@ export class WhatsAppWebService extends EventEmitter {
                 const chat = await session.client.getChatById(chatId);
                 if (chat) {
                   contactName = chat.name;
-                  // Download group profile pic (use client-level API to avoid isNewsletter bug)
+                  // Download group profile pic
                   try {
-                    const cdnUrl = await session.client.getProfilePicUrl(chatId);
+                    const cdnUrl = await this.getProfilePicUrlSafe(session.client, chatId);
                     if (cdnUrl) {
                       const localUrl = await downloadAvatar(chatId, cdnUrl);
                       profilePhotoUrl = localUrl || undefined;
@@ -341,11 +341,11 @@ export class WhatsAppWebService extends EventEmitter {
                 isBusiness = true;
                 contactBusinessName = (contact as any).formattedName || contactName;
               }
-              // Try to get profile photo (use client-level API to avoid isNewsletter bug)
-              const session = this.sessions.get(sessionId);
-              if (session?.client) {
+              // Try to get profile photo
+              const sessionForPic = this.sessions.get(sessionId);
+              if (sessionForPic?.client) {
                 try {
-                  const cdnUrl = await session.client.getProfilePicUrl(chatId);
+                  const cdnUrl = await this.getProfilePicUrlSafe(sessionForPic.client, chatId);
                   if (cdnUrl) {
                     const localUrl = await downloadAvatar(chatId, cdnUrl);
                     profilePhotoUrl = localUrl || undefined;
@@ -376,9 +376,8 @@ export class WhatsAppWebService extends EventEmitter {
                       isBusiness = true;
                       contactBusinessName = (recipientContact as any).formattedName || contactName;
                     }
-                    // Use client-level API to avoid isNewsletter bug
                     try {
-                      const cdnUrl = await session.client.getProfilePicUrl(chatId);
+                      const cdnUrl = await this.getProfilePicUrlSafe(session.client, chatId);
                       if (cdnUrl) {
                         const localUrl = await downloadAvatar(chatId, cdnUrl);
                         profilePhotoUrl = localUrl || undefined;
@@ -660,6 +659,41 @@ export class WhatsAppWebService extends EventEmitter {
   }
 
   /**
+   * Get profile pic URL using Puppeteer page.evaluate to bypass
+   * the 'isNewsletter' bug in WhatsApp's internal JS.
+   */
+  async getProfilePicUrlSafe(client: Client, chatId: string): Promise<string | undefined> {
+    try {
+      // Try Puppeteer page.evaluate first (bypasses buggy WhatsApp JS)
+      const page = (client as any).pupPage;
+      if (page) {
+        const url = await page.evaluate(async (id: string) => {
+          try {
+            // Access WhatsApp's internal Store to get profile pic (runs in browser context)
+            const wStore = (globalThis as any).Store;
+            if (wStore?.ProfilePic?.profilePicFind) {
+              const result = await wStore.ProfilePic.profilePicFind(id);
+              return result?.eurl || result?.imgFull || null;
+            }
+          } catch {
+            return null;
+          }
+          return null;
+        }, chatId);
+        if (url) return url;
+      }
+    } catch {
+      // Puppeteer approach failed, try standard API as fallback
+    }
+
+    try {
+      return await client.getProfilePicUrl(chatId);
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
    * Restart a session (WIPES auth — user must re-scan QR)
    */
   async restartSession(sessionId: string): Promise<WhatsAppWebSession> {
@@ -772,8 +806,7 @@ export class WhatsAppWebService extends EventEmitter {
       processed++;
 
       try {
-        // Use client-level getProfilePicUrl to avoid contact.getProfilePicUrl 'isNewsletter' bug
-        const cdnUrl = await session.client.getProfilePicUrl(chatId);
+        const cdnUrl = await this.getProfilePicUrlSafe(session.client, chatId);
         if (cdnUrl) {
           const localUrl = await downloadAvatar(chatId, cdnUrl);
           if (localUrl) {
