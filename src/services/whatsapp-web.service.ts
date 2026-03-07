@@ -592,19 +592,45 @@ export class WhatsAppWebService extends EventEmitter {
   }
 
   /**
-   * Restart a session
+   * Restart a session (WIPES auth — user must re-scan QR)
    */
   async restartSession(sessionId: string): Promise<WhatsAppWebSession> {
     const session = this.sessions.get(sessionId);
-    
+
     if (!session) {
       throw new Error('Session not found');
     }
 
     const userId = session.userId;
     await this.destroySession(sessionId);
-    
+
     return this.initializeSession(userId, sessionId);
+  }
+
+  /**
+   * Reconnect a session (preserves auth — no QR scan needed).
+   * Use this when Puppeteer frame detaches or session becomes stale.
+   */
+  async reconnectSession(sessionId: string): Promise<void> {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      logger.warn({ sessionId }, 'Cannot reconnect: session not found');
+      return;
+    }
+
+    const userId = session.userId;
+    logger.info({ sessionId, userId }, 'Reconnecting session (preserving auth)...');
+
+    // Disconnect without wiping auth files
+    await this.disconnectSession(sessionId);
+
+    // Re-initialize — LocalAuth will find saved auth and skip QR
+    try {
+      await this.initializeSession(userId, sessionId);
+      logger.info({ sessionId }, 'Session reconnected successfully');
+    } catch (error) {
+      logger.error({ error, sessionId }, 'Failed to reconnect session');
+    }
   }
 
   /**
@@ -625,6 +651,7 @@ export class WhatsAppWebService extends EventEmitter {
     isGroup: boolean;
     isChannel: boolean;
     timestamp: number;
+    profilePicUrl?: string;
   }>> {
     const session = this.sessions.get(sessionId);
     if (!session || session.status !== 'READY') {
@@ -635,13 +662,38 @@ export class WhatsAppWebService extends EventEmitter {
       const chats = await session.client.getChats();
       logger.info({ sessionId, chatCount: chats.length }, 'Fetched all chats for sync');
 
-      return chats.map(chat => ({
+      // Map chats first, then fetch profile pics in parallel batches
+      const chatData = chats.map(chat => ({
         chatId: chat.id._serialized,
         name: chat.name,
         isGroup: chat.isGroup,
         isChannel: !!(chat as any).isChannel,
         timestamp: chat.timestamp || 0,
+        profilePicUrl: undefined as string | undefined,
       }));
+
+      // Fetch profile pictures in batches of 10 to avoid overwhelming WhatsApp
+      const batchSize = 10;
+      for (let i = 0; i < chatData.length; i += batchSize) {
+        const batch = chatData.slice(i, i + batchSize);
+        await Promise.allSettled(
+          batch.map(async (chat) => {
+            try {
+              const contact = await session.client.getContactById(chat.chatId);
+              if (contact?.getProfilePicUrl) {
+                chat.profilePicUrl = await contact.getProfilePicUrl();
+              }
+            } catch {
+              // Profile pic fetch failures are expected and not critical
+            }
+          })
+        );
+      }
+
+      const withPics = chatData.filter(c => c.profilePicUrl).length;
+      logger.info({ sessionId, withPics, total: chatData.length }, 'Profile pictures fetched');
+
+      return chatData;
     } catch (error) {
       logger.error({ error, sessionId }, 'Failed to fetch chats for sync');
       return [];

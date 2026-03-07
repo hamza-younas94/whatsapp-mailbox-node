@@ -240,14 +240,21 @@ export class MessageService implements IMessageService {
           
           logger.info({ messageId: waMessage.id.id || waMessage.id._serialized }, 'WhatsApp message sent successfully');
         } catch (sendError: any) {
-          // Handle detached frame errors - mark session as disconnected
+          // Handle detached frame errors - auto-reconnect session
           if (sendError.message?.includes('detached Frame') || sendError.message?.includes('Execution context')) {
-            logger.warn({ 
-              sessionId: activeSession.id, 
-              error: sendError.message 
-            }, 'Detached frame/context detected - session needs reconnection');
+            logger.warn({
+              sessionId: activeSession.id,
+              error: sendError.message
+            }, 'Detached frame/context detected - triggering auto-reconnect');
             activeSession.status = 'DISCONNECTED';
-            throw new ExternalServiceError('WhatsApp Web', 'Session disconnected. Please scan QR code to reconnect.');
+
+            // Trigger reconnection in the background (don't await — takes 30-60s)
+            const { whatsappWebService } = require('@services/whatsapp-web.service');
+            whatsappWebService.reconnectSession(activeSession.id).catch((err: any) => {
+              logger.error({ err, sessionId: activeSession.id }, 'Background reconnect failed');
+            });
+
+            throw new ExternalServiceError('WhatsApp Web', 'Session is reconnecting automatically. Please try again in a moment.');
           }
           throw sendError;
         }

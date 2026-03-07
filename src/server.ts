@@ -276,6 +276,7 @@ function setupChatSyncListener(): void {
             chatId: chat.chatId,
             contactType,
             ...(chat.timestamp ? { lastMessageAt: new Date(chat.timestamp * 1000) } : {}),
+            ...(chat.profilePicUrl ? { profilePhotoUrl: chat.profilePicUrl } : {}),
           });
 
           // Ensure conversation exists

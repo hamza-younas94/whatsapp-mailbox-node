@@ -203,26 +203,26 @@ export class AutoReplyService {
         continue;
       }
 
-      // Strategy 4: Keyword overlap
+      // Strategy 4: Keyword overlap (require at least 60% overlap)
       const shortcutKeywords = this.extractKeywords(shortcut);
       const commonKeywords = messageKeywords.filter(k => shortcutKeywords.includes(k));
-      
+
       if (commonKeywords.length > 0 && shortcutKeywords.length > 0) {
         const keywordScore = commonKeywords.length / Math.max(messageKeywords.length, shortcutKeywords.length);
-        if (keywordScore >= 0.4) { // At least 40% keyword overlap
-          matches.push({ reply, score: 0.75 * keywordScore, matchType: 'keyword' });
+        if (keywordScore >= 0.6) {
+          matches.push({ reply, score: 0.7 * keywordScore, matchType: 'keyword' });
           continue;
         }
       }
 
-      // Strategy 5: Fuzzy matching for each word
+      // Strategy 5: Fuzzy matching — only for very close matches (85%+ similarity)
       let maxFuzzyScore = 0;
       for (const word of messageWords) {
-        if (word.length < 3) continue; // Skip very short words
-        
+        if (word.length < 4) continue; // Skip short words
+
         for (const shortcutWord of shortcutWords) {
-          if (shortcutWord.length < 3) continue;
-          
+          if (shortcutWord.length < 4) continue;
+
           const similarity = this.calculateSimilarity(word, shortcutWord);
           if (similarity > maxFuzzyScore) {
             maxFuzzyScore = similarity;
@@ -230,9 +230,8 @@ export class AutoReplyService {
         }
       }
 
-      // Only consider fuzzy matches above 75% similarity
-      if (maxFuzzyScore >= 0.75) {
-        matches.push({ reply, score: 0.65 * maxFuzzyScore, matchType: 'fuzzy' });
+      if (maxFuzzyScore >= 0.85) {
+        matches.push({ reply, score: 0.6 * maxFuzzyScore, matchType: 'fuzzy' });
       }
     }
 
@@ -242,10 +241,10 @@ export class AutoReplyService {
     }
 
     matches.sort((a, b) => b.score - a.score);
-    
-    // Only return matches with score above 0.5 (50% confidence)
+
+    // Only return matches with score above 0.75 (75% confidence)
     const bestMatch = matches[0];
-    if (bestMatch.score < 0.5) {
+    if (bestMatch.score < 0.75) {
       logger.debug({ 
         message: messageText.substring(0, 50),
         bestScore: bestMatch.score 
