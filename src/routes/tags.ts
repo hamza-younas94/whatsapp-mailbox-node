@@ -9,6 +9,7 @@ import getPrismaClient from '@config/database';
 import { authenticate } from '@middleware/auth.middleware';
 import { validateRequest } from '@middleware/validation.middleware';
 import { z } from 'zod';
+import { withEmit } from '@utils/socket-emitter';
 
 const router = Router();
 
@@ -44,7 +45,7 @@ router.post('/', validateRequest(createTagSchema), controller.create);
 router.get('/', controller.list);
 router.put('/:id', controller.update);
 router.delete('/:id', controller.delete);
-router.post('/contacts', validateRequest(addTagToContactSchema), controller.addToContact);
-router.delete('/contacts/:contactId/:tagId', controller.removeFromContact);
+router.post('/contacts', validateRequest(addTagToContactSchema), withEmit(controller.addToContact, 'tag:assigned'));
+router.delete('/contacts/:contactId/:tagId', withEmit(controller.removeFromContact, 'tag:removed'));
 
 export default router;

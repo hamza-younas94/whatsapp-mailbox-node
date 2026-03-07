@@ -10,6 +10,8 @@ import { TagRepository } from '@repositories/tag.repository';
 import { authMiddleware } from '@middleware/auth.middleware';
 import { validate, validateQuery } from '@middleware/validation.middleware';
 import getPrismaClient from '@config/database';
+import { downloadAvatar } from '@utils/avatar';
+import logger from '@utils/logger';
 
 export function createContactRoutes(): Router {
   const router = Router();
@@ -70,6 +72,38 @@ export function createContactRoutes(): Router {
 
   // Bulk & utility routes (must come before /:contactId to avoid param matching)
   router.get('/duplicates', authMiddleware, controller.findDuplicates);
+
+  // Sync avatars: download CDN URLs to local storage
+  router.post('/sync-avatars', authMiddleware, async (req, res, next) => {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+      const contacts = await prisma.contact.findMany({
+        where: {
+          userId,
+          profilePhotoUrl: { not: null },
+          NOT: { profilePhotoUrl: { startsWith: '/' } },
+        },
+        select: { id: true, chatId: true, profilePhotoUrl: true },
+      });
+
+      let fixed = 0;
+      for (const c of contacts) {
+        if (!c.chatId || !c.profilePhotoUrl) continue;
+        const localPath = await downloadAvatar(c.chatId, c.profilePhotoUrl);
+        if (localPath) {
+          await prisma.contact.update({ where: { id: c.id }, data: { profilePhotoUrl: localPath } });
+          fixed++;
+        }
+      }
+
+      logger.info({ total: contacts.length, fixed }, 'Avatar sync completed');
+      res.json({ success: true, data: { total: contacts.length, fixed } });
+    } catch (error) {
+      next(error);
+    }
+  });
 
   router.get(
     '/:contactId',

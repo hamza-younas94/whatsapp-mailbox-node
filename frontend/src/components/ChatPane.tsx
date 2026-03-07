@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import api from '@/api/client';
 import { messageAPI } from '@/api/queries';
-import { subscribeToMessage, subscribeToMessageStatus, subscribeToReactionUpdated } from '@/api/socket';
+import { subscribeToMessage, subscribeToMessageStatus, subscribeToReactionUpdated, subscribeToCrmEvents, CrmEventType } from '@/api/socket';
 import { getContactTypeFromId, getContactTypeInfo, getContactTypeBadgeClass } from '@/utils/contact-type';
 import { getAvatarUrl, getAvatarInitial } from '@/utils/avatar';
 import MessageBubble from '@/components/MessageBubble';
@@ -53,7 +53,18 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
   const [allTags, setAllTags] = useState<Array<{ id: string; name: string; color?: string }>>([]);
   const [showTagSuggestions, setShowTagSuggestions] = useState(false);
   const [orders, setOrders] = useState<Array<{ id: string; orderNumber: string; status: string; totalAmount: number; orderDate: string }>>([]);
-  const [tasks, setTasks] = useState<Array<{ id: string; title: string; status: string; priority: string; dueDate?: string }>>([]);
+  const [tasks, setTasks] = useState<Array<{ id: string; title: string; status: string; priority: string; dueDate?: string; description?: string }>>([]);
+  // Inline CRUD state
+  const [showTaskForm, setShowTaskForm] = useState(false);
+  const [taskForm, setTaskForm] = useState({ title: '', description: '', dueDate: '', priority: 'TASK_MEDIUM' });
+  const [editingTask, setEditingTask] = useState<string | null>(null);
+  const [showOrderForm, setShowOrderForm] = useState(false);
+  const [orderForm, setOrderForm] = useState({ orderType: 'DELIVERY', deliveryAddress: '', notes: '' });
+  const [orderItems, setOrderItems] = useState([{ name: '', quantity: 1, unitPrice: 0 }]);
+  const [editingNote, setEditingNote] = useState<string | null>(null);
+  const [editNoteContent, setEditNoteContent] = useState('');
+  const [editingTx, setEditingTx] = useState<string | null>(null);
+  const [editTxForm, setEditTxForm] = useState({ amount: '', description: '', status: '' });
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageSubscriptionRef = useRef<(() => void) | null>(null);
@@ -197,6 +208,20 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
       loadContactOrders();
       loadContactTasks();
     }
+  }, [contactId, showContactInfo]);
+
+  // Subscribe to CRM real-time events when modal is open
+  useEffect(() => {
+    if (!contactId || !showContactInfo) return;
+    const unsubscribe = subscribeToCrmEvents((event: CrmEventType, payload) => {
+      if (payload.contactId && payload.contactId !== contactId) return;
+      if (event.startsWith('note:')) loadContactNotes();
+      else if (event.startsWith('task:')) loadContactTasks();
+      else if (event.startsWith('order:')) loadContactOrders();
+      else if (event.startsWith('transaction:')) loadContactTransactions();
+      else if (event.startsWith('tag:')) loadContactTags();
+    });
+    return unsubscribe;
   }, [contactId, showContactInfo]);
 
   const loadContactTags = async () => {
@@ -378,6 +403,109 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
     } catch {
       // Failed to add tag (may already be assigned)
     }
+  };
+
+  // === Task CRUD ===
+  const handleCreateTask = async () => {
+    if (!taskForm.title.trim() || !contactId) return;
+    try {
+      const { data } = await api.post('/tasks', {
+        contactId,
+        title: taskForm.title,
+        description: taskForm.description || undefined,
+        dueDate: taskForm.dueDate || undefined,
+        priority: taskForm.priority,
+      });
+      setTasks(prev => [data.data || data, ...prev]);
+      setTaskForm({ title: '', description: '', dueDate: '', priority: 'TASK_MEDIUM' });
+      setShowTaskForm(false);
+    } catch { /* Failed */ }
+  };
+
+  const handleUpdateTaskStatus = async (taskId: string, newStatus: string) => {
+    try {
+      await api.put(`/tasks/${taskId}`, { status: newStatus });
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+    } catch { /* Failed */ }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      await api.delete(`/tasks/${taskId}`);
+      setTasks(prev => prev.filter(t => t.id !== taskId));
+    } catch { /* Failed */ }
+  };
+
+  // === Order CRUD ===
+  const handleCreateOrder = async () => {
+    if (!contactId || orderItems.every(i => !i.name.trim())) return;
+    try {
+      const validItems = orderItems.filter(i => i.name.trim());
+      const { data } = await api.post('/orders', {
+        contactId,
+        orderType: orderForm.orderType,
+        deliveryAddress: orderForm.deliveryAddress || undefined,
+        notes: orderForm.notes || undefined,
+        items: validItems.map(i => ({ name: i.name, quantity: i.quantity, unitPrice: i.unitPrice })),
+      });
+      setOrders(prev => [data.data || data, ...prev]);
+      setOrderForm({ orderType: 'DELIVERY', deliveryAddress: '', notes: '' });
+      setOrderItems([{ name: '', quantity: 1, unitPrice: 0 }]);
+      setShowOrderForm(false);
+    } catch { /* Failed */ }
+  };
+
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      await api.put(`/orders/${orderId}`, { status: newStatus });
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+    } catch { /* Failed */ }
+  };
+
+  // === Note Edit ===
+  const handleSaveEditNote = async () => {
+    if (!editingNote || !editNoteContent.trim()) return;
+    try {
+      await api.put(`/notes/${editingNote}`, { content: editNoteContent });
+      setNotes(prev => prev.map(n => n.id === editingNote ? { ...n, content: editNoteContent } : n));
+      setEditingNote(null);
+      setEditNoteContent('');
+    } catch { /* Failed */ }
+  };
+
+  // === Transaction Edit/Delete ===
+  const handleDeleteTransaction = async (txId: string) => {
+    try {
+      await api.delete(`/crm/transactions/${txId}`);
+      setTransactions(prev => prev.filter(t => t.id !== txId));
+    } catch { /* Failed */ }
+  };
+
+  const handleSaveEditTransaction = async () => {
+    if (!editingTx) return;
+    try {
+      await api.put(`/crm/transactions/${editingTx}`, {
+        amount: parseFloat(editTxForm.amount),
+        description: editTxForm.description,
+        status: editTxForm.status,
+      });
+      setTransactions(prev => prev.map(t => t.id === editingTx ? {
+        ...t,
+        amount: parseFloat(editTxForm.amount),
+        description: editTxForm.description,
+        status: editTxForm.status,
+      } : t));
+      setEditingTx(null);
+    } catch { /* Failed */ }
+  };
+
+  const nextTaskStatus = (current: string) => {
+    const cycle: Record<string, string> = {
+      'TASK_PENDING': 'TASK_IN_PROGRESS',
+      'TASK_IN_PROGRESS': 'TASK_COMPLETED',
+      'TASK_COMPLETED': 'TASK_PENDING',
+    };
+    return cycle[current] || 'TASK_PENDING';
   };
 
   // Filter tag suggestions based on input
@@ -701,11 +829,31 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                     ) : (
                       notes.map((note) => (
                         <div key={note.id} className="note-card">
-                          <p>{note.content}</p>
-                          <div className="note-footer">
-                            <span>{new Date(note.createdAt).toLocaleDateString()}</span>
-                            <button onClick={() => handleDeleteNote(note.id)}>🗑️</button>
-                          </div>
+                          {editingNote === note.id ? (
+                            <>
+                              <textarea
+                                className="inline-edit-textarea"
+                                value={editNoteContent}
+                                onChange={(e) => setEditNoteContent(e.target.value)}
+                                rows={3}
+                              />
+                              <div className="note-footer">
+                                <button className="btn-inline-save" onClick={handleSaveEditNote}>Save</button>
+                                <button className="btn-inline-cancel" onClick={() => setEditingNote(null)}>Cancel</button>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <p>{note.content}</p>
+                              <div className="note-footer">
+                                <span>{new Date(note.createdAt).toLocaleDateString()}</span>
+                                <div className="action-buttons">
+                                  <button onClick={() => { setEditingNote(note.id); setEditNoteContent(note.content); }} title="Edit">✏️</button>
+                                  <button onClick={() => handleDeleteNote(note.id)} title="Delete">🗑️</button>
+                                </div>
+                              </div>
+                            </>
+                          )}
                         </div>
                       ))
                     )}
@@ -736,14 +884,39 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                     ) : (
                       transactions.map((tx) => (
                         <div key={tx.id} className="tx-card">
-                          <div className="tx-card-amount">${tx.amount.toFixed(2)}</div>
-                          <div className="tx-card-info">
-                            <span className="tx-desc">{tx.description || 'No description'}</span>
-                            <span className={`tx-badge tx-${tx.status}`}>{tx.status}</span>
-                          </div>
-                          <div className="tx-card-date">
-                            {new Date(tx.createdAt).toLocaleDateString()}
-                          </div>
+                          {editingTx === tx.id ? (
+                            <div className="inline-form">
+                              <div className="inline-form-row">
+                                <input type="number" placeholder="Amount" value={editTxForm.amount} onChange={e => setEditTxForm(p => ({ ...p, amount: e.target.value }))} />
+                                <select value={editTxForm.status} onChange={e => setEditTxForm(p => ({ ...p, status: e.target.value }))}>
+                                  <option value="PENDING">Pending</option>
+                                  <option value="COMPLETED">Completed</option>
+                                  <option value="CANCELLED">Cancelled</option>
+                                  <option value="REFUNDED">Refunded</option>
+                                </select>
+                              </div>
+                              <input type="text" placeholder="Description" value={editTxForm.description} onChange={e => setEditTxForm(p => ({ ...p, description: e.target.value }))} />
+                              <div className="form-actions">
+                                <button className="btn-inline-save" onClick={handleSaveEditTransaction}>Save</button>
+                                <button className="btn-inline-cancel" onClick={() => setEditingTx(null)}>Cancel</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="tx-card-amount">${tx.amount.toFixed(2)}</div>
+                              <div className="tx-card-info">
+                                <span className="tx-desc">{tx.description || 'No description'}</span>
+                                <span className={`tx-badge tx-${tx.status}`}>{tx.status}</span>
+                              </div>
+                              <div className="tx-card-date">
+                                {new Date(tx.createdAt).toLocaleDateString()}
+                                <div className="action-buttons">
+                                  <button onClick={() => { setEditingTx(tx.id); setEditTxForm({ amount: String(tx.amount), description: tx.description, status: tx.status }); }} title="Edit">✏️</button>
+                                  <button onClick={() => handleDeleteTransaction(tx.id)} title="Delete">🗑️</button>
+                                </div>
+                              </div>
+                            </>
+                          )}
                         </div>
                       ))
                     )}
@@ -756,14 +929,46 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                 <div className="modal-section">
                   <div className="section-header">
                     <h4>Orders</h4>
-                    <span className="badge-count">{orders.length}</span>
+                    <button className="btn-primary-small" onClick={() => setShowOrderForm(!showOrderForm)}>
+                      {showOrderForm ? '- Cancel' : '+ New'}
+                    </button>
                   </div>
+
+                  {showOrderForm && (
+                    <div className="inline-form">
+                      <div className="inline-form-row">
+                        <select value={orderForm.orderType} onChange={e => setOrderForm(p => ({ ...p, orderType: e.target.value }))}>
+                          <option value="DELIVERY">Delivery</option>
+                          <option value="PICKUP">Pickup</option>
+                          <option value="DINE_IN">Dine In</option>
+                        </select>
+                        <input type="text" placeholder="Delivery address" value={orderForm.deliveryAddress} onChange={e => setOrderForm(p => ({ ...p, deliveryAddress: e.target.value }))} />
+                      </div>
+                      <div className="section-header" style={{ marginTop: 8, marginBottom: 4 }}>
+                        <h4 style={{ fontSize: 12 }}>Items</h4>
+                        <button className="btn-inline-add" onClick={() => setOrderItems(p => [...p, { name: '', quantity: 1, unitPrice: 0 }])}>+ Item</button>
+                      </div>
+                      {orderItems.map((item, i) => (
+                        <div key={i} className="inline-form-row item-row">
+                          <input type="text" placeholder="Item name" value={item.name} onChange={e => { const v = e.target.value; setOrderItems(p => p.map((it, idx) => idx === i ? { ...it, name: v } : it)); }} />
+                          <input type="number" placeholder="Qty" min={1} style={{ width: 60 }} value={item.quantity} onChange={e => { const v = parseInt(e.target.value) || 1; setOrderItems(p => p.map((it, idx) => idx === i ? { ...it, quantity: v } : it)); }} />
+                          <input type="number" placeholder="Price" min={0} style={{ width: 80 }} value={item.unitPrice} onChange={e => { const v = parseFloat(e.target.value) || 0; setOrderItems(p => p.map((it, idx) => idx === i ? { ...it, unitPrice: v } : it)); }} />
+                          {orderItems.length > 1 && <button className="btn-inline-remove" onClick={() => setOrderItems(p => p.filter((_, idx) => idx !== i))}>x</button>}
+                        </div>
+                      ))}
+                      <input type="text" placeholder="Order notes (optional)" value={orderForm.notes} onChange={e => setOrderForm(p => ({ ...p, notes: e.target.value }))} />
+                      <div className="form-actions">
+                        <button className="btn-inline-save" onClick={handleCreateOrder} disabled={orderItems.every(i => !i.name.trim())}>Create Order</button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="orders-list-container">
-                    {orders.length === 0 ? (
+                    {orders.length === 0 && !showOrderForm ? (
                       <div className="empty-state-small">
                         <span>📦</span>
                         <p>No orders yet</p>
-                        <a href="/orders.html" target="_blank">Create Order</a>
+                        <button onClick={() => setShowOrderForm(true)}>Create First Order</button>
                       </div>
                     ) : (
                       orders.map((order) => (
@@ -771,7 +976,15 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                           <div className="tx-card-amount">${(order.totalAmount || 0).toFixed(2)}</div>
                           <div className="tx-card-info">
                             <span className="tx-desc">#{order.orderNumber}</span>
-                            <span className={`tx-badge tx-${(order.status || '').toLowerCase()}`}>{order.status}</span>
+                            <select className="status-select" value={order.status} onChange={e => handleUpdateOrderStatus(order.id, e.target.value)}>
+                              <option value="PENDING">Pending</option>
+                              <option value="CONFIRMED">Confirmed</option>
+                              <option value="PREPARING">Preparing</option>
+                              <option value="READY">Ready</option>
+                              <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
+                              <option value="DELIVERED">Delivered</option>
+                              <option value="CANCELLED">Cancelled</option>
+                            </select>
                           </div>
                           <div className="tx-card-date">
                             {new Date(order.orderDate).toLocaleDateString()}
@@ -779,9 +992,6 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                         </div>
                       ))
                     )}
-                  </div>
-                  <div className="quick-links">
-                    <a href="/orders.html" target="_blank" className="quick-link">📦 Manage All Orders</a>
                   </div>
                 </div>
               )}
@@ -791,21 +1001,47 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                 <div className="modal-section">
                   <div className="section-header">
                     <h4>Tasks</h4>
-                    <span className="badge-count">{tasks.length}</span>
+                    <button className="btn-primary-small" onClick={() => setShowTaskForm(!showTaskForm)}>
+                      {showTaskForm ? '- Cancel' : '+ New'}
+                    </button>
                   </div>
+
+                  {showTaskForm && (
+                    <div className="inline-form">
+                      <input type="text" placeholder="Task title" value={taskForm.title} onChange={e => setTaskForm(p => ({ ...p, title: e.target.value }))} />
+                      <textarea placeholder="Description (optional)" value={taskForm.description} onChange={e => setTaskForm(p => ({ ...p, description: e.target.value }))} rows={2} />
+                      <div className="inline-form-row">
+                        <input type="date" value={taskForm.dueDate} onChange={e => setTaskForm(p => ({ ...p, dueDate: e.target.value }))} />
+                        <select value={taskForm.priority} onChange={e => setTaskForm(p => ({ ...p, priority: e.target.value }))}>
+                          <option value="TASK_LOW">Low</option>
+                          <option value="TASK_MEDIUM">Medium</option>
+                          <option value="TASK_HIGH">High</option>
+                          <option value="TASK_URGENT">Urgent</option>
+                        </select>
+                      </div>
+                      <div className="form-actions">
+                        <button className="btn-inline-save" onClick={handleCreateTask} disabled={!taskForm.title.trim()}>Create Task</button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="tasks-list-container">
-                    {tasks.length === 0 ? (
+                    {tasks.length === 0 && !showTaskForm ? (
                       <div className="empty-state-small">
                         <span>✅</span>
                         <p>No tasks yet</p>
-                        <a href="/tasks.html" target="_blank">Create Task</a>
+                        <button onClick={() => setShowTaskForm(true)}>Create First Task</button>
                       </div>
                     ) : (
                       tasks.map((task) => (
                         <div key={task.id} className="task-card">
-                          <div className={`task-status-dot ${task.status === 'TASK_COMPLETED' ? 'completed' : ''}`} />
+                          <button
+                            className={`task-status-dot ${task.status === 'TASK_COMPLETED' ? 'completed' : ''}`}
+                            onClick={() => handleUpdateTaskStatus(task.id, nextTaskStatus(task.status))}
+                            title={`Click to mark ${nextTaskStatus(task.status).replace('TASK_', '').toLowerCase()}`}
+                          />
                           <div className="task-card-info">
-                            <span className="task-title">{task.title}</span>
+                            <span className={`task-title ${task.status === 'TASK_COMPLETED' ? 'completed' : ''}`}>{task.title}</span>
                             <div className="task-meta">
                               <span className={`task-priority priority-${(task.priority || '').replace('TASK_', '').toLowerCase()}`}>
                                 {(task.priority || '').replace('TASK_', '')}
@@ -813,14 +1049,12 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                               {task.dueDate && (
                                 <span className="task-due">Due: {new Date(task.dueDate).toLocaleDateString()}</span>
                               )}
+                              <button className="btn-task-delete" onClick={() => handleDeleteTask(task.id)} title="Delete">🗑️</button>
                             </div>
                           </div>
                         </div>
                       ))
                     )}
-                  </div>
-                  <div className="quick-links">
-                    <a href="/tasks.html" target="_blank" className="quick-link">✅ Manage All Tasks</a>
                   </div>
                 </div>
               )}

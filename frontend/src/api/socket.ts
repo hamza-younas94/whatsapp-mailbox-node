@@ -128,3 +128,34 @@ export function subscribeToReactionUpdated(callback: (event: IReactionUpdatedEve
   socket.on(MessageEvent.ReactionUpdated, callback);
   return () => socket.off(MessageEvent.ReactionUpdated, callback);
 }
+
+// CRM real-time events
+export interface ICrmEvent {
+  contactId?: string;
+  data?: any;
+  id?: string;
+}
+
+const CRM_EVENTS = [
+  'note:created', 'note:updated', 'note:deleted',
+  'task:created', 'task:updated', 'task:deleted',
+  'order:created', 'order:updated', 'order:deleted',
+  'transaction:created', 'transaction:updated', 'transaction:deleted',
+  'tag:assigned', 'tag:removed',
+] as const;
+
+export type CrmEventType = typeof CRM_EVENTS[number];
+
+export function subscribeToCrmEvents(callback: (event: CrmEventType, data: ICrmEvent) => void) {
+  const socket = getSocket();
+  const handlers = CRM_EVENTS.map((eventName) => {
+    const handler = (payload: ICrmEvent) => callback(eventName, payload);
+    socket.on(eventName, handler);
+    return { eventName, handler };
+  });
+  return () => {
+    for (const { eventName, handler } of handlers) {
+      socket.off(eventName, handler);
+    }
+  };
+}

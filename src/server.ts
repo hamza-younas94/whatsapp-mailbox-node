@@ -42,6 +42,7 @@ import { swaggerSpec } from '@config/swagger';
 import { whatsappWebService } from '@services/whatsapp-web.service';
 import { autoReplyService } from '@services/auto-reply.service';
 import { getContactType } from '@utils/contact-type';
+import { downloadAvatar } from '@utils/avatar';
 import { MessageType } from '@prisma/client';
 import { MessageRepository } from '@repositories/message.repository';
 import { ContactRepository } from '@repositories/contact.repository';
@@ -270,13 +271,22 @@ function setupChatSyncListener(): void {
 
           const contactType = getContactType(chat.chatId, phone);
 
+          // Download avatar locally instead of storing expired CDN URL
+          let localAvatar: string | undefined;
+          if (chat.profilePicUrl && !chat.profilePicUrl.startsWith('/')) {
+            const downloaded = await downloadAvatar(chat.chatId, chat.profilePicUrl);
+            if (downloaded) localAvatar = downloaded;
+          } else if (chat.profilePicUrl) {
+            localAvatar = chat.profilePicUrl;
+          }
+
           // Create or update contact
           await contactRepo.findOrCreate(userId, phone, {
             ...(chat.name ? { name: chat.name } : {}),
             chatId: chat.chatId,
             contactType,
             ...(chat.timestamp ? { lastMessageAt: new Date(chat.timestamp * 1000) } : {}),
-            ...(chat.profilePicUrl ? { profilePhotoUrl: chat.profilePicUrl } : {}),
+            ...(localAvatar ? { profilePhotoUrl: localAvatar } : {}),
           });
 
           // Ensure conversation exists
@@ -395,6 +405,15 @@ function setupIncomingMessageListener(): void {
       const contactTypeEnum = getContactType(from, sanitizedPhone);
       const existingContact = await contactRepo.findByPhoneNumber(userId, sanitizedPhone);
 
+      // Download avatar locally instead of storing expired CDN URL
+      let localAvatar: string | undefined;
+      if (profilePhotoUrl && !profilePhotoUrl.startsWith('/')) {
+        const downloaded = await downloadAvatar(from, profilePhotoUrl);
+        if (downloaded) localAvatar = downloaded;
+      } else if (profilePhotoUrl) {
+        localAvatar = profilePhotoUrl;
+      }
+
       const contact = await contactRepo.findOrCreate(userId, sanitizedPhone, {
         // Only set name if we have real WhatsApp data, or if brand new contact (use phone as placeholder)
         ...(contactDisplayName
@@ -402,7 +421,7 @@ function setupIncomingMessageListener(): void {
           : (!existingContact ? { name: sanitizedPhone } : {})),
         ...(contactPushName ? { pushName: contactPushName } : {}),
         ...(contactBusinessName ? { businessName: contactBusinessName } : {}),
-        ...(profilePhotoUrl ? { profilePhotoUrl } : {}),
+        ...(localAvatar ? { profilePhotoUrl: localAvatar } : {}),
         isBusiness: isBusiness || false,
         chatId: from,
         contactType: contactTypeEnum,
@@ -415,12 +434,12 @@ function setupIncomingMessageListener(): void {
       if (hasRealNameData && (
         (contactName && contactName !== contact.name) ||
         (contactPushName && (contactPushName !== (contact as any).pushName)) ||
-        (profilePhotoUrl && profilePhotoUrl !== (contact as any).profilePhotoUrl)
+        (localAvatar && localAvatar !== (contact as any).profilePhotoUrl)
       )) {
         await contactRepo.update(contact.id, {
           ...(contactName ? { name: contactName } : {}),
           ...(contactPushName ? { pushName: contactPushName } : {}),
-          ...(profilePhotoUrl ? { profilePhotoUrl } : {}),
+          ...(localAvatar ? { profilePhotoUrl: localAvatar } : {}),
           isBusiness: isBusiness !== undefined ? isBusiness : (contact as any).isBusiness,
           lastMessageAt: new Date(timestamp * 1000),
           lastActiveAt: new Date(timestamp * 1000),

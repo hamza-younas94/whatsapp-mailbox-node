@@ -9,6 +9,7 @@ import getPrismaClient from '@config/database';
 import { authenticate } from '@middleware/auth.middleware';
 import { validateRequest } from '@middleware/validation.middleware';
 import { z } from 'zod';
+import { withEmit } from '@utils/socket-emitter';
 
 const router = Router();
 
@@ -36,10 +37,10 @@ const updateSchema = z.object({
 
 router.use(authenticate);
 
-router.post('/', validateRequest(createSchema), controller.create);
+router.post('/', validateRequest(createSchema), withEmit(controller.create, 'task:created'));
 router.get('/', controller.list);
 router.get('/:id', controller.getById);
-router.put('/:id', validateRequest(updateSchema), controller.update);
-router.delete('/:id', controller.delete);
+router.put('/:id', validateRequest(updateSchema), withEmit(controller.update, 'task:updated'));
+router.delete('/:id', withEmit(controller.delete, 'task:deleted'));
 
 export default router;

@@ -8,6 +8,7 @@ import getPrismaClient from '@config/database';
 import { authenticate } from '@middleware/auth.middleware';
 import { validateRequest } from '@middleware/validation.middleware';
 import { z } from 'zod';
+import { emitToUser } from '@utils/socket-emitter';
 
 const router = Router();
 
@@ -102,6 +103,7 @@ router.post('/transactions', validateRequest(createTransactionSchema), async (re
       }
     });
 
+    emitToUser(userId, 'transaction:created', { contactId, data: transaction });
     res.status(201).json({ success: true, data: transaction });
   } catch (error) {
     next(error);
@@ -118,16 +120,19 @@ router.put('/transactions/:id', async (req: Request, res: Response, next: NextFu
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    const transaction = await prisma.transaction.updateMany({
-      where: { id, userId },
-      data: { amount, description, status }
-    });
-
-    if (transaction.count === 0) {
+    const existing = await prisma.transaction.findFirst({ where: { id, userId } });
+    if (!existing) {
       return res.status(404).json({ success: false, error: 'Transaction not found' });
     }
 
-    res.json({ success: true, message: 'Transaction updated' });
+    await prisma.transaction.update({
+      where: { id },
+      data: { amount, description, status }
+    });
+
+    const updated = await prisma.transaction.findUnique({ where: { id } });
+    emitToUser(userId, 'transaction:updated', { contactId: existing.contactId, data: updated });
+    res.json({ success: true, data: updated });
   } catch (error) {
     next(error);
   }
@@ -142,14 +147,13 @@ router.delete('/transactions/:id', async (req: Request, res: Response, next: Nex
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    const result = await prisma.transaction.deleteMany({
-      where: { id, userId }
-    });
-
-    if (result.count === 0) {
+    const existing = await prisma.transaction.findFirst({ where: { id, userId } });
+    if (!existing) {
       return res.status(404).json({ success: false, error: 'Transaction not found' });
     }
 
+    await prisma.transaction.delete({ where: { id } });
+    emitToUser(userId, 'transaction:deleted', { contactId: existing.contactId, id });
     res.json({ success: true, message: 'Transaction deleted' });
   } catch (error) {
     next(error);
