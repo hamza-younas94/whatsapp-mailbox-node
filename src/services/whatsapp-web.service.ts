@@ -760,13 +760,17 @@ export class WhatsAppWebService extends EventEmitter {
 
     let fetched = 0;
     let failed = 0;
+    let noPic = 0;
+    let processed = 0;
 
     for (const chatId of chatIds) {
       // Abort if session disconnected
       if (session.status !== 'READY') {
-        logger.info({ sessionId, fetched, failed }, 'Avatar fetch aborted: session no longer ready');
+        logger.info({ sessionId, fetched, failed, noPic }, 'Avatar fetch aborted: session no longer ready');
         return;
       }
+
+      processed++;
 
       try {
         const contact = await session.client.getContactById(chatId);
@@ -780,11 +784,14 @@ export class WhatsAppWebService extends EventEmitter {
             } else {
               failed++;
             }
+          } else {
+            noPic++;
           }
+        } else {
+          noPic++;
         }
       } catch (err) {
         failed++;
-        // Log first few failures at info level for debugging
         if (failed <= 3) {
           logger.info({ chatId, err: err instanceof Error ? err.message : String(err) }, 'Avatar fetch failed (sample)');
         }
@@ -794,12 +801,12 @@ export class WhatsAppWebService extends EventEmitter {
       await new Promise(r => setTimeout(r, 2000));
 
       // Log progress every 50 contacts
-      if ((fetched + failed) % 50 === 0 && (fetched + failed) > 0) {
-        logger.info({ fetched, failed, processed: fetched + failed, total: chatIds.length }, 'Avatar fetch progress');
+      if (processed % 50 === 0) {
+        logger.info({ fetched, failed, noPic, processed, total: chatIds.length }, 'Avatar fetch progress');
       }
     }
 
-    logger.info({ sessionId, fetched, failed, total: chatIds.length }, 'Background avatar fetch completed');
+    logger.info({ sessionId, fetched, failed, noPic, total: chatIds.length }, 'Background avatar fetch completed');
   }
 }
 
