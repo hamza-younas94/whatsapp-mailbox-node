@@ -152,7 +152,29 @@
                 </div>
 
                 <div id="forwardField" class="hidden">
-                    <label class="block text-gray-700 mb-2">Forward To (select contacts/groups)</label>
+                    <!-- Keyword Filters -->
+                    <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <label class="block text-gray-700 mb-2 font-medium"><i class="fas fa-filter mr-1"></i> Trigger Keywords</label>
+                        <p class="text-xs text-gray-500 mb-2">Only forward messages starting with these keywords. Leave empty to forward all messages.</p>
+                        <div id="keywordsContainer" class="flex flex-wrap gap-2 mb-2"></div>
+                        <div class="flex gap-2">
+                            <input type="text" id="keywordInput"
+                                class="flex-1 px-3 py-2 border rounded-lg text-sm"
+                                placeholder="Type keyword and press Enter (e.g. Fire:)">
+                            <button type="button" onclick="addKeyword()" class="px-3 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600">Add</button>
+                        </div>
+                    </div>
+
+                    <!-- Tag-based targets -->
+                    <div class="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                        <label class="block text-gray-700 mb-2 font-medium"><i class="fas fa-tags mr-1"></i> Forward to contacts with tags</label>
+                        <p class="text-xs text-gray-500 mb-2">Select tags — all contacts with these tags will receive forwarded messages. Dynamic: adding contacts to tags auto-includes them.</p>
+                        <div id="forwardTagsContainer" class="flex flex-wrap gap-2 mb-2"></div>
+                        <div id="forwardTagMatchCount" class="text-xs text-purple-700 hidden"><i class="fas fa-users mr-1"></i><span></span></div>
+                    </div>
+
+                    <!-- Individual contact targets -->
+                    <label class="block text-gray-700 mb-2">Or select individual contacts/groups</label>
                     <div id="forwardTargetsContainer" class="mb-2">
                         <input type="text" id="forwardSearch"
                             class="w-full px-4 py-2 border rounded-lg mb-2"
@@ -327,8 +349,14 @@
         function formatActions(actions) {
             // Handle forward_message object format
             if (actions && actions.type === 'FORWARD_MESSAGE') {
-                const count = (actions.targets || []).length;
-                return `Forward to ${count} target${count !== 1 ? 's' : ''}`;
+                const parts = [];
+                const kwCount = (actions.keywords || []).length;
+                const tagCount = (actions.targetTags || []).length;
+                const contactCount = (actions.targets || []).length;
+                if (kwCount > 0) parts.push(`${kwCount} keyword${kwCount !== 1 ? 's' : ''}`);
+                if (tagCount > 0) parts.push(`${tagCount} tag${tagCount !== 1 ? 's' : ''}`);
+                if (contactCount > 0) parts.push(`${contactCount} contact${contactCount !== 1 ? 's' : ''}`);
+                return `Forward (${parts.join(', ') || 'no targets'})`;
             }
             // Handle actions array
             if (Array.isArray(actions) && actions.length > 0) {
@@ -336,7 +364,14 @@
                     if (a.type === 'send_message') return 'Send Message';
                     if (a.type === 'add_tag') return 'Add Tag';
                     if (a.type === 'send_template') return 'Send Template';
-                    if (a.type === 'FORWARD_MESSAGE' || a.type === 'forward_message') return 'Forward Message';
+                    if (a.type === 'FORWARD_MESSAGE' || a.type === 'forward_message') {
+                        const p = a.params || {};
+                        const parts = [];
+                        if ((p.keywords || []).length) parts.push(`${p.keywords.length} kw`);
+                        if ((p.targetTags || []).length) parts.push(`${p.targetTags.length} tags`);
+                        if ((p.targets || []).length) parts.push(`${p.targets.length} contacts`);
+                        return parts.length ? `Forward (${parts.join(', ')})` : 'Forward Message';
+                    }
                     if (a.type === 'webhook') return 'Webhook';
                     return a.type || 'Action';
                 });
@@ -352,6 +387,14 @@
             document.getElementById('modalTitle').textContent = 'New Automation';
             document.getElementById('automationForm').reset();
             document.getElementById('isActive').checked = true;
+            // Reset forward state
+            selectedKeywords = [];
+            selectedForwardTags = [];
+            selectedForwardTargets = [];
+            renderKeywords();
+            renderSelectedTargets();
+            document.getElementById('forwardTagsContainer').innerHTML = '';
+            document.getElementById('forwardTagMatchCount').classList.add('hidden');
             document.getElementById('automationModal').classList.remove('hidden');
         }
 
@@ -362,29 +405,74 @@
         async function editAutomation(id) {
             const response = await fetchWithAuth(`${API_BASE}/automation/${id}`);
             if (response.ok) {
-                const automation = await response.json();
+                const result = await response.json();
+                const automation = result.data || result;
                 document.getElementById('modalTitle').textContent = 'Edit Automation';
                 document.getElementById('automationId').value = automation.id;
                 document.getElementById('name').value = automation.name;
-                document.getElementById('trigger').value = automation.trigger;
-                document.getElementById('action').value = automation.action;
+                document.getElementById('trigger').value = (automation.trigger || '').toLowerCase();
                 document.getElementById('delay').value = automation.delay || 0;
                 document.getElementById('isActive').checked = automation.isActive;
-                
+
+                // Determine action type from actions data
+                const actions = automation.actions;
+                let actionType = automation.action || '';
+                if (actions?.type === 'FORWARD_MESSAGE' || (Array.isArray(actions) && actions[0]?.type === 'FORWARD_MESSAGE')) {
+                    actionType = 'forward_message';
+                } else if (actions?.message || (Array.isArray(actions) && actions[0]?.type === 'SEND_MESSAGE')) {
+                    actionType = 'send_message';
+                } else if (actions?.tagId || (Array.isArray(actions) && actions[0]?.type === 'ADD_TAG')) {
+                    actionType = 'add_tag';
+                }
+                document.getElementById('action').value = actionType;
+
                 // Show/hide conditional fields
                 toggleTriggerFields();
                 toggleActionFields();
-                
+
                 if (automation.conditions?.keyword) {
                     document.getElementById('keyword').value = automation.conditions.keyword;
                 }
-                if (automation.actions?.message) {
-                    document.getElementById('message').value = automation.actions.message;
+                if (actions?.message) {
+                    document.getElementById('message').value = actions.message;
                 }
-                if (automation.actions?.tagId) {
-                    document.getElementById('tagId').value = automation.actions.tagId;
+                if (actions?.tagId) {
+                    document.getElementById('tagId').value = actions.tagId;
                 }
-                
+
+                // Restore forward config
+                const fwdConfig = actions?.type === 'FORWARD_MESSAGE' ? actions
+                    : (Array.isArray(actions) && actions[0]?.type === 'FORWARD_MESSAGE') ? (actions[0].params || actions[0])
+                    : null;
+                if (fwdConfig) {
+                    // Restore keywords
+                    selectedKeywords = fwdConfig.keywords || [];
+                    renderKeywords();
+
+                    // Restore tag targets
+                    selectedForwardTags = fwdConfig.targetTags || [];
+                    await loadForwardTags();
+                    updateTagMatchCount();
+
+                    // Restore individual contact targets
+                    selectedForwardTargets = (fwdConfig.targets || []).map(id => ({ id, name: id }));
+                    // Try to resolve names
+                    for (const t of selectedForwardTargets) {
+                        try {
+                            const cr = await fetchWithAuth(`${API_BASE}/contacts/${t.id}`);
+                            if (cr.ok) {
+                                const cd = await cr.json();
+                                const c = cd.data || cd;
+                                t.name = c.name || c.phoneNumber || t.id;
+                            }
+                        } catch {}
+                    }
+                    renderSelectedTargets();
+
+                    document.getElementById('includeMedia').checked = fwdConfig.includeMedia !== false;
+                    document.getElementById('forwardPrefix').value = fwdConfig.prefix || '';
+                }
+
                 document.getElementById('automationModal').classList.remove('hidden');
             }
         }
@@ -422,6 +510,98 @@
             document.getElementById('messageField').classList.toggle('hidden', action !== 'send_message');
             document.getElementById('tagField').classList.toggle('hidden', action !== 'add_tag');
             document.getElementById('forwardField').classList.toggle('hidden', action !== 'forward_message');
+
+            // Auto-set trigger to MESSAGE_RECEIVED for forward actions (keywords handled inside action)
+            if (action === 'forward_message') {
+                document.getElementById('trigger').value = 'message_received';
+                toggleTriggerFields();
+                loadForwardTags();
+            }
+        }
+
+        // === Keyword chips management ===
+        let selectedKeywords = [];
+
+        function addKeyword() {
+            const input = document.getElementById('keywordInput');
+            const kw = input.value.trim();
+            if (!kw || selectedKeywords.includes(kw)) { input.value = ''; return; }
+            selectedKeywords.push(kw);
+            input.value = '';
+            renderKeywords();
+        }
+
+        function removeKeyword(kw) {
+            selectedKeywords = selectedKeywords.filter(k => k !== kw);
+            renderKeywords();
+        }
+
+        function renderKeywords() {
+            const container = document.getElementById('keywordsContainer');
+            container.innerHTML = selectedKeywords.map(kw =>
+                `<span class="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                    ${kw}
+                    <button type="button" onclick="removeKeyword('${kw.replace(/'/g, "\\'")}')" class="text-blue-600 hover:text-blue-900">&times;</button>
+                </span>`
+            ).join('');
+        }
+
+        document.getElementById('keywordInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); addKeyword(); }
+        });
+
+        // === Tag-based forward targets ===
+        let selectedForwardTags = [];
+        let allForwardTags = [];
+
+        async function loadForwardTags() {
+            if (allForwardTags.length > 0) { renderForwardTags(); return; }
+            const response = await fetchWithAuth(`${API_BASE}/tags`);
+            if (response.ok) {
+                const data = await response.json();
+                allForwardTags = data.data || [];
+                renderForwardTags();
+            }
+        }
+
+        function toggleForwardTag(tagName) {
+            const idx = selectedForwardTags.indexOf(tagName);
+            if (idx >= 0) {
+                selectedForwardTags.splice(idx, 1);
+            } else {
+                selectedForwardTags.push(tagName);
+            }
+            renderForwardTags();
+            updateTagMatchCount();
+        }
+
+        function renderForwardTags() {
+            const container = document.getElementById('forwardTagsContainer');
+            container.innerHTML = allForwardTags.map(tag => {
+                const isSelected = selectedForwardTags.includes(tag.name);
+                return `<button type="button" onclick="toggleForwardTag('${tag.name.replace(/'/g, "\\'")}')"
+                    class="px-3 py-1 rounded-full text-sm border transition-all ${isSelected
+                        ? 'bg-purple-500 text-white border-purple-500'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-purple-400'}">
+                    ${tag.name}
+                </button>`;
+            }).join('');
+        }
+
+        async function updateTagMatchCount() {
+            const countDiv = document.getElementById('forwardTagMatchCount');
+            if (selectedForwardTags.length === 0) {
+                countDiv.classList.add('hidden');
+                return;
+            }
+            const tagParams = selectedForwardTags.map(t => `tags=${encodeURIComponent(t)}`).join('&');
+            const response = await fetchWithAuth(`${API_BASE}/contacts?${tagParams}&limit=1`);
+            if (response.ok) {
+                const data = await response.json();
+                const total = data.data?.total || data.total || (data.data?.data || data.data || []).length;
+                countDiv.querySelector('span').textContent = `${total} contact${total !== 1 ? 's' : ''} match selected tags`;
+                countDiv.classList.remove('hidden');
+            }
         }
 
         // Forward target search and selection
@@ -523,7 +703,9 @@
             } else if (action === 'forward_message') {
                 data.actions = {
                     type: 'FORWARD_MESSAGE',
+                    keywords: selectedKeywords.length > 0 ? selectedKeywords : undefined,
                     targets: selectedForwardTargets.map(t => t.id),
+                    targetTags: selectedForwardTags.length > 0 ? selectedForwardTags : undefined,
                     includeMedia: document.getElementById('includeMedia').checked,
                     prefix: document.getElementById('forwardPrefix').value || '',
                 };

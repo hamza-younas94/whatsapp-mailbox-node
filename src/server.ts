@@ -664,7 +664,7 @@ function setupIncomingMessageListener(): void {
             }
           };
 
-          const automationService = new AutomationService(automationRepo, messageService, tagService);
+          const automationService = new AutomationService(automationRepo, messageService, tagService, contactRepo);
 
           // Trigger MESSAGE_RECEIVED automations
           await automationService.triggerAutomations('message_received', {

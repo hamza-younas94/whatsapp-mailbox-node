@@ -8,6 +8,7 @@ import { AutomationRepository } from '@repositories/automation.repository';
 import { WhatsAppService } from '@services/whatsapp.service';
 import { TagService } from '@services/tag.service';
 import { TagRepository } from '@repositories/tag.repository';
+import { ContactRepository } from '@repositories/contact.repository';
 import getPrismaClient from '@config/database';
 import { authenticate } from '@middleware/auth.middleware';
 import { validateRequest } from '@middleware/validation.middleware';
@@ -21,8 +22,9 @@ const router = Router();
 const automationRepo = new AutomationRepository(prisma);
 const tagRepo = new TagRepository(prisma);
 const whatsappService = new WhatsAppService();
+const contactRepo = new ContactRepository(prisma);
 const tagService = new TagService(tagRepo);
-const service = new AutomationService(automationRepo, {} as any, tagService);
+const service = new AutomationService(automationRepo, {} as any, tagService, contactRepo);
 const controller = new AutomationController(service);
 
 // Validation schemas

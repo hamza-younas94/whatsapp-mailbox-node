@@ -37,23 +37,27 @@ export class AutomationController {
     if (Array.isArray(actions)) {
       normalizedActions = actions;
     } else if (action) {
-      // Simple format: single action with optional message/tagId
       const actionType = actionMap[action?.toLowerCase()] || action?.toUpperCase() || 'SEND_MESSAGE';
-      const actionParams: any = {};
-      
-      if (actions?.message || message) {
-        actionParams.message = actions?.message || message;
+
+      if (actionType === 'FORWARD_MESSAGE' && actions && typeof actions === 'object' && !Array.isArray(actions)) {
+        // Forward actions: preserve full config (targets, targetTags, keywords, prefix, includeMedia)
+        normalizedActions = [{ type: 'FORWARD_MESSAGE', params: actions }];
+      } else {
+        // Simple format: single action with optional message/tagId
+        const actionParams: any = {};
+        if (actions?.message || message) {
+          actionParams.message = actions?.message || message;
+        }
+        if (actions?.tagId) {
+          actionParams.tagId = actions.tagId;
+        }
+        normalizedActions = [{
+          type: actionType,
+          value: actions?.message || message || '',
+          delay: delay || 0,
+          params: actionParams,
+        }];
       }
-      if (actions?.tagId) {
-        actionParams.tagId = actions.tagId;
-      }
-      
-      normalizedActions = [{
-        type: actionType,
-        value: actions?.message || message || '',
-        delay: delay || 0,
-        params: actionParams,
-      }];
     }
 
     return {

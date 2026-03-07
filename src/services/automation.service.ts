@@ -3,6 +3,7 @@
 
 import { Automation } from '@prisma/client';
 import { AutomationRepository } from '@repositories/automation.repository';
+import { ContactRepository } from '@repositories/contact.repository';
 import { MessageService } from './message.service';
 import { TagService } from './tag.service';
 import { NotFoundError } from '@utils/errors';
@@ -94,6 +95,7 @@ export class AutomationService implements IAutomationService {
     private repository: AutomationRepository,
     private messageService: MessageService,
     private tagService: TagService,
+    private contactRepository?: ContactRepository,
   ) {}
 
   async createAutomation(userId: string, input: CreateAutomationInput): Promise<Automation> {
@@ -204,9 +206,39 @@ export class AutomationService implements IAutomationService {
         break;
 
       case 'FORWARD_MESSAGE': {
-        const targets: string[] = action.params.targets || [];
         const messageContent = context.messageContent || context.body || '';
         const mediaUrl = context.mediaUrl;
+
+        // 1. Keyword filtering — skip if message doesn't match any keyword prefix
+        const keywords: string[] = action.params.keywords || [];
+        if (keywords.length > 0) {
+          const lowerBody = messageContent.toLowerCase().trim();
+          const matched = keywords.some((kw: string) => lowerBody.startsWith(kw.toLowerCase().trim()));
+          if (!matched) {
+            logger.debug({ keywords }, 'FORWARD_MESSAGE: No keyword match, skipping');
+            break;
+          }
+        }
+
+        // 2. Resolve targets: explicit contacts + tag-based contacts
+        let targets: string[] = action.params.targets || [];
+        const targetTags: string[] = action.params.targetTags || [];
+        if (targetTags.length > 0 && this.contactRepository) {
+          try {
+            const result = await this.contactRepository.search(context.userId, {
+              tags: targetTags,
+              limit: 500,
+            });
+            const tagContactIds = result.data.map((c: any) => c.id);
+            const allIds = new Set([...targets, ...tagContactIds]);
+            allIds.delete(context.contactId); // Don't forward back to sender
+            targets = Array.from(allIds);
+            logger.info({ tagCount: targetTags.length, resolvedCount: targets.length }, 'FORWARD_MESSAGE: Resolved tag targets');
+          } catch (err) {
+            logger.error({ err }, 'FORWARD_MESSAGE: Failed to resolve tag targets');
+          }
+        }
+
         const prefix = action.params.prefix || '';
         const includeMedia = action.params.includeMedia !== false;
 
