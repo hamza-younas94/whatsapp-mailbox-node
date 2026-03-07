@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { contactAPI } from '@/api/queries';
 import { getContactTypeFromId, getContactTypeInfo, ContactTypeEnum } from '@/utils/contact-type';
 import { getAvatarUrl } from '@/utils/avatar';
+import { subscribeToMessage, IMessageReceivedEvent } from '@/api/socket';
 import '@/styles/conversation-list-enhanced.css';
 
 interface Conversation {
@@ -24,7 +25,6 @@ interface ConversationListProps {
   onSelectConversation: (contactId: string, conversation: Conversation) => void;
   selectedContactId?: string;
   searchQuery?: string;
-  onAutoRefreshChange?: (enabled: boolean) => void;
 }
 
 type TabType = 'all' | 'unread' | 'contacts' | 'groups' | 'channels';
@@ -49,7 +49,6 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   onSelectConversation,
   selectedContactId,
   searchQuery = '',
-  onAutoRefreshChange,
 }) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
@@ -57,6 +56,8 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
+  const hasLoaded = useRef(false);
+  const selectedContactIdRef = useRef(selectedContactId);
 
   // Sync search when navbar searchQuery prop changes
   useEffect(() => {
@@ -71,9 +72,12 @@ export const ConversationList: React.FC<ConversationListProps> = ({
     return () => clearTimeout(debounceTimer.current);
   }, [search]);
 
+  // Keep selectedContactId ref in sync for socket callback
+  useEffect(() => { selectedContactIdRef.current = selectedContactId; }, [selectedContactId]);
+
   const loadConversations = async () => {
     try {
-      setLoading(true);
+      if (!hasLoaded.current) setLoading(true);
       const response = await contactAPI.searchContacts(debouncedSearch || undefined, 1000, 0);
 
       const contacts = Array.isArray(response) ? response : (response?.data || []);
@@ -157,19 +161,72 @@ export const ConversationList: React.FC<ConversationListProps> = ({
       setConversations([]);
     } finally {
       setLoading(false);
+      hasLoaded.current = true;
     }
   };
 
   useEffect(() => {
     loadConversations();
-
-    const handleRefresh = () => {
-      loadConversations();
-    };
-
-    window.addEventListener('refreshConversations', handleRefresh);
-    return () => window.removeEventListener('refreshConversations', handleRefresh);
   }, [debouncedSearch]);
+
+  // Reset unread count when a conversation is selected
+  useEffect(() => {
+    if (!selectedContactId) return;
+    setConversations(prev =>
+      prev.map(c => c.contact.id === selectedContactId ? { ...c, unreadCount: 0 } : c)
+    );
+  }, [selectedContactId]);
+
+  // Real-time sidebar updates via Socket.IO
+  useEffect(() => {
+    const unsubscribe = subscribeToMessage((msg: IMessageReceivedEvent) => {
+      setConversations(prev => {
+        const idx = prev.findIndex(c => c.contact.id === msg.contactId);
+        if (idx === -1) return prev;
+
+        // Build message preview
+        let preview = msg.content || '';
+        const bracketMatch = preview.trim().match(/^\[(IMAGE|VIDEO|AUDIO|DOCUMENT|STICKER|PTT|LOCATION|CONTACT)\]$/i);
+        if (bracketMatch) {
+          const labels: Record<string, string> = {
+            'IMAGE': '📷 Image', 'VIDEO': '🎥 Video', 'AUDIO': '🎵 Audio',
+            'DOCUMENT': '📄 Document', 'STICKER': '🏷️ Sticker', 'PTT': '🎤 Voice message',
+            'LOCATION': '📍 Location', 'CONTACT': '👤 Contact',
+          };
+          preview = labels[bracketMatch[1].toUpperCase()] || `📎 ${bracketMatch[1]}`;
+        } else if (preview.length > 50) {
+          preview = preview.substring(0, 50) + '...';
+        } else if (!preview && msg.messageType && msg.messageType !== 'TEXT') {
+          const labels: Record<string, string> = {
+            'IMAGE': '📷 Image', 'VIDEO': '🎥 Video', 'AUDIO': '🎵 Audio',
+            'DOCUMENT': '📄 Document',
+          };
+          preview = labels[msg.messageType] || '📎 Media';
+        }
+
+        const updated = [...prev];
+        const isSelected = msg.contactId === selectedContactIdRef.current;
+        updated[idx] = {
+          ...updated[idx],
+          lastMessage: preview || updated[idx].lastMessage,
+          lastMessageAt: msg.createdAt,
+          unreadCount: msg.direction === 'INCOMING' && !isSelected
+            ? updated[idx].unreadCount + 1
+            : updated[idx].unreadCount,
+        };
+
+        updated.sort((a, b) => {
+          const dateA = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+          const dateB = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+          return dateB - dateA;
+        });
+
+        return updated;
+      });
+    });
+
+    return () => { unsubscribe(); };
+  }, []);
 
   // Get contact type for a conversation
   const getConvType = (conv: Conversation): ContactTypeEnum => {

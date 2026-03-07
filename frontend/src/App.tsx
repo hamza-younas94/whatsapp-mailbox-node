@@ -33,7 +33,6 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   const [sessionStatus, setSessionStatus] = useState<SessionState>('UNKNOWN');
 
   // Check authentication on mount
@@ -58,21 +57,6 @@ const App: React.FC = () => {
     
     setIsCheckingAuth(false);
   }, []);
-
-  // Auto-sync conversations every 3 seconds when auto-refresh is enabled
-  useEffect(() => {
-    if (!autoRefreshEnabled || !isAuthenticated) {
-      return;
-    }
-
-    const syncInterval = setInterval(() => {
-      // Trigger refresh by updating search query to force ConversationList to reload
-      // This is done by dispatching a custom event that ConversationList listens to
-      window.dispatchEvent(new CustomEvent('refreshConversations'));
-    }, 10000); // Sync every 10 seconds (Socket.IO handles real-time)
-
-    return () => clearInterval(syncInterval);
-  }, [autoRefreshEnabled, isAuthenticated]);
 
   // Check if mobile
   useEffect(() => {
@@ -126,7 +110,6 @@ const App: React.FC = () => {
               onSelectConversation={handleSelectConversation}
               selectedContactId={selectedContactId}
               searchQuery={searchQuery}
-              onAutoRefreshChange={setAutoRefreshEnabled}
             />
           </div>
         )}
@@ -144,7 +127,6 @@ const App: React.FC = () => {
               </div>
             )}
             <ChatPane
-              key={selectedContactId} // Force re-render when contact changes
               contactId={selectedContactId}
               contactName={selectedConversation?.contact?.name || selectedConversation?.contact?.phoneNumber}
               chatId={selectedConversation?.contact?.chatId}

@@ -173,6 +173,23 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
     };
   }, [contactId, loadMessages]);
 
+  // Reset CRM state when switching contacts (no more key-based remount)
+  useEffect(() => {
+    setShowContactInfo(false);
+    setNotes([]);
+    setTasks([]);
+    setOrders([]);
+    setTransactions([]);
+    setContactTags([]);
+    setAutomations([]);
+    setActiveTab('overview');
+    setShowTaskForm(false);
+    setShowOrderForm(false);
+    setEditingNote(null);
+    setEditingTx(null);
+    setEditingTask(null);
+  }, [contactId]);
+
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     if (messagesEndRef.current) {
