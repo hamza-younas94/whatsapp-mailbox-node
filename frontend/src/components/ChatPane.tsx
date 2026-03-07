@@ -753,12 +753,12 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                     <h4>Quick Access</h4>
                   </div>
                   <div className="quick-links-grid">
-                    <a href="/orders.html" target="_blank" className="quick-link-card">📦 Orders</a>
-                    <a href="/tasks.html" target="_blank" className="quick-link-card">✅ Tasks</a>
-                    <a href="/invoices.html" target="_blank" className="quick-link-card">🧾 Invoices</a>
-                    <a href="/products.html" target="_blank" className="quick-link-card">🛍️ Products</a>
-                    <a href="/appointments.html" target="_blank" className="quick-link-card">📅 Bookings</a>
-                    <a href="/automation.html" target="_blank" className="quick-link-card">⚡ Automation</a>
+                    <button onClick={() => setActiveTab('orders')} className="quick-link-card">📦 Orders</button>
+                    <button onClick={() => setActiveTab('tasks')} className="quick-link-card">✅ Tasks</button>
+                    <button onClick={() => setActiveTab('transactions')} className="quick-link-card">💰 Sales</button>
+                    <button onClick={() => setActiveTab('notes')} className="quick-link-card">📝 Notes</button>
+                    <button onClick={() => setActiveTab('info')} className="quick-link-card">🏷️ Tags</button>
+                    <button onClick={() => setActiveTab('automations')} className="quick-link-card">⚡ Automation</button>
                   </div>
                 </div>
               )}

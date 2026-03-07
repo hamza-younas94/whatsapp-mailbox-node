@@ -731,7 +731,7 @@ export class WhatsAppWebService extends EventEmitter {
       const chats = await session.client.getChats();
       logger.info({ sessionId, chatCount: chats.length }, 'Fetched all chats for sync');
 
-      // Map chats first, then fetch profile pics in parallel batches
+      // Map chat data (skip bulk profile pic fetch — WhatsApp rate-limits it)
       const chatData = chats.map(chat => ({
         chatId: chat.id._serialized,
         name: chat.name,
@@ -741,37 +741,54 @@ export class WhatsAppWebService extends EventEmitter {
         profilePicUrl: undefined as string | undefined,
       }));
 
-      // Fetch profile pictures in batches of 10 and download locally
-      const batchSize = 10;
-      for (let i = 0; i < chatData.length; i += batchSize) {
-        const batch = chatData.slice(i, i + batchSize);
-        await Promise.allSettled(
-          batch.map(async (chat) => {
-            try {
-              const contact = await session.client.getContactById(chat.chatId);
-              if (contact?.getProfilePicUrl) {
-                const cdnUrl = await contact.getProfilePicUrl();
-                if (cdnUrl) {
-                  // Download and cache locally instead of storing expiring CDN URL
-                  const localUrl = await downloadAvatar(chat.chatId, cdnUrl);
-                  chat.profilePicUrl = localUrl || undefined;
-                }
-              }
-            } catch {
-              // Profile pic fetch failures are expected and not critical
-            }
-          })
-        );
-      }
-
-      const withPics = chatData.filter(c => c.profilePicUrl).length;
-      logger.info({ sessionId, withPics, total: chatData.length }, 'Profile pictures fetched and cached locally');
+      logger.info({ sessionId, total: chatData.length }, 'Chat data mapped (avatars fetched in background)');
 
       return chatData;
     } catch (error) {
       logger.error({ error, sessionId }, 'Failed to fetch chats for sync');
       return [];
     }
+  }
+
+  /**
+   * Slowly fetch and download avatars one at a time with delays.
+   * Runs in background after sync to avoid WhatsApp rate limiting.
+   */
+  async fetchAvatarsSlowly(sessionId: string, chatIds: string[]): Promise<void> {
+    const session = this.sessions.get(sessionId);
+    if (!session || session.status !== 'READY') return;
+
+    let fetched = 0;
+    let failed = 0;
+
+    for (const chatId of chatIds) {
+      // Abort if session disconnected
+      if (session.status !== 'READY') {
+        logger.info({ sessionId, fetched, failed }, 'Avatar fetch aborted: session no longer ready');
+        return;
+      }
+
+      try {
+        const contact = await session.client.getContactById(chatId);
+        if (contact?.getProfilePicUrl) {
+          const cdnUrl = await contact.getProfilePicUrl();
+          if (cdnUrl) {
+            const localUrl = await downloadAvatar(chatId, cdnUrl);
+            if (localUrl) {
+              fetched++;
+              this.emit('avatar:downloaded', { sessionId, chatId, localUrl });
+            }
+          }
+        }
+      } catch {
+        failed++;
+      }
+
+      // Wait 3 seconds between each to avoid rate limiting
+      await new Promise(r => setTimeout(r, 3000));
+    }
+
+    logger.info({ sessionId, fetched, failed, total: chatIds.length }, 'Background avatar fetch completed');
   }
 }
 

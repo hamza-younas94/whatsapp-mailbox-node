@@ -117,9 +117,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
 
   const handleMouseLeave = (e: React.MouseEvent) => {
     // Check if mouse is moving to the reaction picker
-    const relatedTarget = e.relatedTarget as HTMLElement;
-    const isMovingToReactionPicker = relatedTarget?.closest('.reaction-picker') || 
-                                      relatedTarget?.closest('.reaction-btn');
+    const relatedTarget = e.relatedTarget;
+    const isMovingToReactionPicker = relatedTarget instanceof HTMLElement &&
+      (relatedTarget.closest('.reaction-picker') || relatedTarget.closest('.reaction-btn'));
     
     if (isMovingToReactionPicker) {
       return; // Don't hide if moving to reaction picker

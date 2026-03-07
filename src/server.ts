@@ -308,6 +308,26 @@ function setupChatSyncListener(): void {
       if (io) {
         io.to(`user:${userId}`).emit('chats:synced', { synced, total: chats.length });
       }
+
+      // Start slow background avatar fetch (non-blocking)
+      const chatIdsForAvatars = chats
+        .map(c => c.chatId)
+        .filter(id => id !== 'status@broadcast');
+      whatsappWebService.fetchAvatarsSlowly(sessionId, chatIdsForAvatars)
+        .then(() => logger.info({ sessionId }, 'Background avatar fetch done'))
+        .catch(err => logger.debug({ err, sessionId }, 'Background avatar fetch error'));
+
+      // Listen for downloaded avatars and update DB
+      whatsappWebService.on('avatar:downloaded', async ({ chatId: avatarChatId, localUrl }) => {
+        try {
+          await db.contact.updateMany({
+            where: { userId, chatId: avatarChatId },
+            data: { profilePhotoUrl: localUrl },
+          });
+        } catch {
+          // Non-critical
+        }
+      });
     } catch (error) {
       logger.error({ error, sessionId }, 'Chat sync failed');
     }
