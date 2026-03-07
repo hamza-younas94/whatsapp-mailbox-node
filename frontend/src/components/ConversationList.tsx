@@ -109,13 +109,8 @@ export const ConversationList: React.FC<ConversationListProps> = ({
             }
           }
 
-          // Calculate unread count from incoming messages that aren't READ
-          let unreadCount = 0;
-          if (contact.messages && contact.messages.length > 0) {
-            unreadCount = contact.messages.filter(
-              (m: any) => m.direction === 'INCOMING' && m.status !== 'READ'
-            ).length;
-          }
+          // Use backend-calculated unread count (filtered _count of INCOMING+RECEIVED messages)
+          const unreadCount = contact._count?.messages || 0;
 
           return {
             id: contact.id || `contact-${contact.phoneNumber}`,

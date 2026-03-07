@@ -167,6 +167,9 @@ export function createApp(): Express {
   // Setup WhatsApp reaction listener to capture reactions
   setupReactionListener();
 
+  // Setup chat sync listener — sync existing contacts when session becomes READY
+  setupChatSyncListener();
+
   return app;
 }
 
@@ -225,6 +228,81 @@ function setupReactionListener(): void {
   });
 
   logger.info('WhatsApp reaction listener initialized');
+}
+
+/**
+ * Listen for WhatsApp session READY event and sync all existing chats
+ * into the database. This populates contacts that existed before the app.
+ */
+function setupChatSyncListener(): void {
+  whatsappWebService.on('ready', async (event: any) => {
+    const { sessionId } = event;
+    logger.info({ sessionId }, 'Session ready — starting chat sync...');
+
+    try {
+      const session = whatsappWebService.getSession(sessionId);
+      if (!session) {
+        logger.warn({ sessionId }, 'Chat sync: session not found');
+        return;
+      }
+
+      const userId = session.userId;
+      const chats = await whatsappWebService.syncAllChats(sessionId);
+      logger.info({ sessionId, chatCount: chats.length }, 'Fetched chats for sync');
+
+      const db = getPrismaClient();
+      const contactRepo = new ContactRepository(db);
+      const conversationRepo = new ConversationRepository(db);
+
+      let synced = 0;
+      let skipped = 0;
+
+      for (const chat of chats) {
+        try {
+          // Skip status broadcast
+          if (chat.chatId === 'status@broadcast') continue;
+
+          const phone = sanitizePhone(chat.chatId);
+          if (!phone) {
+            skipped++;
+            continue;
+          }
+
+          const contactType = getContactType(chat.chatId, phone);
+
+          // Create or update contact
+          await contactRepo.findOrCreate(userId, phone, {
+            ...(chat.name ? { name: chat.name } : {}),
+            chatId: chat.chatId,
+            contactType,
+            ...(chat.timestamp ? { lastMessageAt: new Date(chat.timestamp * 1000) } : {}),
+          });
+
+          // Ensure conversation exists
+          const contact = await contactRepo.findByPhoneNumber(userId, phone);
+          if (contact) {
+            await conversationRepo.findOrCreate(userId, contact.id);
+          }
+
+          synced++;
+        } catch (chatError) {
+          logger.debug({ chatId: chat.chatId, error: chatError }, 'Chat sync: failed to sync individual chat');
+          skipped++;
+        }
+      }
+
+      logger.info({ sessionId, synced, skipped, total: chats.length }, 'Chat sync completed');
+
+      // Notify frontend to refresh conversations
+      if (io) {
+        io.to(`user:${userId}`).emit('chats:synced', { synced, total: chats.length });
+      }
+    } catch (error) {
+      logger.error({ error, sessionId }, 'Chat sync failed');
+    }
+  });
+
+  logger.info('WhatsApp chat sync listener initialized');
 }
 
 /**

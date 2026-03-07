@@ -96,7 +96,16 @@ export class ContactRepository extends BaseRepository<Contact> implements IConta
         take: limit,
         include: {
           tags: { include: { tag: true } },
-          _count: { select: { messages: true } },
+          _count: {
+            select: {
+              messages: {
+                where: {
+                  direction: 'INCOMING',
+                  status: 'RECEIVED',
+                },
+              },
+            },
+          },
           messages: {
             take: 1,
             orderBy: { createdAt: 'desc' },
@@ -106,6 +115,7 @@ export class ContactRepository extends BaseRepository<Contact> implements IConta
               messageType: true,
               direction: true,
               createdAt: true,
+              status: true,
             },
           },
         },

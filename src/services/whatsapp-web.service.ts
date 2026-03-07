@@ -613,6 +613,40 @@ export class WhatsAppWebService extends EventEmitter {
   getSessionDir(): string {
     return this.sessionDir;
   }
+
+  /**
+   * Sync all existing WhatsApp chats into the database.
+   * Called once when a session becomes READY to populate contacts
+   * that existed before the app was set up.
+   */
+  async syncAllChats(sessionId: string): Promise<Array<{
+    chatId: string;
+    name: string;
+    isGroup: boolean;
+    isChannel: boolean;
+    timestamp: number;
+  }>> {
+    const session = this.sessions.get(sessionId);
+    if (!session || session.status !== 'READY') {
+      throw new Error('Session not ready for chat sync');
+    }
+
+    try {
+      const chats = await session.client.getChats();
+      logger.info({ sessionId, chatCount: chats.length }, 'Fetched all chats for sync');
+
+      return chats.map(chat => ({
+        chatId: chat.id._serialized,
+        name: chat.name,
+        isGroup: chat.isGroup,
+        isChannel: !!(chat as any).isChannel,
+        timestamp: chat.timestamp || 0,
+      }));
+    } catch (error) {
+      logger.error({ error, sessionId }, 'Failed to fetch chats for sync');
+      return [];
+    }
+  }
 }
 
 // Singleton instance
