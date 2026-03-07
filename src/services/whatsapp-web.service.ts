@@ -275,26 +275,55 @@ export class WhatsAppWebService extends EventEmitter {
         // message.getContact() returns the SENDER's info which is wrong for outgoing
         // For incoming messages, message.getContact() gives us the sender (correct)
         if (!isOutgoing && message.getContact && typeof message.getContact === 'function') {
-          // For incoming messages, get sender's contact info
-          const contact = await message.getContact();
-          if (contact) {
-            contactName = contact.name || contact.pushname;
-            contactPushName = contact.pushname;
-            // For business accounts, try to get formatted name
-            if (contact.isBusiness) {
-              isBusiness = true;
-              contactBusinessName = (contact as any).formattedName || contactName;
-            }
-            // Try to get profile photo and download locally
-            if (contact.getProfilePicUrl && typeof contact.getProfilePicUrl === 'function') {
+          const isGroupMessage = chatId.includes('@g.us') || chatId.includes('@newsletter') || chatId.includes('@broadcast');
+
+          if (isGroupMessage) {
+            // For group/channel messages: get GROUP name from chat, NOT sender's name
+            const session = this.sessions.get(sessionId);
+            if (session?.client) {
               try {
-                const cdnUrl = await contact.getProfilePicUrl();
-                if (cdnUrl) {
-                  const localUrl = await downloadAvatar(chatId, cdnUrl);
-                  profilePhotoUrl = localUrl || undefined;
+                const chat = await session.client.getChatById(chatId);
+                if (chat) {
+                  contactName = chat.name;
+                  // Download group profile pic
+                  try {
+                    const groupContact = await session.client.getContactById(chatId);
+                    if (groupContact?.getProfilePicUrl) {
+                      const cdnUrl = await groupContact.getProfilePicUrl();
+                      if (cdnUrl) {
+                        const localUrl = await downloadAvatar(chatId, cdnUrl);
+                        profilePhotoUrl = localUrl || undefined;
+                      }
+                    }
+                  } catch {
+                    // Group profile pic fetch is non-critical
+                  }
                 }
-              } catch (photoError) {
-                logger.debug({ chatId }, 'Failed to fetch profile photo');
+              } catch {
+                logger.debug({ chatId }, 'Failed to get group chat info');
+              }
+            }
+          } else {
+            // For individual incoming messages: get sender's contact info
+            const contact = await message.getContact();
+            if (contact) {
+              contactName = contact.name || contact.pushname;
+              contactPushName = contact.pushname;
+              if (contact.isBusiness) {
+                isBusiness = true;
+                contactBusinessName = (contact as any).formattedName || contactName;
+              }
+              // Try to get profile photo and download locally
+              if (contact.getProfilePicUrl && typeof contact.getProfilePicUrl === 'function') {
+                try {
+                  const cdnUrl = await contact.getProfilePicUrl();
+                  if (cdnUrl) {
+                    const localUrl = await downloadAvatar(chatId, cdnUrl);
+                    profilePhotoUrl = localUrl || undefined;
+                  }
+                } catch (photoError) {
+                  logger.debug({ chatId }, 'Failed to fetch profile photo');
+                }
               }
             }
           }

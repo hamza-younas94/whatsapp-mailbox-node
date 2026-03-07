@@ -53,7 +53,7 @@ export class ContactRepository extends BaseRepository<Contact> implements IConta
   }
 
   async search(userId: string, filters: ContactFilters): Promise<PaginatedResult<Contact>> {
-    const limit = Math.min(filters.limit || 20, 100);
+    const limit = Math.min(filters.limit || 20, 1000);
     const offset = filters.offset || 0;
 
     const searchTerm = filters.search || filters.query;
@@ -153,6 +153,7 @@ export class ContactRepository extends BaseRepository<Contact> implements IConta
       'businessName',
       'email',
       'profilePhotoUrl',
+      'chatId',
       'company',
       'department',
       'timezone',

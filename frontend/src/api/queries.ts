@@ -112,7 +112,7 @@ export const sessionAPI = {
 
 export const contactAPI = {
   // Search/list contacts
-  async searchContacts(search?: string, limit = 20, offset = 0) {
+  async searchContacts(search?: string, limit = 1000, offset = 0) {
     const { data } = await api.get('/contacts', { params: { search, limit, offset } });
     return data.data;
   },

@@ -73,7 +73,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   const loadConversations = async () => {
     try {
       setLoading(true);
-      const response = await contactAPI.searchContacts(debouncedSearch || undefined, 100, 0);
+      const response = await contactAPI.searchContacts(debouncedSearch || undefined, 1000, 0);
 
       const contacts = Array.isArray(response) ? response : (response?.data || []);
 
@@ -212,28 +212,6 @@ export const ConversationList: React.FC<ConversationListProps> = ({
     { key: 'channels', label: 'Channels' },
   ];
 
-  // Group conversations by type for the "All" tab
-  const grouped = useMemo(() => {
-    if (activeTab !== 'all' && activeTab !== 'unread') return null;
-
-    const contactsList: Conversation[] = [];
-    const groupsList: Conversation[] = [];
-    const channelsList: Conversation[] = [];
-
-    const source = activeTab === 'unread'
-      ? filteredConversations
-      : conversations.filter(c => c && c.contact && c.contact.id);
-
-    source.forEach(conv => {
-      const type = getConvType(conv);
-      if (type === 'group') groupsList.push(conv);
-      else if (type === 'channel' || type === 'broadcast') channelsList.push(conv);
-      else contactsList.push(conv);
-    });
-
-    return { contactsList, groupsList, channelsList };
-  }, [conversations, filteredConversations, activeTab]);
-
   // Render a single conversation item
   const renderConversationItem = (conv: Conversation) => {
     const displayName = conv.contact?.name || conv.contact?.phoneNumber || 'Unknown';
@@ -314,21 +292,6 @@ export const ConversationList: React.FC<ConversationListProps> = ({
     );
   };
 
-  // Render a section with header
-  const renderSection = (label: string, icon: string, items: Conversation[], colorClass: string) => {
-    if (items.length === 0) return null;
-    return (
-      <div className="conv-section" key={label}>
-        <div className={`conv-section-header ${colorClass}`}>
-          <span className="section-icon">{icon}</span>
-          <span className="section-label">{label}</span>
-          <span className="section-count">{items.length}</span>
-        </div>
-        {items.map(renderConversationItem)}
-      </div>
-    );
-  };
-
   return (
     <div className="conversation-list-container">
       {/* Search header */}
@@ -374,27 +337,13 @@ export const ConversationList: React.FC<ConversationListProps> = ({
           </div>
         )}
 
-        {!loading && filteredConversations.length === 0 && (activeTab !== 'all' && activeTab !== 'unread') && (
+        {!loading && filteredConversations.length === 0 && (
           <div className="empty-state">
-            {`No ${activeTab} conversations`}
+            {activeTab === 'all' ? 'No conversations yet' : `No ${activeTab} conversations`}
           </div>
         )}
 
-        {!loading && conversations.length === 0 && activeTab === 'all' && (
-          <div className="empty-state">No conversations yet</div>
-        )}
-
-        {/* Grouped view for All and Unread tabs */}
-        {!loading && grouped && (
-          <>
-            {renderSection('Contacts', '👤', grouped.contactsList, 'section-contacts')}
-            {renderSection('Groups', '👥', grouped.groupsList, 'section-groups')}
-            {renderSection('Channels', '📢', grouped.channelsList, 'section-channels')}
-          </>
-        )}
-
-        {/* Flat list for specific type tabs */}
-        {!loading && !grouped && filteredConversations.map(renderConversationItem)}
+        {!loading && filteredConversations.map(renderConversationItem)}
       </div>
     </div>
   );

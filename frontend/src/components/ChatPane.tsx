@@ -413,7 +413,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
           </div>
           <div className="chat-header-text">
             <h3 className="contact-name">{contactName || 'Unknown'}</h3>
-            {phoneNumber && !phoneNumber.includes('@g.us') && <p className="contact-phone">{phoneNumber}</p>}
+            {phoneNumber && contactTypeResolved === 'contact' && <p className="contact-phone">{phoneNumber}</p>}
           </div>
         </div>
         <div className="chat-header-actions">

@@ -62,6 +62,14 @@
   word-break: break-word;
 }
 
+.mention-tag {
+  color: #075e54;
+  font-weight: 600;
+  background: rgba(18, 140, 126, 0.1);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
 /* Media Content */
 .message-media {
   margin-bottom: 6px;

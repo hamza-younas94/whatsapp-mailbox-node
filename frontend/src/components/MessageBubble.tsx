@@ -23,6 +23,38 @@ interface MessageBubbleProps {
 
 const REACTION_EMOJIS = ['❤️', '👍', '😂', '😮', '😢', '🙏'];
 
+// Format message content: replace raw @mentions with styled spans
+function formatMessageContent(content: string): React.ReactNode {
+  // Match @<digits> patterns (WhatsApp raw mentions)
+  const mentionRegex = /@(\d{10,20})/g;
+  if (!mentionRegex.test(content)) return content;
+
+  // Reset regex lastIndex after test
+  mentionRegex.lastIndex = 0;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = mentionRegex.exec(content)) !== null) {
+    // Text before the mention
+    if (match.index > lastIndex) {
+      parts.push(content.slice(lastIndex, match.index));
+    }
+    // Styled mention
+    parts.push(
+      <span key={match.index} className="mention-tag">@member</span>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Remaining text after last mention
+  if (lastIndex < content.length) {
+    parts.push(content.slice(lastIndex));
+  }
+
+  return <>{parts}</>;
+}
+
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) => {
   const [showReactions, setShowReactions] = useState(false);
   const [selectedReaction, setSelectedReaction] = useState<string | undefined>(
@@ -183,7 +215,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
 
         {/* Text content — skip if it's just a bracketed media label like [AUDIO] */}
         {message.content && !/^\[(IMAGE|VIDEO|AUDIO|DOCUMENT|STICKER|PTT|LOCATION|CONTACT)\]$/i.test(message.content.trim()) && (
-          <p className="message-text">{message.content}</p>
+          <p className="message-text">{formatMessageContent(message.content)}</p>
         )}
 
         {/* Message meta */}
