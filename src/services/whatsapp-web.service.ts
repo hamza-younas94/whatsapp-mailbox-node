@@ -316,15 +316,12 @@ export class WhatsAppWebService extends EventEmitter {
                 const chat = await session.client.getChatById(chatId);
                 if (chat) {
                   contactName = chat.name;
-                  // Download group profile pic
+                  // Download group profile pic (use client-level API to avoid isNewsletter bug)
                   try {
-                    const groupContact = await session.client.getContactById(chatId);
-                    if (groupContact?.getProfilePicUrl) {
-                      const cdnUrl = await groupContact.getProfilePicUrl();
-                      if (cdnUrl) {
-                        const localUrl = await downloadAvatar(chatId, cdnUrl);
-                        profilePhotoUrl = localUrl || undefined;
-                      }
+                    const cdnUrl = await session.client.getProfilePicUrl(chatId);
+                    if (cdnUrl) {
+                      const localUrl = await downloadAvatar(chatId, cdnUrl);
+                      profilePhotoUrl = localUrl || undefined;
                     }
                   } catch {
                     // Group profile pic fetch is non-critical
@@ -344,15 +341,16 @@ export class WhatsAppWebService extends EventEmitter {
                 isBusiness = true;
                 contactBusinessName = (contact as any).formattedName || contactName;
               }
-              // Try to get profile photo and download locally
-              if (contact.getProfilePicUrl && typeof contact.getProfilePicUrl === 'function') {
+              // Try to get profile photo (use client-level API to avoid isNewsletter bug)
+              const session = this.sessions.get(sessionId);
+              if (session?.client) {
                 try {
-                  const cdnUrl = await contact.getProfilePicUrl();
+                  const cdnUrl = await session.client.getProfilePicUrl(chatId);
                   if (cdnUrl) {
                     const localUrl = await downloadAvatar(chatId, cdnUrl);
                     profilePhotoUrl = localUrl || undefined;
                   }
-                } catch (photoError) {
+                } catch {
                   logger.debug({ chatId }, 'Failed to fetch profile photo');
                 }
               }
@@ -378,8 +376,9 @@ export class WhatsAppWebService extends EventEmitter {
                       isBusiness = true;
                       contactBusinessName = (recipientContact as any).formattedName || contactName;
                     }
+                    // Use client-level API to avoid isNewsletter bug
                     try {
-                      const cdnUrl = await recipientContact.getProfilePicUrl?.();
+                      const cdnUrl = await session.client.getProfilePicUrl(chatId);
                       if (cdnUrl) {
                         const localUrl = await downloadAvatar(chatId, cdnUrl);
                         profilePhotoUrl = localUrl || undefined;
@@ -773,19 +772,15 @@ export class WhatsAppWebService extends EventEmitter {
       processed++;
 
       try {
-        const contact = await session.client.getContactById(chatId);
-        if (contact?.getProfilePicUrl) {
-          const cdnUrl = await contact.getProfilePicUrl();
-          if (cdnUrl) {
-            const localUrl = await downloadAvatar(chatId, cdnUrl);
-            if (localUrl) {
-              fetched++;
-              this.emit('avatar:downloaded', { sessionId, chatId, localUrl });
-            } else {
-              failed++;
-            }
+        // Use client-level getProfilePicUrl to avoid contact.getProfilePicUrl 'isNewsletter' bug
+        const cdnUrl = await session.client.getProfilePicUrl(chatId);
+        if (cdnUrl) {
+          const localUrl = await downloadAvatar(chatId, cdnUrl);
+          if (localUrl) {
+            fetched++;
+            this.emit('avatar:downloaded', { sessionId, chatId, localUrl });
           } else {
-            noPic++;
+            failed++;
           }
         } else {
           noPic++;
