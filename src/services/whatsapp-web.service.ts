@@ -22,6 +22,7 @@ export interface WhatsAppWebSession {
 export class WhatsAppWebService extends EventEmitter {
   private sessions: Map<string, WhatsAppWebSession> = new Map();
   private initializingSessions: Set<string> = new Set(); // Track sessions being initialized
+  private reconnectAttempts: Map<string, number> = new Map(); // Track reconnect attempts per session
   private sessionDir: string;
 
   constructor() {
@@ -170,7 +171,9 @@ export class WhatsAppWebService extends EventEmitter {
       session.status = 'READY';
       // Remove from initializing set - initialization is complete
       this.initializingSessions.delete(id);
-      
+      // Reset reconnect counter on successful connection
+      this.reconnectAttempts.delete(id);
+
       // Get phone number
       const info = client.info;
       if (info) {
@@ -208,12 +211,40 @@ export class WhatsAppWebService extends EventEmitter {
       }
     });
 
-    // Disconnected event
+    // Disconnected event — auto-reconnect with exponential backoff
     client.on('disconnected', (reason) => {
       this.initializingSessions.delete(id);
       session.status = 'DISCONNECTED';
       this.emit('disconnected', { sessionId: id, reason });
       logger.warn({ sessionId: id, reason }, 'WhatsApp Web disconnected');
+
+      // Auto-reconnect (max 10 attempts with exponential backoff)
+      const attempts = this.reconnectAttempts.get(id) || 0;
+      const maxAttempts = 10;
+
+      if (attempts < maxAttempts) {
+        const delay = Math.min(30_000 * Math.pow(2, attempts), 600_000); // 30s, 60s, 120s... max 10min
+        this.reconnectAttempts.set(id, attempts + 1);
+        logger.info({ sessionId: id, attempt: attempts + 1, delayMs: delay }, 'Scheduling auto-reconnect');
+
+        setTimeout(async () => {
+          try {
+            // Check if session was manually reconnected in the meantime
+            const current = this.sessions.get(id);
+            if (current && current.status === 'READY') {
+              logger.info({ sessionId: id }, 'Session already reconnected, skipping auto-reconnect');
+              return;
+            }
+
+            logger.info({ sessionId: id, attempt: attempts + 1 }, 'Auto-reconnecting WhatsApp session...');
+            await this.reconnectSession(id);
+          } catch (error) {
+            logger.error({ error, sessionId: id, attempt: attempts + 1 }, 'Auto-reconnect failed');
+          }
+        }, delay);
+      } else {
+        logger.error({ sessionId: id, attempts }, 'Max reconnect attempts reached, manual reconnection required');
+      }
     });
 
     // Message reaction event
