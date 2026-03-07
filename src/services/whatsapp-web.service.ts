@@ -5,6 +5,7 @@ import { Client, LocalAuth, Message as WAMessage } from 'whatsapp-web.js';
 import qrcode from 'qrcode';
 import { EventEmitter } from 'events';
 import logger from '@utils/logger';
+import { downloadAvatar } from '@utils/avatar';
 import path from 'path';
 import fs from 'fs';
 
@@ -284,10 +285,14 @@ export class WhatsAppWebService extends EventEmitter {
               isBusiness = true;
               contactBusinessName = (contact as any).formattedName || contactName;
             }
-            // Try to get profile photo
+            // Try to get profile photo and download locally
             if (contact.getProfilePicUrl && typeof contact.getProfilePicUrl === 'function') {
               try {
-                profilePhotoUrl = await contact.getProfilePicUrl();
+                const cdnUrl = await contact.getProfilePicUrl();
+                if (cdnUrl) {
+                  const localUrl = await downloadAvatar(chatId, cdnUrl);
+                  profilePhotoUrl = localUrl || undefined;
+                }
               } catch (photoError) {
                 logger.debug({ chatId }, 'Failed to fetch profile photo');
               }
@@ -314,7 +319,11 @@ export class WhatsAppWebService extends EventEmitter {
                       contactBusinessName = (recipientContact as any).formattedName || contactName;
                     }
                     try {
-                      profilePhotoUrl = await recipientContact.getProfilePicUrl?.();
+                      const cdnUrl = await recipientContact.getProfilePicUrl?.();
+                      if (cdnUrl) {
+                        const localUrl = await downloadAvatar(chatId, cdnUrl);
+                        profilePhotoUrl = localUrl || undefined;
+                      }
                     } catch {
                       // Ignore profile pic errors
                     }
@@ -672,7 +681,7 @@ export class WhatsAppWebService extends EventEmitter {
         profilePicUrl: undefined as string | undefined,
       }));
 
-      // Fetch profile pictures in batches of 10 to avoid overwhelming WhatsApp
+      // Fetch profile pictures in batches of 10 and download locally
       const batchSize = 10;
       for (let i = 0; i < chatData.length; i += batchSize) {
         const batch = chatData.slice(i, i + batchSize);
@@ -681,7 +690,12 @@ export class WhatsAppWebService extends EventEmitter {
             try {
               const contact = await session.client.getContactById(chat.chatId);
               if (contact?.getProfilePicUrl) {
-                chat.profilePicUrl = await contact.getProfilePicUrl();
+                const cdnUrl = await contact.getProfilePicUrl();
+                if (cdnUrl) {
+                  // Download and cache locally instead of storing expiring CDN URL
+                  const localUrl = await downloadAvatar(chat.chatId, cdnUrl);
+                  chat.profilePicUrl = localUrl || undefined;
+                }
               }
             } catch {
               // Profile pic fetch failures are expected and not critical
@@ -691,7 +705,7 @@ export class WhatsAppWebService extends EventEmitter {
       }
 
       const withPics = chatData.filter(c => c.profilePicUrl).length;
-      logger.info({ sessionId, withPics, total: chatData.length }, 'Profile pictures fetched');
+      logger.info({ sessionId, withPics, total: chatData.length }, 'Profile pictures fetched and cached locally');
 
       return chatData;
     } catch (error) {

@@ -210,6 +210,60 @@
   100% { background-position: -200% 0; }
 }
 
+/* Section Headers */
+.conv-section {
+  margin-bottom: 0;
+}
+
+.conv-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #f0f0f0;
+  border-bottom: 1px solid #e0e0e0;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.conv-section-header.section-contacts {
+  background: linear-gradient(90deg, #ede9fe, #f0f0f0);
+  border-left: 3px solid #667eea;
+}
+
+.conv-section-header.section-groups {
+  background: linear-gradient(90deg, #d1fae5, #f0f0f0);
+  border-left: 3px solid #10b981;
+}
+
+.conv-section-header.section-channels {
+  background: linear-gradient(90deg, #fef3c7, #f0f0f0);
+  border-left: 3px solid #f59e0b;
+}
+
+.section-icon {
+  font-size: 14px;
+}
+
+.section-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #555;
+  flex: 1;
+}
+
+.section-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 1px 8px;
+  border-radius: 10px;
+}
+
 /* Conversation Item */
 .conversation-item {
   display: flex;
