@@ -41,7 +41,7 @@ export function createContactRoutes(): Router {
     isBlocked: z.enum(['true', 'false']).optional(),
     sortBy: z.enum(['name', 'lastMessageAt', 'engagementScore', 'messageCount']).optional(),
     sortOrder: z.enum(['asc', 'desc']).optional(),
-    limit: z.coerce.number().min(1).max(100).optional(),
+    limit: z.coerce.number().min(1).max(1000).optional(),
     offset: z.coerce.number().min(0).optional(),
     page: z.coerce.number().min(1).optional(),
   });
