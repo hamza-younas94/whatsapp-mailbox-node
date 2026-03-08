@@ -77,6 +77,15 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
   const [searchResults, setSearchResults] = useState<Message[] | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Toast notification system
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ message, type });
+    toastTimerRef.current = setTimeout(() => setToast(null), 3500);
+  }, []);
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageSubscriptionRef = useRef<(() => void) | null>(null);
@@ -423,7 +432,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
     if (!contactId) return;
     try {
       await api.post(`/automations/${automationId}/enroll`, { contactId });
-      alert('Contact enrolled in automation!');
+      showToast('Contact enrolled in automation!');
     } catch {
       // Failed to enroll
     }
@@ -654,9 +663,9 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
       setInvoices(prev => prev.map(inv =>
         inv.id === invoiceId && inv.status === 'DRAFT' ? { ...inv, status: 'SENT' } : inv
       ));
-      alert(data.message || 'Invoice sent!');
+      showToast(data.message || 'Invoice sent!', 'success');
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to send invoice');
+      showToast(err.response?.data?.error || 'Failed to send invoice', 'error');
     } finally {
       setSendingInvoiceId(null);
     }
@@ -712,7 +721,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
       }
     } catch {
       setMessages((prev) => prev.filter(msg => msg.id !== tempId));
-      alert('Failed to send message');
+      showToast('Failed to send message', 'error');
     } finally {
       setSending(false);
     }
@@ -731,6 +740,13 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
 
   return (
     <div className="chat-pane">
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`toast-notification toast-${toast.type}`} onClick={() => setToast(null)}>
+          <span className="toast-icon">{toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : 'ℹ'}</span>
+          {toast.message}
+        </div>
+      )}
       <div className="chat-header">
         <div className="chat-header-info">
           <div className="chat-header-avatar">

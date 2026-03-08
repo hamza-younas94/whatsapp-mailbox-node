@@ -52,6 +52,9 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ onSend, isLoad
   const [isDragging, setIsDragging] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [emojiCategory, setEmojiCategory] = useState(0);
+  const [showQuickReplyPanel, setShowQuickReplyPanel] = useState(false);
+  const [qrSearch, setQrSearch] = useState('');
+  const qrPanelRef = useRef<HTMLDivElement>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -276,6 +279,34 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ onSend, isLoad
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showEmojiPicker]);
 
+  // Close quick reply panel on outside click
+  useEffect(() => {
+    if (!showQuickReplyPanel) return;
+    const handleClick = (e: MouseEvent) => {
+      if (qrPanelRef.current && !qrPanelRef.current.contains(e.target as Node)) {
+        setShowQuickReplyPanel(false);
+        setQrSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showQuickReplyPanel]);
+
+  const filteredPanelReplies = qrSearch
+    ? quickReplies.filter(qr =>
+        qr.title.toLowerCase().includes(qrSearch.toLowerCase()) ||
+        qr.content.toLowerCase().includes(qrSearch.toLowerCase()) ||
+        normalizeShortcut(qr.shortcut).includes(qrSearch.toLowerCase())
+      )
+    : quickReplies;
+
+  const selectQuickReply = (reply: QuickReply) => {
+    setContent(prev => prev ? prev + ' ' + reply.content : reply.content);
+    setShowQuickReplyPanel(false);
+    setQrSearch('');
+    textareaRef.current?.focus();
+  };
+
   const insertEmoji = (emoji: string) => {
     const textarea = textareaRef.current;
     if (textarea) {
@@ -419,10 +450,51 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ onSend, isLoad
           rows={1}
         />
 
+        <div className="qr-panel-wrapper" ref={qrPanelRef}>
+          <button
+            className="qr-panel-btn"
+            onClick={() => { setShowQuickReplyPanel(!showQuickReplyPanel); setShowEmojiPicker(false); }}
+            disabled={disabled || isLoading || isRecording}
+            title="Quick Replies"
+          >
+            ⚡
+          </button>
+
+          {showQuickReplyPanel && (
+            <div className="qr-panel">
+              <div className="qr-panel-header">
+                <input
+                  type="text"
+                  placeholder="Search quick replies..."
+                  value={qrSearch}
+                  onChange={(e) => setQrSearch(e.target.value)}
+                  className="qr-panel-search"
+                  autoFocus
+                />
+              </div>
+              <div className="qr-panel-list">
+                {filteredPanelReplies.length === 0 ? (
+                  <div className="qr-panel-empty">No quick replies found</div>
+                ) : (
+                  filteredPanelReplies.map((reply) => (
+                    <div key={reply.id} className="qr-panel-item" onClick={() => selectQuickReply(reply)}>
+                      <div className="qr-panel-item-header">
+                        <span className="qr-panel-item-title">{reply.title}</span>
+                        {reply.shortcut && <span className="qr-panel-item-shortcut">{formatShortcut(reply.shortcut)}</span>}
+                      </div>
+                      <div className="qr-panel-item-preview">{reply.content.substring(0, 80)}{reply.content.length > 80 ? '...' : ''}</div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="emoji-picker-wrapper" ref={emojiPickerRef}>
           <button
             className="emoji-btn"
-            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowQuickReplyPanel(false); }}
             disabled={disabled || isLoading || isRecording}
             title="Emoji"
           >

@@ -96,6 +96,46 @@
             </a>
         </div>
 
+        <!-- Revenue Summary -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">Total Revenue</p>
+                        <p id="totalRevenue" class="text-3xl font-bold text-green-600 mt-1">$0</p>
+                        <p class="text-xs text-gray-400 mt-1">All-time paid invoices</p>
+                    </div>
+                    <div class="bg-green-50 p-3 rounded-xl">
+                        <i class="fas fa-dollar-sign text-green-500 text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">Outstanding</p>
+                        <p id="outstandingAmount" class="text-3xl font-bold text-orange-600 mt-1">$0</p>
+                        <p class="text-xs text-gray-400 mt-1">Awaiting payment</p>
+                    </div>
+                    <div class="bg-orange-50 p-3 rounded-xl">
+                        <i class="fas fa-clock text-orange-500 text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">Today's Appointments</p>
+                        <p id="todayAppointments" class="text-3xl font-bold text-purple-600 mt-1">0</p>
+                        <p id="nextAppointment" class="text-xs text-gray-400 mt-1">No appointments today</p>
+                    </div>
+                    <div class="bg-purple-50 p-3 rounded-xl">
+                        <i class="fas fa-calendar-check text-purple-500 text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Quick Actions -->
         <div class="bg-white rounded-xl shadow-sm border p-6">
             <h3 class="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
@@ -152,8 +192,8 @@
             </div>
         </div>
 
-        <!-- Bottom Row: Recent Tasks + Recent Orders -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Bottom Row: Recent Tasks + Recent Orders + Upcoming Appointments -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Recent Tasks -->
             <div class="bg-white rounded-xl shadow-sm border p-6">
                 <div class="flex justify-between items-center mb-4">
@@ -178,6 +218,21 @@
                     </a>
                 </div>
                 <div id="recentOrders">
+                    <div class="text-center text-gray-400 py-8">
+                        <i class="fas fa-spinner fa-spin mr-2"></i>Loading...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upcoming Appointments -->
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800">Upcoming Appointments</h3>
+                    <a href="/appointments.html" class="text-sm text-blue-500 hover:text-blue-700 transition">
+                        View all <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+                <div id="upcomingAppointments">
                     <div class="text-center text-gray-400 py-8">
                         <i class="fas fa-spinner fa-spin mr-2"></i>Loading...
                     </div>
@@ -541,17 +596,121 @@
             }).join('')}</div>`;
         }
 
+        // ---- REVENUE STATS ----
+
+        async function loadRevenueStats() {
+            try {
+                // Load paid invoices for revenue
+                const paidRes = await fetchWithAuth(`${API_BASE}/invoices?status=PAID&limit=100`);
+                let totalRevenue = 0;
+                if (paidRes.ok) {
+                    const json = await paidRes.json();
+                    const items = (json.data || json).items || [];
+                    totalRevenue = items.reduce((sum, inv) => sum + (parseFloat(inv.totalAmount) || 0), 0);
+                }
+                document.getElementById('totalRevenue').textContent = '$' + totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+                // Load unpaid for outstanding
+                const sentRes = await fetchWithAuth(`${API_BASE}/invoices?status=SENT&limit=100`);
+                let outstanding = 0;
+                if (sentRes.ok) {
+                    const json = await sentRes.json();
+                    const items = (json.data || json).items || [];
+                    outstanding = items.reduce((sum, inv) => sum + (parseFloat(inv.balanceAmount) || parseFloat(inv.totalAmount) || 0), 0);
+                }
+                document.getElementById('outstandingAmount').textContent = '$' + outstanding.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            } catch (e) {
+                // Silently fail
+            }
+        }
+
+        // ---- APPOINTMENTS STATS ----
+
+        async function loadAppointmentStats() {
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+                const res = await fetchWithAuth(`${API_BASE}/appointments?startDate=${today}&endDate=${tomorrow}&status=SCHEDULED&limit=10`);
+                if (res.ok) {
+                    const json = await res.json();
+                    const items = (json.data || json).items || [];
+                    document.getElementById('todayAppointments').textContent = items.length;
+                    if (items.length > 0) {
+                        const next = items.sort((a, b) => new Date(a.appointmentDate) - new Date(b.appointmentDate))[0];
+                        const time = new Date(next.appointmentDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        document.getElementById('nextAppointment').textContent = `Next: ${next.title} at ${time}`;
+                    } else {
+                        document.getElementById('nextAppointment').textContent = 'No appointments today';
+                    }
+                }
+            } catch (e) {
+                // Silently fail
+            }
+        }
+
+        // ---- UPCOMING APPOINTMENTS ----
+
+        async function loadUpcomingAppointments() {
+            try {
+                const now = new Date().toISOString().split('T')[0];
+                const res = await fetchWithAuth(`${API_BASE}/appointments?startDate=${now}&status=SCHEDULED&limit=5`);
+                if (res.ok) {
+                    const json = await res.json();
+                    const items = (json.data || json).items || [];
+                    displayUpcomingAppointments(items);
+                }
+            } catch (e) {
+                document.getElementById('upcomingAppointments').innerHTML =
+                    '<p class="text-gray-400 text-center py-4">Could not load appointments</p>';
+            }
+        }
+
+        function displayUpcomingAppointments(appts) {
+            const container = document.getElementById('upcomingAppointments');
+            if (!appts || appts.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-4">No upcoming appointments</p>';
+                return;
+            }
+            container.innerHTML = `<div class="divide-y">${appts.map(a => {
+                const dt = new Date(a.appointmentDate);
+                const date = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                const time = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const contactName = a.contact?.name || a.contact?.phoneNumber || '';
+                return `
+                    <div class="flex items-center justify-between py-3">
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-800 truncate">${a.title}</p>
+                            <p class="text-xs text-gray-400">${contactName}${a.location ? ' · ' + a.location : ''}</p>
+                        </div>
+                        <div class="text-right ml-3">
+                            <p class="text-sm font-medium text-purple-600">${time}</p>
+                            <p class="text-xs text-gray-400">${date}</p>
+                        </div>
+                    </div>`;
+            }).join('')}</div>`;
+        }
+
         // ---- INIT ----
 
+        function loadAll() {
+            loadMessageStats();
+            loadTaskStats();
+            loadOrderStats();
+            loadInvoiceStats();
+            loadRevenueStats();
+            loadAppointmentStats();
+            loadActivityChart();
+            loadTopContacts();
+            loadRecentTasks();
+            loadRecentOrders();
+            loadUpcomingAppointments();
+        }
+
         setGreeting();
-        loadMessageStats();
-        loadTaskStats();
-        loadOrderStats();
-        loadInvoiceStats();
-        loadActivityChart();
-        loadTopContacts();
-        loadRecentTasks();
-        loadRecentOrders();
+        loadAll();
+
+        // Auto-refresh every 60 seconds
+        setInterval(loadAll, 60000);
     </script>
 </body>
 </html>

@@ -145,40 +145,33 @@
   transform: scale(1.1);
 }
 
-/* Modal Tabs — compact, scrollable */
+/* Modal Tabs — evenly distributed */
 .modal-tabs {
   display: flex;
   background: white;
   border-bottom: 1px solid #e8e8e8;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  padding: 0 4px;
-}
-
-.modal-tabs::-webkit-scrollbar {
-  display: none;
+  padding: 0;
 }
 
 .modal-tab {
-  flex: 0 0 auto;
-  padding: 10px 12px;
+  flex: 1 1 0;
+  padding: 8px 2px;
   border: none;
   background: transparent;
   cursor: pointer;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 2px;
   font-size: 11px;
   font-weight: 600;
   color: #888;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.2px;
   transition: all 0.2s;
   border-bottom: 2px solid transparent;
-  white-space: nowrap;
   margin-bottom: -1px;
+  min-width: 0;
 }
 
 .modal-tab:hover {
@@ -192,12 +185,17 @@
 }
 
 .modal-tab .tab-icon {
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1;
 }
 
 .modal-tab .tab-label {
-  font-size: 10px;
+  font-size: 9px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 /* Modal Body */

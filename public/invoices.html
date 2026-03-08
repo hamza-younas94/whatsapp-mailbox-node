@@ -500,6 +500,9 @@
                                 <button onclick="downloadPDF('${inv.id}')" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" title="Download PDF">
                                     <i class="fas fa-file-pdf"></i>
                                 </button>
+                                <button onclick="sendInvoiceWhatsApp('${inv.id}')" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-all" title="Send via WhatsApp" id="send-btn-${inv.id}">
+                                    <i class="fab fa-whatsapp"></i>
+                                </button>
                                 <button onclick="editInvoice('${inv.id}')" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-all" title="Edit">
                                     <i class="fas fa-edit"></i>
                                 </button>
@@ -773,6 +776,27 @@
                 window.URL.revokeObjectURL(url);
             } else {
                 showNotification('Failed to generate PDF', 'error');
+            }
+        }
+
+        // ========== Send Invoice via WhatsApp ==========
+
+        async function sendInvoiceWhatsApp(id) {
+            const btn = document.getElementById('send-btn-' + id);
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+            try {
+                const response = await fetchWithAuth(`${API_BASE}/invoices/${id}/send`, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    showNotification(data.message || 'Invoice sent via WhatsApp!', 'success');
+                    loadInvoices();
+                } else {
+                    showNotification(data.error || 'Failed to send invoice', 'error');
+                }
+            } catch (err) {
+                showNotification('Failed to send invoice', 'error');
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fab fa-whatsapp"></i>'; }
             }
         }
 
