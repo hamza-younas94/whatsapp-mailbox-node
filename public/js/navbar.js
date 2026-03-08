@@ -8,7 +8,6 @@ function createNavbar() {
         { label: 'Dashboard', href: '/dashboard.html', icon: 'fa-tachometer-alt' },
         { label: 'Mailbox', href: '/', icon: 'fa-inbox' },
         { label: 'Contacts', href: '/contacts.html', icon: 'fa-address-book' },
-        { label: 'Quick Replies', href: '/quick-replies.html', icon: 'fa-bolt' },
     ];
 
     const marketingItems = [
@@ -18,6 +17,7 @@ function createNavbar() {
         { label: 'Automations', href: '/automation.html', icon: 'fa-robot' },
         { label: 'Scheduled', href: '/scheduled-messages.html', icon: 'fa-clock' },
         { label: 'Templates', href: '/message-templates.html', icon: 'fa-file-alt' },
+        { label: 'Quick Replies', href: '/quick-replies.html', icon: 'fa-bolt' },
     ];
 
     const businessItems = [
@@ -34,12 +34,8 @@ function createNavbar() {
         { label: 'Tags', href: '/tags.html', icon: 'fa-tags' },
         { label: 'Labels', href: '/labels.html', icon: 'fa-tag' },
         { label: 'Tasks', href: '/tasks.html', icon: 'fa-tasks' },
-    ];
-
-    const endItems = [
         { label: 'Analytics', href: '/analytics.html', icon: 'fa-chart-line' },
         { label: 'Activity Logs', href: '/activity-logs.html', icon: 'fa-shield-alt' },
-        { label: 'Settings', href: '/settings.html', icon: 'fa-cog' },
     ];
 
     const isActive = (href) => href === '/' ? currentPath === '/' : (currentPath === href || currentPath.endsWith(href));
@@ -47,11 +43,11 @@ function createNavbar() {
 
     const makeLink = (item) => `
         <a href="${item.href}"
-           class="flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap
+           class="flex items-center px-2.5 py-1.5 rounded-md text-[13px] font-medium transition-all whitespace-nowrap
                   ${isActive(item.href)
                     ? 'bg-green-100 text-green-700'
                     : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}">
-            <i class="fas ${item.icon} mr-2 text-xs"></i>
+            <i class="fas ${item.icon} mr-1.5 text-[11px]"></i>
             ${item.label}
         </a>`;
 
@@ -68,15 +64,15 @@ function createNavbar() {
     const makeDropdown = (id, label, icon, items) => `
         <div class="relative" id="${id}Wrapper">
             <button onclick="toggleDropdown('${id}')"
-                class="flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap
+                class="flex items-center px-2.5 py-1.5 rounded-md text-[13px] font-medium transition-all whitespace-nowrap
                        ${isDropdownActive(items)
                          ? 'bg-green-100 text-green-700'
                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}">
-                <i class="fas ${icon} mr-2 text-xs"></i>
+                <i class="fas ${icon} mr-1.5 text-[11px]"></i>
                 ${label}
-                <i class="fas fa-chevron-down ml-1.5 text-[10px]"></i>
+                <i class="fas fa-chevron-down ml-1 text-[9px]"></i>
             </button>
-            <div id="${id}Menu" class="hidden absolute left-0 mt-1 w-52 bg-white rounded-xl shadow-xl border py-1.5 z-50">
+            <div id="${id}Menu" class="hidden absolute left-0 mt-1 w-48 bg-white rounded-xl shadow-xl border py-1.5 z-50">
                 ${items.map(makeDropdownLink).join('')}
             </div>
         </div>`;
@@ -84,32 +80,30 @@ function createNavbar() {
     const coreLinksHtml = coreItems.map(makeLink).join('');
     const marketingDropdown = makeDropdown('marketing', 'Marketing', 'fa-bullhorn', marketingItems);
     const businessDropdown = makeDropdown('business', 'Business', 'fa-briefcase', businessItems);
-    const crmLinksHtml = crmItems.map(makeLink).join('');
-    const endLinksHtml = endItems.map(makeLink).join('');
+    const crmDropdown = makeDropdown('crm', 'CRM', 'fa-users-cog', crmItems);
 
     // Mobile: flat list of all items
-    const allItems = [...coreItems, ...marketingItems, ...businessItems, ...crmItems, ...endItems];
+    const allItems = [...coreItems, ...marketingItems, ...businessItems, ...crmItems];
     const mobileLinksHtml = allItems.map(makeLink).join('');
 
     const navbarHtml = `
-        <nav class="navbar-main bg-white shadow-lg sticky top-0 z-40">
-            <div class="max-w-full mx-auto px-4">
-                <div class="flex items-center justify-between py-3">
+        <nav class="navbar-main bg-white shadow-sm sticky top-0 z-40">
+            <div class="max-w-full mx-auto px-3">
+                <div class="flex items-center justify-between py-2">
                     <!-- Logo -->
                     <a href="/dashboard.html" class="flex items-center space-x-2 flex-shrink-0">
-                        <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
-                            <i class="fab fa-whatsapp text-white text-xl"></i>
+                        <div class="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center shadow">
+                            <i class="fab fa-whatsapp text-white text-lg"></i>
                         </div>
-                        <span class="font-bold text-xl text-gray-800 hidden sm:block">WhatsApp Mailbox</span>
+                        <span class="font-bold text-base text-gray-800 hidden xl:block">WA Mailbox</span>
                     </a>
 
                     <!-- Navigation Links (Desktop) -->
-                    <div class="hidden lg:flex items-center space-x-1 flex-1 justify-center mx-4">
+                    <div class="hidden lg:flex items-center space-x-0.5 flex-1 justify-center mx-4">
                         ${coreLinksHtml}
                         ${marketingDropdown}
                         ${businessDropdown}
-                        ${crmLinksHtml}
-                        ${endLinksHtml}
+                        ${crmDropdown}
                     </div>
 
                     <!-- Right Side -->
@@ -132,6 +126,10 @@ function createNavbar() {
                                 <a href="/profile.html" class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50">
                                     <i class="fas fa-user-edit mr-2 text-gray-400"></i>
                                     Profile
+                                </a>
+                                <a href="/settings.html" class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50">
+                                    <i class="fas fa-cog mr-2 text-gray-400"></i>
+                                    Settings
                                 </a>
                                 <a href="/qr-connect.html" class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50">
                                     <i class="fas fa-qrcode mr-2 text-gray-400"></i>
@@ -199,6 +197,7 @@ document.addEventListener('click', (e) => {
     const userMenu = document.getElementById('userMenu');
     const marketingMenu = document.getElementById('marketingMenu');
     const businessMenu = document.getElementById('businessMenu');
+    const crmMenu = document.getElementById('crmMenu');
 
     if (userMenu && !e.target.closest('[onclick="toggleUserMenu()"]') && !e.target.closest('#userMenu')) {
         userMenu.classList.add('hidden');
@@ -208,6 +207,9 @@ document.addEventListener('click', (e) => {
     }
     if (businessMenu && !e.target.closest('#businessWrapper') && !e.target.closest('#businessMenu')) {
         businessMenu.classList.add('hidden');
+    }
+    if (crmMenu && !e.target.closest('#crmWrapper') && !e.target.closest('#crmMenu')) {
+        crmMenu.classList.add('hidden');
     }
 });
 
