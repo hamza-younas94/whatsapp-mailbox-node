@@ -12,6 +12,7 @@ import { z } from 'zod';
 import PDFDocument from 'pdfkit';
 import logger from '@utils/logger';
 import { whatsappWebService } from '@services/whatsapp-web.service';
+import { formatDate } from '@utils/timezone';
 import { MessageDirection, MessageStatus, MessageType } from '@prisma/client';
 
 const router = Router();
@@ -90,9 +91,9 @@ router.get('/:id/pdf', async (req, res) => {
     doc.fontSize(24).font('Helvetica-Bold').text('INVOICE', { align: 'right' });
     doc.fontSize(10).font('Helvetica').text(`#${invoice.invoiceNumber}`, { align: 'right' });
     doc.moveDown(0.5);
-    doc.fontSize(10).text(`Date: ${new Date(invoice.invoiceDate).toLocaleDateString()}`, { align: 'right' });
+    doc.fontSize(10).text(`Date: ${formatDate(invoice.invoiceDate)}`, { align: 'right' });
     if (invoice.dueDate) {
-      doc.text(`Due: ${new Date(invoice.dueDate).toLocaleDateString()}`, { align: 'right' });
+      doc.text(`Due: ${formatDate(invoice.dueDate)}`, { align: 'right' });
     }
     doc.text(`Status: ${invoice.status}`, { align: 'right' });
 
@@ -213,7 +214,7 @@ router.post('/:id/send', async (req, res) => {
       `📄 *Invoice #${invoice.invoiceNumber}*`,
       '',
       `*Amount:* $${invoice.totalAmount.toFixed(2)}`,
-      invoice.dueDate ? `*Due Date:* ${new Date(invoice.dueDate).toLocaleDateString()}` : null,
+      invoice.dueDate ? `*Due Date:* ${formatDate(invoice.dueDate)}` : null,
       invoice.paidAmount > 0 ? `*Paid:* $${invoice.paidAmount.toFixed(2)}` : null,
       invoice.balanceAmount > 0 && invoice.paidAmount > 0 ? `*Balance:* $${invoice.balanceAmount.toFixed(2)}` : null,
       '',
@@ -237,9 +238,9 @@ router.post('/:id/send', async (req, res) => {
       doc.fontSize(24).font('Helvetica-Bold').text('INVOICE', { align: 'right' });
       doc.fontSize(10).font('Helvetica').text(`#${invoice.invoiceNumber}`, { align: 'right' });
       doc.moveDown(0.5);
-      doc.fontSize(10).text(`Date: ${new Date(invoice.invoiceDate).toLocaleDateString()}`, { align: 'right' });
+      doc.fontSize(10).text(`Date: ${formatDate(invoice.invoiceDate)}`, { align: 'right' });
       if (invoice.dueDate) {
-        doc.text(`Due: ${new Date(invoice.dueDate).toLocaleDateString()}`, { align: 'right' });
+        doc.text(`Due: ${formatDate(invoice.dueDate)}`, { align: 'right' });
       }
       doc.text(`Status: ${invoice.status}`, { align: 'right' });
 

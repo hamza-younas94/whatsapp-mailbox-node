@@ -49,6 +49,7 @@ import { whatsappWebService } from '@services/whatsapp-web.service';
 import { autoReplyService } from '@services/auto-reply.service';
 import { getContactType } from '@utils/contact-type';
 import { downloadAvatar } from '@utils/avatar';
+import { formatDateTime, formatDate } from '@utils/timezone';
 import { MessageType } from '@prisma/client';
 import { MessageRepository } from '@repositories/message.repository';
 import { ContactRepository } from '@repositories/contact.repository';
@@ -900,7 +901,7 @@ export async function startServer(): Promise<void> {
           const hours = Math.round(timeUntil / (60 * 60 * 1000));
           const timeStr = hours > 1 ? `in ${hours} hours` : 'in about 1 hour';
 
-          const message = `⏰ Reminder: You have an appointment "${apt.title}" ${timeStr}.\n\n📅 ${apt.appointmentDate.toLocaleString()}\n${apt.location ? '📍 ' + apt.location : ''}`.trim();
+          const message = `⏰ Reminder: You have an appointment "${apt.title}" ${timeStr}.\n\n📅 ${formatDateTime(apt.appointmentDate)}\n${apt.location ? '📍 ' + apt.location : ''}`.trim();
 
           try {
             await session.client.sendMessage(apt.contact.chatId, message);
@@ -934,7 +935,7 @@ export async function startServer(): Promise<void> {
           if (!session) continue;
 
           const daysOverdue = Math.ceil((now.getTime() - inv.dueDate!.getTime()) / (24 * 60 * 60 * 1000));
-          const message = `💳 Payment Reminder\n\nInvoice #${inv.invoiceNumber} is ${daysOverdue} day${daysOverdue > 1 ? 's' : ''} overdue.\n\nAmount Due: ${inv.balanceAmount.toFixed(2)}\nDue Date: ${inv.dueDate!.toLocaleDateString()}\n\nPlease arrange payment at your earliest convenience.`;
+          const message = `💳 Payment Reminder\n\nInvoice #${inv.invoiceNumber} is ${daysOverdue} day${daysOverdue > 1 ? 's' : ''} overdue.\n\nAmount Due: ${inv.balanceAmount.toFixed(2)}\nDue Date: ${formatDate(inv.dueDate!)}\n\nPlease arrange payment at your earliest convenience.`;
 
           try {
             await session.client.sendMessage(inv.contact.chatId, message);
