@@ -61,6 +61,7 @@ export class MessageRepository extends BaseRepository<Message> implements IMessa
       conversationId,
       ...(filters?.status && { status: filters.status as any }),
       ...(filters?.direction && { direction: filters.direction as any }),
+      ...(filters?.query && { content: { contains: filters.query } }),
       ...(filters?.startDate && { createdAt: { gte: filters.startDate } }),
       ...(filters?.endDate && { createdAt: { lte: filters.endDate } }),
     };
@@ -96,6 +97,7 @@ export class MessageRepository extends BaseRepository<Message> implements IMessa
       contactId,
       ...(filters?.status && { status: filters.status as any }),
       ...(filters?.direction && { direction: filters.direction as any }),
+      ...(filters?.query && { content: { contains: filters.query } }),
     };
 
     const [messages, total] = await Promise.all([

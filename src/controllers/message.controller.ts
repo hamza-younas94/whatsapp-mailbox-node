@@ -81,7 +81,7 @@ export class MessageController {
 
   getMessagesByContact = asyncHandler(async (req: Request, res: Response) => {
     const { contactId } = req.params;
-    const { limit = 50, offset = 0 } = req.query;
+    const { limit = 50, offset = 0, search } = req.query;
     const userId = requireUserId(req);
 
     const result = await this.messageService.getMessagesByContact(
@@ -89,6 +89,7 @@ export class MessageController {
       contactId,
       parseInt(limit as string),
       parseInt(offset as string),
+      search as string | undefined,
     );
 
     res.status(200).json({

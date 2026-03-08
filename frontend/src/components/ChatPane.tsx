@@ -65,6 +65,11 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
   const [editNoteContent, setEditNoteContent] = useState('');
   const [editingTx, setEditingTx] = useState<string | null>(null);
   const [editTxForm, setEditTxForm] = useState({ amount: '', description: '', status: '' });
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Message[] | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageSubscriptionRef = useRef<(() => void) | null>(null);
@@ -113,6 +118,32 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
     [contactId]
   );
 
+  // Search messages with debounce
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    if (!query.trim()) {
+      setSearchResults(null);
+      return;
+    }
+    searchDebounceRef.current = setTimeout(async () => {
+      if (!contactId) return;
+      try {
+        const response = await messageAPI.getMessagesByContact(contactId, 100, 0, query.trim());
+        setSearchResults(response.data.reverse());
+      } catch {
+        setSearchResults([]);
+      }
+    }, 300);
+  }, [contactId]);
+
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false);
+    setSearchQuery('');
+    setSearchResults(null);
+  }, []);
+
+  // Close search when switching contacts
   // Initial load and subscribe to real-time updates
   useEffect(() => {
     if (!contactId) {
@@ -121,6 +152,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
     }
 
     setMessages([]);
+    closeSearch();
     isContactSwitchRef.current = true;
     loadMessages(50, 0);
 
@@ -630,6 +662,13 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
         <div className="chat-header-actions">
           <button
             className="icon-button"
+            onClick={() => { setSearchOpen(!searchOpen); if (!searchOpen) setTimeout(() => searchInputRef.current?.focus(), 100); else closeSearch(); }}
+            title="Search messages"
+          >
+            🔍
+          </button>
+          <button
+            className="icon-button"
             onClick={handleCall}
             title="Call"
           >
@@ -644,6 +683,27 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
           </button>
         </div>
       </div>
+
+      {/* Search Bar */}
+      {searchOpen && (
+        <div className="chat-search-bar">
+          <input
+            ref={searchInputRef}
+            type="text"
+            placeholder="Search in conversation..."
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape') closeSearch(); }}
+            className="chat-search-input"
+          />
+          {searchQuery && (
+            <span className="chat-search-count">
+              {searchResults ? `${searchResults.length} found` : 'Searching...'}
+            </span>
+          )}
+          <button className="chat-search-close" onClick={closeSearch}>✕</button>
+        </div>
+      )}
 
       {/* CRM Modal */}
       {showContactInfo && (
@@ -1173,15 +1233,20 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
         </div>
       )}
 
-      <div className="messages-container" ref={scrollRef} onScroll={handleScroll}>
+      <div className="messages-container" ref={scrollRef} onScroll={searchResults ? undefined : handleScroll}>
         {loading && <div className="loading-indicator">Loading messages...</div>}
 
+        {searchResults !== null && searchResults.length === 0 && (
+          <div className="search-no-results">No messages found for "{searchQuery}"</div>
+        )}
+
         <div className="messages-list">
-          {messages.map((msg) => (
+          {(searchResults ?? messages).map((msg) => (
             <MessageBubble
               key={msg.id}
               message={{ ...msg, messageType: msg.messageType || 'TEXT' }}
               isOwn={msg.direction === 'OUTGOING'}
+              highlightText={searchResults ? searchQuery : undefined}
             />
           ))}
           <div ref={messagesEndRef} />

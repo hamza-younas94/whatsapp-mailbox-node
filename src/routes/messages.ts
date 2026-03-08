@@ -39,6 +39,7 @@ export function createMessageRoutes(): Router {
   const getMessagesSchema = z.object({
     limit: z.coerce.number().min(1).max(100).optional(),
     offset: z.coerce.number().min(0).optional(),
+    search: z.string().optional(),
   });
 
   const listMessagesSchema = z.object({

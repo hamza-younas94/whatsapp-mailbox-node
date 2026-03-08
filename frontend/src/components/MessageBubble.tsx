@@ -19,15 +19,28 @@ interface Message {
 interface MessageBubbleProps {
   message: Message;
   isOwn: boolean;
+  highlightText?: string;
 }
 
 const REACTION_EMOJIS = ['❤️', '👍', '😂', '😮', '😢', '🙏'];
 
+// Highlight search matches in text
+function highlightMatches(text: string, query: string): React.ReactNode {
+  if (!query) return text;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${escaped})`, 'gi');
+  const parts = text.split(regex);
+  if (parts.length === 1) return text;
+  return <>{parts.map((part, i) =>
+    regex.test(part) ? <mark key={i} className="search-highlight">{part}</mark> : part
+  )}</>;
+}
+
 // Format message content: replace raw @mentions with styled spans
-function formatMessageContent(content: string): React.ReactNode {
+function formatMessageContent(content: string, searchQuery?: string): React.ReactNode {
   // Match @<digits> patterns (WhatsApp raw mentions)
   const mentionRegex = /@(\d{10,20})/g;
-  if (!mentionRegex.test(content)) return content;
+  if (!mentionRegex.test(content)) return searchQuery ? highlightMatches(content, searchQuery) : content;
 
   // Reset regex lastIndex after test
   mentionRegex.lastIndex = 0;
@@ -38,7 +51,8 @@ function formatMessageContent(content: string): React.ReactNode {
   while ((match = mentionRegex.exec(content)) !== null) {
     // Text before the mention
     if (match.index > lastIndex) {
-      parts.push(content.slice(lastIndex, match.index));
+      const textPart = content.slice(lastIndex, match.index);
+      parts.push(searchQuery ? highlightMatches(textPart, searchQuery) : textPart);
     }
     // Styled mention
     parts.push(
@@ -49,13 +63,14 @@ function formatMessageContent(content: string): React.ReactNode {
 
   // Remaining text after last mention
   if (lastIndex < content.length) {
-    parts.push(content.slice(lastIndex));
+    const textPart = content.slice(lastIndex);
+    parts.push(searchQuery ? highlightMatches(textPart, searchQuery) : textPart);
   }
 
   return <>{parts}</>;
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn, highlightText }) => {
   const [showReactions, setShowReactions] = useState(false);
   const [selectedReaction, setSelectedReaction] = useState<string | undefined>(
     message.reaction || message.metadata?.reaction
@@ -215,7 +230,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
 
         {/* Text content — skip if it's just a bracketed media label like [AUDIO] */}
         {message.content && !/^\[(IMAGE|VIDEO|AUDIO|DOCUMENT|STICKER|PTT|LOCATION|CONTACT)\]$/i.test(message.content.trim()) && (
-          <p className="message-text">{formatMessageContent(message.content)}</p>
+          <p className="message-text">{formatMessageContent(message.content, highlightText)}</p>
         )}
 
         {/* Message meta */}

@@ -314,6 +314,7 @@ export class MessageService implements IMessageService {
     contactId: string,
     limit?: number,
     offset?: number,
+    search?: string,
   ): Promise<PaginatedResult<Message>> {
     try {
       const contact = await this.contactRepository.findById(contactId);
@@ -326,6 +327,7 @@ export class MessageService implements IMessageService {
       return await this.messageRepository.findByConversation(conversation.id, {
         limit,
         offset,
+        query: search,
       });
     } catch (error) {
       logger.error({ contactId, error }, 'Failed to get messages by contact');

@@ -45,8 +45,10 @@ export const messageAPI = {
   },
 
   // Fetch messages for a contact
-  async getMessagesByContact(contactId: string, limit = 50, offset = 0) {
-    const { data } = await api.get(`/messages/contact/${contactId}`, { params: { limit, offset } });
+  async getMessagesByContact(contactId: string, limit = 50, offset = 0, search?: string) {
+    const params: any = { limit, offset };
+    if (search) params.search = search;
+    const { data } = await api.get(`/messages/contact/${contactId}`, { params });
     return data.data;
   },
 

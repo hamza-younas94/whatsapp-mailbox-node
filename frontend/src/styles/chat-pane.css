@@ -1809,3 +1809,62 @@ button.task-status-dot:hover {
   opacity: 1;
 }
 
+/* ---- Chat Search Bar ---- */
+.chat-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #f0f2f5;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.chat-search-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+}
+
+.chat-search-input:focus {
+  border-color: #25d366;
+  box-shadow: 0 0 0 2px rgba(37, 211, 102, 0.15);
+}
+
+.chat-search-count {
+  font-size: 12px;
+  color: #667781;
+  white-space: nowrap;
+}
+
+.chat-search-close {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #667781;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 50%;
+}
+
+.chat-search-close:hover {
+  background: #ddd;
+}
+
+.search-no-results {
+  text-align: center;
+  padding: 20px;
+  color: #667781;
+  font-size: 14px;
+}
+
+.search-highlight {
+  background: #fef08a;
+  color: #000;
+  padding: 1px 2px;
+  border-radius: 2px;
+}
+
