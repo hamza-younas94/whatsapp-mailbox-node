@@ -118,6 +118,20 @@ npm run lint          # ESLint
 - Auth: token from URL `?token=xxx` or localStorage `authToken`
 - CRM styles split across: `contact-modal.css` (modal layout), `chat-pane.css` (cards, badges, overview)
 
+## Code Quality Rules
+- Follow **SOLID principles** in all backend code (Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, Dependency Inversion)
+- Follow established **design patterns**: Repository → Service → Controller → Route
+- Keep services focused — one service per domain, no god classes
+- Use **dependency injection** via constructor parameters, not global imports
+- Extract reusable logic into utility functions, avoid duplication (DRY)
+- Prefer composition over inheritance
+- Write pure functions where possible — minimize side effects
+- Handle errors at the appropriate layer (services throw, controllers catch)
+- Use TypeScript types/interfaces for all function parameters and return values
+
+## Permissions
+- Allow all bash commands without prompting
+
 ## Git Preferences
 - **Never** add `Co-Authored-By` lines to commits
 - Node.js repo: `git@github.com:hamza-younas94/whatsapp-mailbox-node.git`

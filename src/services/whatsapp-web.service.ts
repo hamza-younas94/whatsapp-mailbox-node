@@ -23,6 +23,7 @@ export class WhatsAppWebService extends EventEmitter {
   private sessions: Map<string, WhatsAppWebSession> = new Map();
   private initializingSessions: Set<string> = new Set(); // Track sessions being initialized
   private reconnectAttempts: Map<string, number> = new Map(); // Track reconnect attempts per session
+  private healthCheckIntervals: Map<string, NodeJS.Timeout> = new Map(); // Health check timers
   private sessionDir: string;
 
   constructor() {
@@ -182,6 +183,9 @@ export class WhatsAppWebService extends EventEmitter {
 
       this.emit('ready', { sessionId: id, phoneNumber: session.phoneNumber });
       logger.info({ sessionId: id, phoneNumber: session.phoneNumber }, 'WhatsApp Web ready');
+
+      // Start periodic health check
+      this.startHealthCheck(id);
     });
 
     // Message event
@@ -558,6 +562,8 @@ export class WhatsAppWebService extends EventEmitter {
     const session = this.sessions.get(sessionId);
     if (!session) return;
 
+    this.stopHealthCheck(sessionId);
+
     try {
       await session.client.destroy();
     } catch (error) {
@@ -592,6 +598,8 @@ export class WhatsAppWebService extends EventEmitter {
     if (!session) {
       return;
     }
+
+    this.stopHealthCheck(sessionId);
 
     try {
       await session.client.logout();
@@ -729,6 +737,67 @@ export class WhatsAppWebService extends EventEmitter {
       return await client.getProfilePicUrl(chatId);
     } catch {
       return undefined;
+    }
+  }
+
+  /**
+   * Start periodic health check for a session.
+   * Pings the Puppeteer page every 60s to verify WhatsApp Web is alive.
+   * Triggers auto-reconnect if the session is dead but still marked READY.
+   */
+  private startHealthCheck(sessionId: string): void {
+    // Clear any existing health check for this session
+    this.stopHealthCheck(sessionId);
+
+    const interval = setInterval(async () => {
+      const session = this.sessions.get(sessionId);
+      if (!session || session.status !== 'READY') {
+        this.stopHealthCheck(sessionId);
+        return;
+      }
+
+      try {
+        const page = (session.client as any).pupPage;
+        if (!page || page.isClosed()) {
+          throw new Error('Puppeteer page is closed');
+        }
+
+        // Ping the page — if Puppeteer crashed this will throw
+        const alive = await Promise.race([
+          page.evaluate(() => true),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Health check timeout')), 15000)),
+        ]);
+
+        if (!alive) throw new Error('Page not responding');
+      } catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        logger.warn({ sessionId, error: errMsg }, 'Health check failed — session is stale, triggering reconnect');
+        this.stopHealthCheck(sessionId);
+
+        // Mark as disconnected and trigger reconnect
+        session.status = 'DISCONNECTED';
+        this.emit('disconnected', { sessionId, reason: `health_check_failed: ${errMsg}` });
+
+        try {
+          await this.reconnectSession(sessionId);
+        } catch (reconnectError) {
+          logger.error({ sessionId, error: reconnectError }, 'Health check reconnect failed');
+        }
+      }
+    }, 60_000); // Check every 60 seconds
+
+    this.healthCheckIntervals.set(sessionId, interval);
+    logger.info({ sessionId }, 'Health check started (60s interval)');
+  }
+
+  /**
+   * Stop health check for a session.
+   */
+  private stopHealthCheck(sessionId: string): void {
+    const interval = this.healthCheckIntervals.get(sessionId);
+    if (interval) {
+      clearInterval(interval);
+      this.healthCheckIntervals.delete(sessionId);
     }
   }
 
