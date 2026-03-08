@@ -111,9 +111,9 @@ function createNavbar() {
                     <!-- Right Side -->
                     <div class="flex items-center space-x-3">
                         <!-- Status -->
-                        <div class="hidden md:flex items-center px-3 py-1.5 bg-green-50 rounded-full">
-                            <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
-                            <span class="text-xs text-green-700 font-medium">Connected</span>
+                        <div id="navSessionStatus" class="hidden md:flex items-center px-3 py-1.5 bg-green-50 rounded-full">
+                            <span id="navStatusDot" class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+                            <span id="navStatusText" class="text-xs text-green-700 font-medium">Connected</span>
                         </div>
 
                         <!-- User Menu -->

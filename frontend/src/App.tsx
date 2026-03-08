@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Navbar from '@/components/Navbar';
 import SessionStatus from '@/components/SessionStatus';
 import ConversationList from '@/components/ConversationList';
 import ChatPane from '@/components/ChatPane';
@@ -32,7 +31,6 @@ const App: React.FC = () => {
   const [showList, setShowList] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
   const [sessionStatus, setSessionStatus] = useState<SessionState>('UNKNOWN');
 
   // Check authentication on mount
@@ -87,10 +85,6 @@ const App: React.FC = () => {
     setShowList(true);
   };
 
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-  };
-
   const handleLogout = () => {
     localStorage.removeItem('authToken');
     setIsAuthenticated(false);
@@ -98,8 +92,6 @@ const App: React.FC = () => {
 
   return (
     <div className="app-container">
-      {isAuthenticated && <Navbar onLogout={handleLogout} onSearch={handleSearch} sessionStatus={sessionStatus} />}
-
       {isAuthenticated && <SessionStatus onStatusChange={setSessionStatus} />}
 
       <div className="mailbox-main">
@@ -109,7 +101,6 @@ const App: React.FC = () => {
             <ConversationList
               onSelectConversation={handleSelectConversation}
               selectedContactId={selectedContactId}
-              searchQuery={searchQuery}
             />
           </div>
         )}

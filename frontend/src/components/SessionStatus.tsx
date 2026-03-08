@@ -23,10 +23,35 @@ const SessionStatus: React.FC<SessionStatusProps> = ({ onQRRequired, onStatusCha
   const [isInitializing, setIsInitializing] = useState(false);
   const hasInitializedRef = useRef(false);
 
-  // Notify parent whenever status changes
+  // Notify parent and sync static navbar status indicator
   const updateStatus = (newStatus: SessionState) => {
     setStatus(newStatus);
     onStatusChange?.(newStatus);
+
+    // Sync static navbar status indicator (from navbar.js)
+    const dot = document.getElementById('navStatusDot');
+    const text = document.getElementById('navStatusText');
+    const wrapper = document.getElementById('navSessionStatus');
+    if (dot && text && wrapper) {
+      const labels: Record<string, string> = {
+        CONNECTED: 'Connected', CONNECTING: 'Connecting...', DISCONNECTED: 'Disconnected',
+        QR_READY: 'Scan QR', INITIALIZING: 'Starting...', UNKNOWN: 'Checking...',
+      };
+      text.textContent = labels[newStatus] || 'Unknown';
+      if (newStatus === 'CONNECTED') {
+        wrapper.className = 'hidden md:flex items-center px-3 py-1.5 bg-green-50 rounded-full';
+        dot.className = 'w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse';
+        text.className = 'text-xs text-green-700 font-medium';
+      } else if (newStatus === 'DISCONNECTED') {
+        wrapper.className = 'hidden md:flex items-center px-3 py-1.5 bg-red-50 rounded-full';
+        dot.className = 'w-2 h-2 bg-red-500 rounded-full mr-2';
+        text.className = 'text-xs text-red-700 font-medium';
+      } else {
+        wrapper.className = 'hidden md:flex items-center px-3 py-1.5 bg-yellow-50 rounded-full';
+        dot.className = 'w-2 h-2 bg-yellow-500 rounded-full mr-2 animate-pulse';
+        text.className = 'text-xs text-yellow-700 font-medium';
+      }
+    }
   };
 
   // Check session status first, then initialize if needed
