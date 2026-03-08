@@ -46,8 +46,8 @@ export function createMessageRoutes(): Router {
     page: z.coerce.number().min(1).optional(),
     limit: z.coerce.number().min(1).max(100).optional(),
     search: z.string().optional(),
-    direction: z.enum(['inbound', 'outbound']).optional(),
-    status: z.enum(['sent', 'delivered', 'read', 'failed', 'pending']).optional(),
+    direction: z.enum(['INCOMING', 'OUTGOING']).optional(),
+    status: z.enum(['SENT', 'DELIVERED', 'READ', 'FAILED', 'PENDING', 'RECEIVED']).optional(),
   });
 
   // Routes

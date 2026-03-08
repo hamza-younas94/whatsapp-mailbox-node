@@ -34,15 +34,16 @@
                     class="flex-1 px-4 py-2 border rounded-lg">
                 <select id="filterDirection" class="px-4 py-2 border rounded-lg">
                     <option value="">All Directions</option>
-                    <option value="inbound">Inbound</option>
-                    <option value="outbound">Outbound</option>
+                    <option value="INCOMING">Inbound</option>
+                    <option value="OUTGOING">Outbound</option>
                 </select>
                 <select id="filterStatus" class="px-4 py-2 border rounded-lg">
                     <option value="">All Status</option>
-                    <option value="sent">Sent</option>
-                    <option value="delivered">Delivered</option>
-                    <option value="read">Read</option>
-                    <option value="failed">Failed</option>
+                    <option value="SENT">Sent</option>
+                    <option value="DELIVERED">Delivered</option>
+                    <option value="READ">Read</option>
+                    <option value="FAILED">Failed</option>
+                    <option value="PENDING">Pending</option>
                 </select>
             </div>
 
@@ -143,7 +144,7 @@
 
             container.innerHTML = messages.map(msg => {
                 const contactName = msg.contact?.name || msg.contact?.phoneNumber || 'Unknown';
-                const isOutbound = msg.direction === 'outbound';
+                const isOutbound = msg.direction === 'OUTGOING';
                 const isGroup = msg.chatType === 'group' || msg.isGroup;
                 const isChannel = msg.chatType === 'channel' || msg.isChannel;
                 
@@ -193,14 +194,16 @@
         }
 
         function getStatusColor(status) {
+            const s = (status || '').toUpperCase();
             const colors = {
-                sent: 'bg-blue-100 text-blue-800',
-                delivered: 'bg-green-100 text-green-800',
-                read: 'bg-purple-100 text-purple-800',
-                failed: 'bg-red-100 text-red-800',
-                pending: 'bg-yellow-100 text-yellow-800'
+                SENT: 'bg-blue-100 text-blue-800',
+                DELIVERED: 'bg-green-100 text-green-800',
+                READ: 'bg-purple-100 text-purple-800',
+                FAILED: 'bg-red-100 text-red-800',
+                PENDING: 'bg-yellow-100 text-yellow-800',
+                RECEIVED: 'bg-teal-100 text-teal-800',
             };
-            return colors[status] || 'bg-gray-100 text-gray-800';
+            return colors[s] || 'bg-gray-100 text-gray-800';
         }
 
         function displayPagination(data) {
