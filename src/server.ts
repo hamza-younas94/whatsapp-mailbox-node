@@ -829,6 +829,91 @@ export async function startServer(): Promise<void> {
       }, 5000); // Wait 5 seconds after server starts
     });
 
+    // ---- Appointment & Invoice Reminder Processor (every 15 min) ----
+    setInterval(async () => {
+      try {
+        const db = getPrismaClient();
+        const now = new Date();
+        const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+        // Find upcoming appointments (24h window) that haven't been reminded
+        const upcomingAppointments = await db.appointment.findMany({
+          where: {
+            reminderSent: false,
+            status: 'SCHEDULED',
+            appointmentDate: { gte: now, lte: in24h },
+          },
+          include: { contact: true },
+        });
+
+        for (const apt of upcomingAppointments) {
+          if (!apt.contact?.chatId) continue;
+
+          // Get first active session for the user
+          const session = whatsappWebService.getActiveSessions()
+            .find(s => s.userId === apt.userId && s.status === 'READY');
+          if (!session) continue;
+
+          const timeUntil = apt.appointmentDate.getTime() - now.getTime();
+          const hours = Math.round(timeUntil / (60 * 60 * 1000));
+          const timeStr = hours > 1 ? `in ${hours} hours` : 'in about 1 hour';
+
+          const message = `⏰ Reminder: You have an appointment "${apt.title}" ${timeStr}.\n\n📅 ${apt.appointmentDate.toLocaleString()}\n${apt.location ? '📍 ' + apt.location : ''}`.trim();
+
+          try {
+            await session.client.sendMessage(apt.contact.chatId, message);
+            await db.appointment.update({ where: { id: apt.id }, data: { reminderSent: true } });
+            logger.info({ appointmentId: apt.id, contactId: apt.contactId }, 'Appointment reminder sent');
+          } catch (err) {
+            logger.error({ appointmentId: apt.id, error: err }, 'Failed to send appointment reminder');
+          }
+        }
+
+        // Find overdue invoices and send payment reminders (once per day logic via notes)
+        const overdueInvoices = await db.invoice.findMany({
+          where: {
+            status: { in: ['SENT', 'PARTIALLY_PAID'] },
+            dueDate: { lt: now },
+          },
+          include: { contact: true },
+        });
+
+        for (const inv of overdueInvoices) {
+          if (!inv.contact?.chatId) continue;
+          // Skip if we already reminded in the last 24 hours
+          const reminderMatch = inv.notes?.match(/\[REMINDER_SENT:(\d+)\]/);
+          if (reminderMatch) {
+            const lastTime = parseInt(reminderMatch[1]);
+            if (now.getTime() - lastTime < 24 * 60 * 60 * 1000) continue;
+          }
+
+          const session = whatsappWebService.getActiveSessions()
+            .find(s => s.userId === inv.userId && s.status === 'READY');
+          if (!session) continue;
+
+          const daysOverdue = Math.ceil((now.getTime() - inv.dueDate!.getTime()) / (24 * 60 * 60 * 1000));
+          const message = `💳 Payment Reminder\n\nInvoice #${inv.invoiceNumber} is ${daysOverdue} day${daysOverdue > 1 ? 's' : ''} overdue.\n\nAmount Due: ${inv.balanceAmount.toFixed(2)}\nDue Date: ${inv.dueDate!.toLocaleDateString()}\n\nPlease arrange payment at your earliest convenience.`;
+
+          try {
+            await session.client.sendMessage(inv.contact.chatId, message);
+            // Mark reminder timestamp
+            const noteAppend = `[REMINDER_SENT:${now.getTime()}]`;
+            await db.invoice.update({ where: { id: inv.id }, data: { notes: (inv.notes || '') + noteAppend } });
+            logger.info({ invoiceId: inv.id, invoiceNumber: inv.invoiceNumber }, 'Payment reminder sent');
+          } catch (err) {
+            logger.error({ invoiceId: inv.id, error: err }, 'Failed to send payment reminder');
+          }
+        }
+
+        if (upcomingAppointments.length > 0 || overdueInvoices.length > 0) {
+          logger.info({ appointments: upcomingAppointments.length, invoices: overdueInvoices.length }, 'Reminder check completed');
+        }
+      } catch (error) {
+        logger.error({ error }, 'Reminder processor error');
+      }
+    }, 15 * 60 * 1000); // Every 15 minutes
+    logger.info('Reminder processor started (15-minute interval)');
+
     // Graceful shutdown
     const gracefulShutdown = async (signal: string) => {
       logger.info({ signal }, 'Received shutdown signal');

@@ -532,6 +532,13 @@ export class WhatsAppWebService extends EventEmitter {
   }
 
   /**
+   * Get all active sessions (READY status)
+   */
+  getActiveSessions(): WhatsAppWebSession[] {
+    return Array.from(this.sessions.values());
+  }
+
+  /**
    * Check if a session is currently being initialized
    */
   isInitializing(sessionId: string): boolean {
