@@ -644,6 +644,24 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
     } catch { /* Failed */ }
   };
 
+  const [sendingInvoiceId, setSendingInvoiceId] = useState<string | null>(null);
+
+  const handleSendInvoice = async (invoiceId: string) => {
+    try {
+      setSendingInvoiceId(invoiceId);
+      const { data } = await api.post(`/invoices/${invoiceId}/send`);
+      // Update invoice status locally if it was DRAFT
+      setInvoices(prev => prev.map(inv =>
+        inv.id === invoiceId && inv.status === 'DRAFT' ? { ...inv, status: 'SENT' } : inv
+      ));
+      alert(data.message || 'Invoice sent!');
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to send invoice');
+    } finally {
+      setSendingInvoiceId(null);
+    }
+  };
+
   // Filter tag suggestions based on input
   const filteredSuggestions = newTag.trim()
     ? allTags.filter((t) => {
@@ -1346,6 +1364,9 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                           <div className="tx-card-date">
                             {inv.dueDate ? `Due: ${new Date(inv.dueDate).toLocaleDateString()}` : new Date(inv.createdAt).toLocaleDateString()}
                             <div className="action-buttons">
+                              <button onClick={() => handleSendInvoice(inv.id)} title="Send via WhatsApp" disabled={sendingInvoiceId === inv.id}>
+                                {sendingInvoiceId === inv.id ? '⏳' : '📤'}
+                              </button>
                               <button onClick={() => handleDownloadInvoicePdf(inv.id, inv.invoiceNumber)} title="Download PDF">📄</button>
                             </div>
                           </div>
