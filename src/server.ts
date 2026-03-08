@@ -8,6 +8,7 @@ import express, { Express } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import path from 'path';
+import jwt from 'jsonwebtoken';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { getEnv } from '@config/env';
@@ -772,12 +773,42 @@ export async function startServer(): Promise<void> {
       },
     });
 
+    // Socket.IO authentication middleware
+    io.use((socket, next) => {
+      const token = socket.handshake.auth?.token;
+      if (!token) {
+        // Allow unauthenticated connections for backward compatibility
+        logger.warn({ socketId: socket.id }, 'Socket.IO connection without auth token');
+        return next();
+      }
+
+      try {
+        const decoded = jwt.verify(token, env.JWT_SECRET) as { userId: string; id: string; email: string; role: string };
+        (socket as any).user = decoded;
+        next();
+      } catch (err) {
+        logger.warn({ socketId: socket.id }, 'Socket.IO invalid auth token');
+        next();
+      }
+    });
+
     // Socket.IO connection handling
     io.on('connection', (socket) => {
-      logger.info({ socketId: socket.id }, 'Socket.IO client connected');
+      const user = (socket as any).user;
+      logger.info({ socketId: socket.id, userId: user?.id }, 'Socket.IO client connected');
 
-      // Join user's room for targeted broadcasts
+      // Auto-join user room if authenticated
+      if (user?.id) {
+        socket.join(`user:${user.id}`);
+        logger.info({ socketId: socket.id, userId: user.id }, 'Auto-joined user socket room');
+      }
+
+      // Backward-compatible manual join (validates against auth token)
       socket.on('join-user', (userId: string) => {
+        if (user?.id && userId !== user.id) {
+          logger.warn({ socketId: socket.id, requestedUserId: userId, actualUserId: user.id }, 'Socket room join denied: userId mismatch');
+          return;
+        }
         socket.join(`user:${userId}`);
         logger.info({ socketId: socket.id, userId }, 'User joined socket room');
       });

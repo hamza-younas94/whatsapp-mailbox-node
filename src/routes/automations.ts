@@ -10,7 +10,7 @@ import { TagService } from '@services/tag.service';
 import { TagRepository } from '@repositories/tag.repository';
 import { ContactRepository } from '@repositories/contact.repository';
 import getPrismaClient from '@config/database';
-import { authenticate } from '@middleware/auth.middleware';
+import { authenticate, requireRole } from '@middleware/auth.middleware';
 import { validateRequest } from '@middleware/validation.middleware';
 import { z } from 'zod';
 
@@ -86,7 +86,7 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 router.put('/:id', controller.update);
-router.delete('/:id', controller.delete);
+router.delete('/:id', requireRole('ADMIN', 'MANAGER'), controller.delete);
 router.patch('/:id/toggle', validateRequest(toggleSchema), controller.toggle);
 
 // Enroll contact in automation (manual trigger)

@@ -7,7 +7,7 @@ import { ContactController } from '@controllers/contact.controller';
 import { ContactService } from '@services/contact.service';
 import { ContactRepository } from '@repositories/contact.repository';
 import { TagRepository } from '@repositories/tag.repository';
-import { authMiddleware } from '@middleware/auth.middleware';
+import { authMiddleware, requireRole } from '@middleware/auth.middleware';
 import { validate, validateQuery } from '@middleware/validation.middleware';
 import getPrismaClient from '@config/database';
 import { downloadAvatar } from '@utils/avatar';
@@ -152,8 +152,8 @@ export function createContactRoutes(): Router {
 
   router.post('/bulk-tag', authMiddleware, validate(bulkTagSchema), controller.bulkTag);
   router.post('/bulk-stage', authMiddleware, validate(bulkStageSchema), controller.bulkStage);
-  router.post('/bulk-delete', authMiddleware, validate(bulkDeleteSchema), controller.bulkDelete);
-  router.post('/merge', authMiddleware, validate(mergeSchema), controller.mergeContacts);
+  router.post('/bulk-delete', authMiddleware, requireRole('ADMIN', 'MANAGER'), validate(bulkDeleteSchema), controller.bulkDelete);
+  router.post('/merge', authMiddleware, requireRole('ADMIN', 'MANAGER'), validate(mergeSchema), controller.mergeContacts);
 
   // CSV Export
   router.get('/export', authMiddleware, async (req, res) => {
