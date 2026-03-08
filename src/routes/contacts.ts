@@ -155,5 +155,113 @@ export function createContactRoutes(): Router {
   router.post('/bulk-delete', authMiddleware, validate(bulkDeleteSchema), controller.bulkDelete);
   router.post('/merge', authMiddleware, validate(mergeSchema), controller.mergeContacts);
 
+  // CSV Export
+  router.get('/export', authMiddleware, async (req, res) => {
+    try {
+      const userId = (req as any).userId;
+      const contacts = await prisma.contact.findMany({
+        where: { userId },
+        include: { tags: { include: { tag: true } } },
+        orderBy: { name: 'asc' },
+      });
+
+      const header = 'Phone,Name,Email,Company,Department,Business Name,Tags\n';
+      const escapeCSV = (val?: string | null) => {
+        if (!val) return '';
+        if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+          return `"${val.replace(/"/g, '""')}"`;
+        }
+        return val;
+      };
+      const rows = contacts.map(c => {
+        const tags = (c as any).tags?.map((t: any) => t.tag?.name).filter(Boolean).join(';') || '';
+        return [c.phoneNumber, c.name, c.email, c.company, c.department, c.businessName, tags]
+          .map(escapeCSV).join(',');
+      }).join('\n');
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=contacts-${new Date().toISOString().slice(0,10)}.csv`);
+      res.send(header + rows);
+    } catch (error) {
+      logger.error({ error }, 'Contact export failed');
+      res.status(500).json({ success: false, error: 'Export failed' });
+    }
+  });
+
+  // CSV Import
+  router.post('/import', authMiddleware, async (req, res) => {
+    try {
+      const userId = (req as any).userId;
+      const { contacts: rows } = req.body as { contacts: Array<{ phoneNumber: string; name?: string; email?: string; company?: string; department?: string; businessName?: string; tags?: string }> };
+
+      if (!Array.isArray(rows) || rows.length === 0) {
+        return res.status(400).json({ success: false, error: 'No contacts provided' });
+      }
+
+      let imported = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      for (const row of rows) {
+        if (!row.phoneNumber) { skipped++; continue; }
+        const phone = row.phoneNumber.replace(/[^\d+]/g, '');
+        if (phone.length < 7) { errors.push(`Invalid phone: ${row.phoneNumber}`); skipped++; continue; }
+
+        try {
+          // Upsert by phoneNumber + userId
+          await prisma.contact.upsert({
+            where: { userId_phoneNumber: { userId, phoneNumber: phone } },
+            create: {
+              userId,
+              phoneNumber: phone,
+              chatId: phone.replace(/^\+/, '') + '@c.us',
+              name: row.name || undefined,
+              email: row.email || undefined,
+              company: row.company || undefined,
+              department: row.department || undefined,
+              businessName: row.businessName || undefined,
+            },
+            update: {
+              ...(row.name && { name: row.name }),
+              ...(row.email && { email: row.email }),
+              ...(row.company && { company: row.company }),
+              ...(row.department && { department: row.department }),
+              ...(row.businessName && { businessName: row.businessName }),
+            },
+          });
+
+          // Handle tags
+          if (row.tags) {
+            const tagNames = row.tags.split(';').map(t => t.trim()).filter(Boolean);
+            for (const tagName of tagNames) {
+              const tag = await prisma.tag.upsert({
+                where: { userId_name: { userId, name: tagName } },
+                create: { userId, name: tagName },
+                update: {},
+              });
+              const contact = await prisma.contact.findUnique({ where: { userId_phoneNumber: { userId, phoneNumber: phone } } });
+              if (contact) {
+                await prisma.tagOnContact.upsert({
+                  where: { contactId_tagId: { contactId: contact.id, tagId: tag.id } },
+                  create: { contactId: contact.id, tagId: tag.id },
+                  update: {},
+                });
+              }
+            }
+          }
+          imported++;
+        } catch (err) {
+          errors.push(`Failed: ${row.phoneNumber}`);
+          skipped++;
+        }
+      }
+
+      res.json({ success: true, data: { imported, skipped, errors: errors.slice(0, 20) } });
+    } catch (error) {
+      logger.error({ error }, 'Contact import failed');
+      res.status(500).json({ success: false, error: 'Import failed' });
+    }
+  });
+
   return router;
 }
