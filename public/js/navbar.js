@@ -16,6 +16,8 @@ function createNavbar() {
         { label: 'Segments', href: '/segments.html', icon: 'fa-layer-group' },
         { label: 'Drip Campaigns', href: '/drip-campaigns.html', icon: 'fa-water' },
         { label: 'Automations', href: '/automation.html', icon: 'fa-robot' },
+        { label: 'Scheduled', href: '/scheduled-messages.html', icon: 'fa-clock' },
+        { label: 'Templates', href: '/message-templates.html', icon: 'fa-file-alt' },
     ];
 
     const businessItems = [
@@ -30,6 +32,7 @@ function createNavbar() {
 
     const crmItems = [
         { label: 'Tags', href: '/tags.html', icon: 'fa-tags' },
+        { label: 'Labels', href: '/labels.html', icon: 'fa-tag' },
         { label: 'Tasks', href: '/tasks.html', icon: 'fa-tasks' },
     ];
 

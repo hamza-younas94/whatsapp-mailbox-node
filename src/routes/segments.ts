@@ -30,7 +30,7 @@ const createSegmentSchema = z.object({
 // Apply authentication to all routes
 router.use(authenticate);
 
-// Preview endpoint - calculate matching contacts without saving
+// Preview endpoint - calculate matching contacts based on conditions
 router.post('/preview', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.id;
@@ -39,12 +39,38 @@ router.post('/preview', async (req: Request, res: Response, next: NextFunction) 
     }
 
     const { conditions, logic } = req.body;
-    
-    // For now, return a placeholder count - in production, this would query contacts
-    // based on the conditions
-    const count = await prisma.contact.count({
-      where: { userId }
-    });
+    const condArray = Array.isArray(conditions) ? conditions : [];
+
+    // Build Prisma where clauses from conditions
+    const clauses: any[] = [];
+    for (const cond of condArray) {
+      const field = cond.field || cond.type;
+      const op = cond.operator || 'equals';
+      const val = cond.value;
+
+      if (field === 'tag' && val) {
+        clauses.push({ tags: { some: { tag: { name: val } } } });
+      } else if (field === 'contactType' && val) {
+        clauses.push({ contactType: val });
+      } else if (field === 'name' && val) {
+        clauses.push({ name: { contains: val } });
+      } else if (field === 'lastMessageAfter' && val) {
+        clauses.push({ lastMessageAt: { gte: new Date(val) } });
+      } else if (field === 'lastMessageBefore' && val) {
+        clauses.push({ lastMessageAt: { lte: new Date(val) } });
+      } else if (field === 'isBlocked') {
+        clauses.push({ isBlocked: val === true || val === 'true' });
+      } else if (field === 'email' && val) {
+        clauses.push({ email: { contains: val } });
+      }
+    }
+
+    const where: any = { userId };
+    if (clauses.length > 0) {
+      where[logic === 'OR' ? 'OR' : 'AND'] = clauses;
+    }
+
+    const count = await prisma.contact.count({ where });
 
     res.json({ success: true, data: { count } });
   } catch (error) {

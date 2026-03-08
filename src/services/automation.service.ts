@@ -196,14 +196,35 @@ export class AutomationService implements IAutomationService {
         await new Promise((resolve) => setTimeout(resolve, action.params.delay || 1000));
         break;
 
-      case 'WEBHOOK':
-        // Call external webhook
-        await fetch(action.params.url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(context),
-        });
+      case 'WEBHOOK': {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
+        try {
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+          const payload = JSON.stringify(context);
+
+          // Optional HMAC signature
+          if (action.params.signingSecret) {
+            const crypto = await import('crypto');
+            const sig = crypto.createHmac('sha256', action.params.signingSecret).update(payload).digest('hex');
+            headers['X-Webhook-Signature'] = sig;
+          }
+
+          const resp = await fetch(action.params.url, {
+            method: 'POST',
+            headers,
+            body: payload,
+            signal: controller.signal,
+          });
+
+          logger.info({ url: action.params.url, status: resp.status }, 'Webhook called');
+        } catch (err: any) {
+          logger.error({ url: action.params.url, err: err.message }, 'Webhook failed');
+        } finally {
+          clearTimeout(timeout);
+        }
         break;
+      }
 
       case 'FORWARD_MESSAGE': {
         const messageContent = context.messageContent || context.body || '';

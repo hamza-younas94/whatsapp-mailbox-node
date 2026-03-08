@@ -38,6 +38,9 @@ import customerSubscriptionRoutes from '@routes/customer-subscriptions';
 import autoTagRuleRoutes from '@routes/auto-tag-rules';
 import taskRoutes from '@routes/tasks';
 import activityLogRoutes from '@routes/activity-logs';
+import scheduledMessageRoutes from '@routes/scheduled-messages';
+import messageTemplateRoutes from '@routes/message-templates';
+import labelRoutes from '@routes/labels';
 import { globalLimiter } from '@middleware/rate-limit.middleware';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from '@config/swagger';
@@ -153,6 +156,9 @@ export function createApp(): Express {
   app.use('/api/v1/auto-tag-rules', autoTagRuleRoutes);
   app.use('/api/v1/tasks', taskRoutes);
   app.use('/api/v1/activity-logs', activityLogRoutes);
+  app.use('/api/v1/scheduled-messages', scheduledMessageRoutes);
+  app.use('/api/v1/message-templates', messageTemplateRoutes);
+  app.use('/api/v1/labels', labelRoutes);
 
   // Serve index.html for all non-API routes (SPA fallback)
   app.get('*', (req, res) => {
@@ -947,6 +953,94 @@ export async function startServer(): Promise<void> {
       }
     }, 15 * 60 * 1000); // Every 15 minutes
     logger.info('Reminder processor started (15-minute interval)');
+
+    // ---- Scheduled Message Processor (every 60 seconds) ----
+    setInterval(async () => {
+      try {
+        const db = getPrismaClient();
+        const now = new Date();
+
+        const pendingMessages = await db.scheduledMessage.findMany({
+          where: {
+            status: 'PENDING',
+            scheduledFor: { lte: now },
+          },
+          include: {
+            User: true,
+          },
+          take: 20,
+        });
+
+        if (pendingMessages.length === 0) return;
+
+        for (const msg of pendingMessages) {
+          try {
+            // Find contact to get chatId
+            const contact = await db.contact.findUnique({
+              where: { id: msg.contactId },
+              select: { chatId: true },
+            });
+
+            if (!contact?.chatId) {
+              await db.scheduledMessage.update({
+                where: { id: msg.id },
+                data: { status: 'FAILED', error: 'Contact has no chatId' },
+              });
+              continue;
+            }
+
+            // Get active session for the user
+            const session = whatsappWebService.getActiveSessions()
+              .find(s => s.userId === msg.userId && s.status === 'READY');
+
+            if (!session) {
+              // Don't mark as failed — retry on next cycle when session may be ready
+              if (msg.retryCount >= 5) {
+                await db.scheduledMessage.update({
+                  where: { id: msg.id },
+                  data: { status: 'FAILED', error: 'No active WhatsApp session after 5 retries' },
+                });
+              } else {
+                await db.scheduledMessage.update({
+                  where: { id: msg.id },
+                  data: { retryCount: { increment: 1 } },
+                });
+              }
+              continue;
+            }
+
+            // Send message
+            if (msg.mediaUrl) {
+              const { MessageMedia } = await import('whatsapp-web.js');
+              const media = await MessageMedia.fromUrl(msg.mediaUrl, { unsafeMime: true });
+              await session.client.sendMessage(contact.chatId, media, { caption: msg.message });
+            } else {
+              await session.client.sendMessage(contact.chatId, msg.message);
+            }
+
+            await db.scheduledMessage.update({
+              where: { id: msg.id },
+              data: { status: 'SENT', sentAt: new Date() },
+            });
+
+            logger.info({ scheduledMessageId: msg.id }, 'Scheduled message sent');
+          } catch (err: any) {
+            await db.scheduledMessage.update({
+              where: { id: msg.id },
+              data: {
+                status: msg.retryCount >= 2 ? 'FAILED' : 'PENDING',
+                error: err.message || 'Send failed',
+                retryCount: { increment: 1 },
+              },
+            });
+            logger.error({ scheduledMessageId: msg.id, error: err.message }, 'Failed to send scheduled message');
+          }
+        }
+      } catch (error) {
+        logger.error({ error }, 'Scheduled message processor error');
+      }
+    }, 60 * 1000); // Every 60 seconds
+    logger.info('Scheduled message processor started (60-second interval)');
 
     // Graceful shutdown
     const gracefulShutdown = async (signal: string) => {

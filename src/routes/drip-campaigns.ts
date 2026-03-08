@@ -38,11 +38,19 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    // Add computed fields
+    // Calculate actual messages sent from dripScheduledMessages
+    const campaignIds = campaigns.map(c => c.id);
+    const sentCounts = await prisma.dripScheduledMessage.groupBy({
+      by: ['campaignId'],
+      where: { campaignId: { in: campaignIds }, status: 'SENT' },
+      _count: { id: true },
+    });
+    const sentMap = new Map(sentCounts.map(s => [s.campaignId, s._count.id]));
+
     const campaignsWithStats = campaigns.map(campaign => ({
       ...campaign,
       enrollmentCount: campaign._count.enrollments,
-      messagesSent: 0 // TODO: Calculate from dripScheduledMessages
+      messagesSent: sentMap.get(campaign.id) || 0,
     }));
 
     res.json({ success: true, data: campaignsWithStats });

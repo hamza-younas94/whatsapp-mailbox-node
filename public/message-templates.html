@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message Templates - WhatsApp Mailbox</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-btn { background: linear-gradient(135deg, #128C7E 0%, #25D366 100%); }
+        .gradient-btn:hover { background: linear-gradient(135deg, #0d6b5f 0%, #1fb855 100%); }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <script>if (!localStorage.getItem('authToken')) window.location.href = '/login.html';</script>
+    <script src="/js/navbar.js"></script>
+
+    <div class="max-w-7xl mx-auto px-4 py-6">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800"><i class="fas fa-file-alt text-green-500 mr-2"></i>Message Templates</h1>
+                <p class="text-gray-600 mt-1">Create reusable message templates with variables</p>
+            </div>
+            <button onclick="showCreateModal()" class="gradient-btn text-white px-6 py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+                <i class="fas fa-plus mr-2"></i>New Template
+            </button>
+        </div>
+
+        <!-- Filters -->
+        <div class="flex flex-wrap gap-3 mb-6">
+            <input type="text" id="searchInput" onkeyup="loadTemplates()" placeholder="Search templates..." class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 w-64">
+            <select id="categoryFilter" onchange="loadTemplates()" class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500">
+                <option value="">All Categories</option>
+            </select>
+        </div>
+
+        <!-- Templates Grid -->
+        <div id="templatesList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="col-span-full text-center py-12 text-gray-400"><i class="fas fa-spinner fa-spin text-3xl"></i></div>
+        </div>
+    </div>
+
+    <!-- Create/Edit Modal -->
+    <div id="createModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+            <div class="p-6 border-b">
+                <h2 id="modalTitle" class="text-2xl font-bold text-gray-800">New Template</h2>
+            </div>
+            <form id="templateForm" class="p-6 space-y-4">
+                <input type="hidden" id="editId">
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">Name</label>
+                    <input type="text" id="name" required class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500" placeholder="e.g. Welcome Message">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">Category</label>
+                        <input type="text" id="category" required class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500" placeholder="e.g. Marketing">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-1">Language</label>
+                        <input type="text" id="language" value="en" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">Content</label>
+                    <textarea id="content" required rows="5" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500" placeholder="Hi {{name}}, thank you for..."></textarea>
+                    <p class="text-xs text-gray-400 mt-1">Use {{variable}} for dynamic content</p>
+                </div>
+                <div class="flex space-x-3 pt-2">
+                    <button type="submit" class="flex-1 gradient-btn text-white py-3 rounded-lg font-medium">Save Template</button>
+                    <button type="button" onclick="hideModal()" class="px-6 py-3 border rounded-lg text-gray-600 hover:bg-gray-50">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api/v1';
+        const token = localStorage.getItem('authToken');
+        let allTemplates = [];
+
+        async function fetchWithAuth(url, options = {}) {
+            const res = await fetch(url, { ...options, headers: { ...options.headers, 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } });
+            if (res.status === 401) { localStorage.removeItem('authToken'); window.location.href = '/login.html'; }
+            return res.json();
+        }
+
+        async function loadTemplates() {
+            const search = document.getElementById('searchInput').value;
+            const category = document.getElementById('categoryFilter').value;
+            let url = `${API_BASE}/message-templates?`;
+            if (search) url += `search=${encodeURIComponent(search)}&`;
+            if (category) url += `category=${encodeURIComponent(category)}`;
+
+            const data = await fetchWithAuth(url);
+            allTemplates = data.data || [];
+
+            // Populate category filter
+            const categories = [...new Set(allTemplates.map(t => t.category))];
+            const select = document.getElementById('categoryFilter');
+            const current = select.value;
+            select.innerHTML = '<option value="">All Categories</option>' + categories.map(c => `<option value="${c}" ${c === current ? 'selected' : ''}>${c}</option>`).join('');
+
+            const container = document.getElementById('templatesList');
+            if (allTemplates.length === 0) {
+                container.innerHTML = '<div class="col-span-full text-center py-12 text-gray-400"><i class="fas fa-file-alt text-5xl mb-4 opacity-30"></i><p>No templates found</p></div>';
+                return;
+            }
+
+            container.innerHTML = allTemplates.map(t => `
+                <div class="bg-white rounded-xl p-5 shadow-sm border hover:shadow-md transition-all">
+                    <div class="flex justify-between items-start mb-3">
+                        <h3 class="font-semibold text-gray-800">${t.name}</h3>
+                        <div class="flex gap-2">
+                            <button onclick="editTemplate('${t.id}')" class="text-blue-500 hover:text-blue-700"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteTemplate('${t.id}')" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <span class="inline-block px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full mb-3">${t.category}</span>
+                    <span class="inline-block px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full mb-3 ml-1">${t.language}</span>
+                    <p class="text-gray-600 text-sm whitespace-pre-wrap">${t.content.substring(0, 200)}${t.content.length > 200 ? '...' : ''}</p>
+                </div>
+            `).join('');
+        }
+
+        function showCreateModal() {
+            document.getElementById('editId').value = '';
+            document.getElementById('modalTitle').textContent = 'New Template';
+            document.getElementById('templateForm').reset();
+            document.getElementById('language').value = 'en';
+            document.getElementById('createModal').classList.remove('hidden');
+        }
+
+        function hideModal() { document.getElementById('createModal').classList.add('hidden'); }
+
+        function editTemplate(id) {
+            const t = allTemplates.find(x => x.id === id);
+            if (!t) return;
+            document.getElementById('editId').value = t.id;
+            document.getElementById('modalTitle').textContent = 'Edit Template';
+            document.getElementById('name').value = t.name;
+            document.getElementById('category').value = t.category;
+            document.getElementById('language').value = t.language;
+            document.getElementById('content').value = t.content;
+            document.getElementById('createModal').classList.remove('hidden');
+        }
+
+        async function deleteTemplate(id) {
+            if (!confirm('Delete this template?')) return;
+            await fetchWithAuth(`${API_BASE}/message-templates/${id}`, { method: 'DELETE' });
+            loadTemplates();
+        }
+
+        document.getElementById('templateForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const editId = document.getElementById('editId').value;
+            const body = {
+                name: document.getElementById('name').value,
+                category: document.getElementById('category').value,
+                language: document.getElementById('language').value,
+                content: document.getElementById('content').value,
+            };
+
+            if (editId) {
+                await fetchWithAuth(`${API_BASE}/message-templates/${editId}`, { method: 'PUT', body: JSON.stringify(body) });
+            } else {
+                await fetchWithAuth(`${API_BASE}/message-templates`, { method: 'POST', body: JSON.stringify(body) });
+            }
+
+            hideModal();
+            loadTemplates();
+        });
+
+        document.getElementById('createModal').addEventListener('click', (e) => { if (e.target === document.getElementById('createModal')) hideModal(); });
+
+        loadTemplates();
+    </script>
+</body>
+</html>
