@@ -96,33 +96,78 @@
             </a>
         </div>
 
-        <!-- Revenue Summary -->
+        <!-- Secondary KPI Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <a href="/contacts.html" class="bg-white rounded-xl shadow-sm border p-4 hover:shadow-md transition cursor-pointer block">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-xs font-medium">New Contacts (7d)</p>
+                        <p id="newContacts" class="text-2xl font-bold text-gray-800 mt-1">-</p>
+                    </div>
+                    <div class="bg-cyan-50 p-2 rounded-lg"><i class="fas fa-user-plus text-cyan-500"></i></div>
+                </div>
+            </a>
+            <a href="/broadcasts.html" class="bg-white rounded-xl shadow-sm border p-4 hover:shadow-md transition cursor-pointer block">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-xs font-medium">Active Campaigns</p>
+                        <p id="activeCampaigns" class="text-2xl font-bold text-gray-800 mt-1">-</p>
+                    </div>
+                    <div class="bg-purple-50 p-2 rounded-lg"><i class="fas fa-bullhorn text-purple-500"></i></div>
+                </div>
+            </a>
+            <a href="/service-tickets.html" class="bg-white rounded-xl shadow-sm border p-4 hover:shadow-md transition cursor-pointer block">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-xs font-medium">Open Tickets</p>
+                        <p id="openTickets" class="text-2xl font-bold text-gray-800 mt-1">-</p>
+                    </div>
+                    <div class="bg-yellow-50 p-2 rounded-lg"><i class="fas fa-ticket-alt text-yellow-500"></i></div>
+                </div>
+            </a>
+            <a href="/products.html" class="bg-white rounded-xl shadow-sm border p-4 hover:shadow-md transition cursor-pointer block">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-xs font-medium">Low Stock</p>
+                        <p id="lowStock" class="text-2xl font-bold text-gray-800 mt-1">-</p>
+                    </div>
+                    <div class="bg-red-50 p-2 rounded-lg"><i class="fas fa-exclamation-triangle text-red-500"></i></div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Revenue & Financial Summary -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div class="bg-white rounded-xl shadow-sm border p-5">
+                <p class="text-gray-500 text-xs font-medium">Total Revenue</p>
+                <p id="totalRevenue" class="text-2xl font-bold text-green-600 mt-1">$0</p>
+                <p class="text-xs text-gray-400 mt-1">All-time payments</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border p-5">
+                <p class="text-gray-500 text-xs font-medium">Outstanding</p>
+                <p id="outstandingAmount" class="text-2xl font-bold text-orange-600 mt-1">$0</p>
+                <p class="text-xs text-gray-400 mt-1">Unpaid invoices</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border p-5">
+                <p class="text-gray-500 text-xs font-medium">Month Revenue</p>
+                <p id="monthRevenue" class="text-2xl font-bold text-blue-600 mt-1">$0</p>
+                <p class="text-xs text-gray-400 mt-1">This month</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border p-5">
+                <p class="text-gray-500 text-xs font-medium">Month Expenses</p>
+                <p id="monthExpenses" class="text-2xl font-bold text-red-600 mt-1">$0</p>
+                <p class="text-xs text-gray-400 mt-1">This month</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border p-5">
+                <p class="text-gray-500 text-xs font-medium">Net Profit</p>
+                <p id="netProfit" class="text-2xl font-bold text-gray-800 mt-1">$0</p>
+                <p class="text-xs text-gray-400 mt-1">Revenue - Expenses</p>
+            </div>
+        </div>
+
+        <!-- Appointments Summary -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="bg-white rounded-xl shadow-sm border p-6">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-500 text-sm font-medium">Total Revenue</p>
-                        <p id="totalRevenue" class="text-3xl font-bold text-green-600 mt-1">$0</p>
-                        <p class="text-xs text-gray-400 mt-1">All-time paid invoices</p>
-                    </div>
-                    <div class="bg-green-50 p-3 rounded-xl">
-                        <i class="fas fa-dollar-sign text-green-500 text-2xl"></i>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-white rounded-xl shadow-sm border p-6">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-500 text-sm font-medium">Outstanding</p>
-                        <p id="outstandingAmount" class="text-3xl font-bold text-orange-600 mt-1">$0</p>
-                        <p class="text-xs text-gray-400 mt-1">Awaiting payment</p>
-                    </div>
-                    <div class="bg-orange-50 p-3 rounded-xl">
-                        <i class="fas fa-clock text-orange-500 text-2xl"></i>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-white rounded-xl shadow-sm border p-6">
+            <div class="bg-white rounded-xl shadow-sm border p-6 md:col-span-1">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-gray-500 text-sm font-medium">Today's Appointments</p>
@@ -596,29 +641,30 @@
             }).join('')}</div>`;
         }
 
-        // ---- REVENUE STATS ----
+        // ---- DASHBOARD SUMMARY (server-aggregated) ----
 
-        async function loadRevenueStats() {
+        function fmtMoney(n) { return '$' + (n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+        async function loadDashboardSummary() {
             try {
-                // Load paid invoices for revenue
-                const paidRes = await fetchWithAuth(`${API_BASE}/invoices?status=PAID&limit=100`);
-                let totalRevenue = 0;
-                if (paidRes.ok) {
-                    const json = await paidRes.json();
-                    const items = (json.data || json).items || [];
-                    totalRevenue = items.reduce((sum, inv) => sum + (parseFloat(inv.totalAmount) || 0), 0);
+                const res = await fetchWithAuth(`${API_BASE}/analytics/dashboard-summary`);
+                if (res.ok) {
+                    const json = await res.json();
+                    const d = json.data || {};
+                    document.getElementById('newContacts').textContent = (d.newContactsThisWeek || 0).toLocaleString();
+                    document.getElementById('activeCampaigns').textContent = ((d.activeBroadcasts || 0) + (d.activeDripEnrollments || 0)).toLocaleString();
+                    document.getElementById('openTickets').textContent = (d.openTickets || 0).toLocaleString();
+                    document.getElementById('lowStock').textContent = (d.lowStockProducts || 0).toLocaleString();
+                    document.getElementById('totalRevenue').textContent = fmtMoney(d.totalRevenue);
+                    document.getElementById('outstandingAmount').textContent = fmtMoney(d.outstandingAmount);
+                    document.getElementById('monthRevenue').textContent = fmtMoney(d.monthRevenue);
+                    document.getElementById('monthExpenses').textContent = fmtMoney(d.monthExpenses);
+                    const net = (d.monthRevenue || 0) - (d.monthExpenses || 0);
+                    const netEl = document.getElementById('netProfit');
+                    netEl.textContent = fmtMoney(Math.abs(net));
+                    netEl.className = 'text-2xl font-bold mt-1 ' + (net >= 0 ? 'text-green-600' : 'text-red-600');
+                    if (net < 0) netEl.textContent = '-' + netEl.textContent;
                 }
-                document.getElementById('totalRevenue').textContent = '$' + totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-                // Load unpaid for outstanding
-                const sentRes = await fetchWithAuth(`${API_BASE}/invoices?status=SENT&limit=100`);
-                let outstanding = 0;
-                if (sentRes.ok) {
-                    const json = await sentRes.json();
-                    const items = (json.data || json).items || [];
-                    outstanding = items.reduce((sum, inv) => sum + (parseFloat(inv.balanceAmount) || parseFloat(inv.totalAmount) || 0), 0);
-                }
-                document.getElementById('outstandingAmount').textContent = '$' + outstanding.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             } catch (e) {
                 // Silently fail
             }
@@ -697,7 +743,7 @@
             loadTaskStats();
             loadOrderStats();
             loadInvoiceStats();
-            loadRevenueStats();
+            loadDashboardSummary();
             loadAppointmentStats();
             loadActivityChart();
             loadTopContacts();

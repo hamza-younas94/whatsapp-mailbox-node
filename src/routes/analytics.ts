@@ -29,6 +29,58 @@ const trendsSchema = z.object({
 // Apply authentication to all routes
 router.use(authenticate);
 
+// Dashboard summary — server-aggregated stats
+router.get('/dashboard-summary', async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [
+      newContactsThisWeek,
+      activeBroadcasts,
+      activeDripEnrollments,
+      openTickets,
+      lowStockProducts,
+      monthPayments,
+      monthExpenses,
+      totalPayments,
+      unpaidInvoices,
+    ] = await Promise.all([
+      prisma.contact.count({ where: { userId, createdAt: { gte: weekAgo } } }),
+      prisma.broadcast.count({ where: { userId, status: { in: ['SENDING', 'SCHEDULED'] } } }),
+      prisma.dripEnrollment.count({ where: { status: 'ACTIVE', campaign: { userId } } }),
+      prisma.serviceTicket.count({ where: { userId, status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING_PARTS'] } } }),
+      prisma.product.count({ where: { userId, isActive: true, stockQuantity: { lte: prisma.product.fields.lowStockAlert as any } } }).catch(() =>
+        // fallback: raw query if field comparison not supported
+        prisma.$queryRaw`SELECT COUNT(*) as cnt FROM Product WHERE userId = ${userId} AND isActive = 1 AND stockQuantity <= lowStockAlert`.then((r: any) => Number(r[0]?.cnt || 0))
+      ),
+      prisma.payment.aggregate({ where: { userId, paymentDate: { gte: monthStart } }, _sum: { amount: true } }),
+      prisma.expense.aggregate({ where: { userId, expenseDate: { gte: monthStart } }, _sum: { amount: true } }),
+      prisma.payment.aggregate({ where: { userId }, _sum: { amount: true } }),
+      prisma.invoice.aggregate({ where: { userId, status: { in: ['SENT', 'OVERDUE'] } }, _sum: { totalAmount: true } }),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        newContactsThisWeek,
+        activeBroadcasts,
+        activeDripEnrollments,
+        openTickets,
+        lowStockProducts,
+        monthRevenue: monthPayments._sum.amount || 0,
+        monthExpenses: monthExpenses._sum.amount || 0,
+        totalRevenue: totalPayments._sum.amount || 0,
+        outstandingAmount: unpaidInvoices._sum.totalAmount || 0,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to load dashboard summary' });
+  }
+});
+
 // Routes
 router.get('/stats', controller.getStats);
 router.get('/overview', controller.getStats);
