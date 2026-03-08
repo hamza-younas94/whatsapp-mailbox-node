@@ -245,17 +245,13 @@
 
         async function loadQuickReplies() {
             try {
-                // Try enhanced API first
-                let response = await fetchWithAuth(`${API_BASE}/quick-replies-enhanced?limit=100`);
-                if (!response.ok) {
-                    // Fallback to original API
-                    response = await fetchWithAuth(`${API_BASE}/quick-replies?limit=100`);
-                }
-                
+                const response = await fetchWithAuth(`${API_BASE}/quick-replies?limit=100`);
                 if (response.ok) {
                     const result = await response.json();
                     allQuickReplies = Array.isArray(result.data) ? result.data : (Array.isArray(result) ? result : []);
                     updateStats();
+                    // Extract categories from existing replies
+                    loadCategoriesFromReplies();
                     filterAndDisplayQuickReplies();
                 } else {
                     allQuickReplies = [];
@@ -268,27 +264,31 @@
             }
         }
 
-        async function loadCategories() {
-            try {
-                const response = await fetchWithAuth(`${API_BASE}/quick-replies-enhanced/categories`);
-                if (response.ok) {
-                    const result = await response.json();
-                    allCategories = result.data || [];
-                } else {
-                    // Fallback categories
-                    allCategories = [
-                        { id: 'greeting', name: 'Greeting', color: '#10B981' },
-                        { id: 'support', name: 'Support', color: '#3B82F6' },
-                        { id: 'sales', name: 'Sales', color: '#F59E0B' },
-                        { id: 'faq', name: 'FAQ', color: '#8B5CF6' },
-                        { id: 'general', name: 'General', color: '#6B7280' }
-                    ];
+        function loadCategoriesFromReplies() {
+            // Build categories from existing quick replies + saved custom categories
+            const saved = JSON.parse(localStorage.getItem('qr_categories') || '[]');
+            const fromReplies = [...new Set(allQuickReplies.map(r => r.category).filter(Boolean))];
+            const categoryColors = { Greeting: '#10B981', Support: '#3B82F6', Sales: '#F59E0B', FAQ: '#8B5CF6', General: '#6B7280' };
+
+            const merged = new Map();
+            // Add saved categories
+            saved.forEach(c => merged.set(c.name, c));
+            // Add categories from replies that aren't already saved
+            fromReplies.forEach(name => {
+                if (!merged.has(name)) {
+                    merged.set(name, { id: name, name, color: categoryColors[name] || '#6B7280', count: 0 });
                 }
-                renderCategoryOptions();
-                renderCategoriesList();
-            } catch (error) {
-                console.error('Error loading categories:', error);
-            }
+            });
+            // Count replies per category
+            allQuickReplies.forEach(r => {
+                if (r.category && merged.has(r.category)) {
+                    merged.get(r.category).count = (merged.get(r.category).count || 0) + 1;
+                }
+            });
+
+            allCategories = Array.from(merged.values());
+            renderCategoryOptions();
+            renderCategoriesList();
         }
 
         function renderCategoryOptions() {
@@ -468,46 +468,35 @@
             document.getElementById('categoryModal').classList.add('hidden');
         }
 
-        async function createCategory() {
+        function createCategory() {
             const name = document.getElementById('newCategoryName').value.trim();
             if (!name) return;
-            
-            try {
-                const response = await fetchWithAuth(`${API_BASE}/quick-replies-enhanced/categories`, {
-                    method: 'POST',
-                    body: JSON.stringify({ name })
-                });
-                if (response.ok) {
-                    document.getElementById('newCategoryName').value = '';
-                    loadCategories();
-                    showNotification('Category created!', 'success');
-                }
-            } catch (error) {
-                console.error('Error creating category:', error);
+            if (allCategories.some(c => c.name === name)) {
+                showNotification('Category already exists', 'error');
+                return;
             }
+            const colors = ['#10B981','#3B82F6','#F59E0B','#8B5CF6','#EF4444','#EC4899','#14B8A6','#F97316'];
+            const color = colors[allCategories.length % colors.length];
+            allCategories.push({ id: name, name, color, count: 0 });
+            localStorage.setItem('qr_categories', JSON.stringify(allCategories));
+            document.getElementById('newCategoryName').value = '';
+            renderCategoryOptions();
+            renderCategoriesList();
+            showNotification('Category created!', 'success');
         }
 
-        async function deleteCategory(id) {
+        function deleteCategory(id) {
             if (!confirm('Delete this category?')) return;
-            try {
-                const response = await fetchWithAuth(`${API_BASE}/quick-replies-enhanced/categories/${id}`, {
-                    method: 'DELETE'
-                });
-                if (response.ok) {
-                    loadCategories();
-                }
-            } catch (error) {
-                console.error('Error deleting category:', error);
-            }
+            allCategories = allCategories.filter(c => c.id !== id);
+            localStorage.setItem('qr_categories', JSON.stringify(allCategories));
+            renderCategoryOptions();
+            renderCategoriesList();
+            showNotification('Category deleted', 'success');
         }
 
         async function editQuickReply(id) {
             try {
-                let response = await fetchWithAuth(`${API_BASE}/quick-replies-enhanced/${id}`);
-                if (!response.ok) {
-                    response = await fetchWithAuth(`${API_BASE}/quick-replies/${id}`);
-                }
-                
+                const response = await fetchWithAuth(`${API_BASE}/quick-replies/${id}`);
                 if (response.ok) {
                     const result = await response.json();
                     const reply = result.data || result;
@@ -531,17 +520,11 @@
 
         async function deleteQuickReply(id) {
             if (!confirm('Are you sure you want to delete this quick reply?')) return;
-            
+
             try {
-                let response = await fetchWithAuth(`${API_BASE}/quick-replies-enhanced/${id}`, {
+                const response = await fetchWithAuth(`${API_BASE}/quick-replies/${id}`, {
                     method: 'DELETE'
                 });
-                if (!response.ok) {
-                    response = await fetchWithAuth(`${API_BASE}/quick-replies/${id}`, {
-                        method: 'DELETE'
-                    });
-                }
-
                 if (response.ok) {
                     loadQuickReplies();
                     showNotification('Quick reply deleted', 'success');
@@ -582,30 +565,13 @@
             };
 
             try {
-                let url, method;
-                if (id) {
-                    // Try enhanced API first for update
-                    url = `${API_BASE}/quick-replies-enhanced/${id}`;
-                    method = 'PUT';
-                } else {
-                    // Try enhanced API for create
-                    url = `${API_BASE}/quick-replies-enhanced`;
-                    method = 'POST';
-                }
+                const url = id ? `${API_BASE}/quick-replies/${id}` : `${API_BASE}/quick-replies`;
+                const method = id ? 'PUT' : 'POST';
 
-                let response = await fetchWithAuth(url, {
+                const response = await fetchWithAuth(url, {
                     method,
                     body: JSON.stringify(data)
                 });
-
-                // Fallback to original API
-                if (!response.ok) {
-                    url = id ? `${API_BASE}/quick-replies/${id}` : `${API_BASE}/quick-replies`;
-                    response = await fetchWithAuth(url, {
-                        method,
-                        body: JSON.stringify(data)
-                    });
-                }
 
                 if (response.ok) {
                     hideModal();
@@ -627,7 +593,6 @@
         document.getElementById('statusFilter').addEventListener('change', filterAndDisplayQuickReplies);
 
         // Initial load
-        loadCategories();
         loadQuickReplies();
     </script>
 </body>
