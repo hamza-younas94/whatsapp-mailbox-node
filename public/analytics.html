@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Analytics - WhatsApp Mailbox</title>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://whatshub.nexofydigital.com:3000 https://whatshub.nexofydigital.com:3000;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://whatshub.nexofydigital.com:3000 https://whatshub.nexofydigital.com:3000;">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
 <body class="bg-gray-50">
     <script>
@@ -15,160 +16,131 @@
     <script src="/js/navbar.js"></script>
 
     <div class="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        <!-- Time Range Filter -->
+        <!-- Header -->
         <div class="flex justify-between items-center">
-            <h1 class="text-3xl font-bold text-gray-800">📊 Analytics</h1>
+            <h1 class="text-3xl font-bold text-gray-800"><i class="fas fa-chart-line text-blue-500 mr-2"></i>Analytics</h1>
             <div class="flex space-x-2">
-                <select id="timeRange" class="px-4 py-2 border rounded-lg">
+                <select id="timeRange" class="px-4 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     <option value="7">Last 7 days</option>
-                    <option value="30">Last 30 days</option>
+                    <option value="30" selected>Last 30 days</option>
                     <option value="90">Last 90 days</option>
                 </select>
-                <button onclick="exportReport()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
-                    <i class="fas fa-download mr-2"></i>Export
+                <button onclick="exportReport()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition">
+                    <i class="fas fa-download mr-2"></i>Export CSV
                 </button>
             </div>
         </div>
-        <!-- Overview Stats -->
+
+        <!-- KPI Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-white rounded-xl shadow-sm border p-6 hover:shadow-md transition">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-gray-500 text-sm">Total Messages</p>
-                        <p id="totalMessages" class="text-3xl font-bold text-gray-800 mt-2">-</p>
+                        <p class="text-gray-500 text-sm font-medium">Total Messages</p>
+                        <p id="totalMessages" class="text-3xl font-bold text-gray-800 mt-1">-</p>
+                        <div class="flex items-center mt-2 text-sm" id="msgDetail">
+                            <span class="text-blue-600"><i class="fas fa-arrow-up mr-1"></i><span id="sentCount">0</span> sent</span>
+                            <span class="mx-2 text-gray-300">|</span>
+                            <span class="text-green-600"><i class="fas fa-arrow-down mr-1"></i><span id="receivedCount">0</span> received</span>
+                        </div>
                     </div>
-                    <div class="bg-blue-100 p-3 rounded-full">
-                        <i class="fas fa-envelope text-blue-600 text-2xl"></i>
+                    <div class="bg-blue-50 p-3 rounded-xl">
+                        <i class="fas fa-envelope text-blue-500 text-2xl"></i>
                     </div>
                 </div>
-                <p id="messagesChange" class="text-sm text-green-600 mt-2">-</p>
+                <p id="messagesChange" class="text-xs text-gray-400 mt-2">-</p>
             </div>
 
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-white rounded-xl shadow-sm border p-6 hover:shadow-md transition">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-gray-500 text-sm">Response Rate</p>
-                        <p id="responseRate" class="text-3xl font-bold text-gray-800 mt-2">-</p>
+                        <p class="text-gray-500 text-sm font-medium">Response Rate</p>
+                        <p id="responseRate" class="text-3xl font-bold text-gray-800 mt-1">-</p>
                     </div>
-                    <div class="bg-green-100 p-3 rounded-full">
-                        <i class="fas fa-reply text-green-600 text-2xl"></i>
+                    <div class="bg-green-50 p-3 rounded-xl">
+                        <i class="fas fa-reply text-green-500 text-2xl"></i>
                     </div>
                 </div>
-                <p id="responseChange" class="text-sm text-green-600 mt-2">-</p>
+                <p id="responseChange" class="text-xs text-gray-400 mt-2">-</p>
             </div>
 
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-white rounded-xl shadow-sm border p-6 hover:shadow-md transition">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-gray-500 text-sm">Avg Response Time</p>
-                        <p id="avgResponseTime" class="text-3xl font-bold text-gray-800 mt-2">-</p>
+                        <p class="text-gray-500 text-sm font-medium">Avg Response Time</p>
+                        <p id="avgResponseTime" class="text-3xl font-bold text-gray-800 mt-1">-</p>
                     </div>
-                    <div class="bg-yellow-100 p-3 rounded-full">
-                        <i class="fas fa-clock text-yellow-600 text-2xl"></i>
+                    <div class="bg-yellow-50 p-3 rounded-xl">
+                        <i class="fas fa-clock text-yellow-500 text-2xl"></i>
                     </div>
                 </div>
-                <p id="timeChange" class="text-sm text-green-600 mt-2">-</p>
+                <p id="timeChange" class="text-xs text-gray-400 mt-2">-</p>
             </div>
 
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-white rounded-xl shadow-sm border p-6 hover:shadow-md transition">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-gray-500 text-sm">Active Contacts</p>
-                        <p id="activeContacts" class="text-3xl font-bold text-gray-800 mt-2">-</p>
+                        <p class="text-gray-500 text-sm font-medium">Active Contacts</p>
+                        <p id="activeContacts" class="text-3xl font-bold text-gray-800 mt-1">-</p>
                     </div>
-                    <div class="bg-purple-100 p-3 rounded-full">
-                        <i class="fas fa-users text-purple-600 text-2xl"></i>
+                    <div class="bg-purple-50 p-3 rounded-xl">
+                        <i class="fas fa-users text-purple-500 text-2xl"></i>
                     </div>
                 </div>
-                <p id="contactsChange" class="text-sm text-green-600 mt-2">-</p>
+                <p id="contactsChange" class="text-xs text-gray-400 mt-2">-</p>
             </div>
         </div>
 
-        <!-- Charts Row -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Message Volume Chart -->
-            <div class="bg-white rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Message Volume</h3>
-                <div id="messageVolumeChart" class="h-64 flex items-center justify-center text-gray-400">
-                    <i class="fas fa-chart-line text-4xl"></i>
+        <!-- Charts Row 1: Trends + Types -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Message Trends (Sent vs Received) -->
+            <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Message Trends</h3>
+                <div class="h-72">
+                    <canvas id="trendsChart"></canvas>
                 </div>
             </div>
 
-            <!-- Message Types -->
-            <div class="bg-white rounded-lg shadow p-6">
+            <!-- Message Types Doughnut -->
+            <div class="bg-white rounded-xl shadow-sm border p-6">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4">Message Types</h3>
-                <div id="messageTypesChart" class="space-y-3">
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-600">Text</span>
-                        <div class="flex items-center space-x-2">
-                            <div class="w-32 bg-gray-200 rounded-full h-2">
-                                <div class="bg-blue-500 h-2 rounded-full" style="width: 0%"></div>
-                            </div>
-                            <span class="text-gray-800 font-semibold w-12">0</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-600">Image</span>
-                        <div class="flex items-center space-x-2">
-                            <div class="w-32 bg-gray-200 rounded-full h-2">
-                                <div class="bg-green-500 h-2 rounded-full" style="width: 0%"></div>
-                            </div>
-                            <span class="text-gray-800 font-semibold w-12">0</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-600">Document</span>
-                        <div class="flex items-center space-x-2">
-                            <div class="w-32 bg-gray-200 rounded-full h-2">
-                                <div class="bg-yellow-500 h-2 rounded-full" style="width: 0%"></div>
-                            </div>
-                            <span class="text-gray-800 font-semibold w-12">0</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-600">Other</span>
-                        <div class="flex items-center space-x-2">
-                            <div class="w-32 bg-gray-200 rounded-full h-2">
-                                <div class="bg-purple-500 h-2 rounded-full" style="width: 0%"></div>
-                            </div>
-                            <span class="text-gray-800 font-semibold w-12">0</span>
-                        </div>
-                    </div>
+                <div class="h-72 flex items-center justify-center">
+                    <canvas id="typesChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- Campaigns Performance -->
-        <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Campaign Performance</h3>
-            <div id="campaignsTable" class="overflow-x-auto">
-                <table class="w-full">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Campaign</th>
-                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Sent</th>
-                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Delivered</th>
-                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Read</th>
-                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Delivery Rate</th>
-                        </tr>
-                    </thead>
-                    <tbody id="campaignsBody" class="divide-y">
-                        <tr>
-                            <td colspan="5" class="px-4 py-8 text-center text-gray-500">
-                                <i class="fas fa-spinner fa-spin mr-2"></i>Loading campaigns...
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+        <!-- Charts Row 2: Top Contacts + Campaigns -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Top Contacts Bar Chart -->
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Most Active Contacts</h3>
+                <div class="h-80">
+                    <canvas id="contactsChart"></canvas>
+                </div>
             </div>
-        </div>
 
-        <!-- Top Contacts -->
-        <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Most Active Contacts</h3>
-            <div id="topContacts" class="space-y-3">
-                <div class="text-center text-gray-500 py-4">
-                    <i class="fas fa-spinner fa-spin mr-2"></i>Loading contacts...
+            <!-- Campaign Performance -->
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Campaign Performance</h3>
+                <div id="campaignsTable" class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Campaign</th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Sent</th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Delivered</th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody id="campaignsBody" class="divide-y">
+                            <tr>
+                                <td colspan="4" class="px-4 py-8 text-center text-gray-400">
+                                    <i class="fas fa-spinner fa-spin mr-2"></i>Loading...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -176,7 +148,10 @@
 
     <script>
         const API_BASE = window.location.origin + '/api/v1';
-        
+        let trendsChart = null;
+        let typesChart = null;
+        let contactsChart = null;
+
         async function fetchWithAuth(url, options = {}) {
             const token = localStorage.getItem('authToken');
             const headers = {
@@ -192,16 +167,26 @@
             return response;
         }
 
+        // ---- DATA LOADING ----
+
         async function loadAnalytics() {
             const days = document.getElementById('timeRange').value;
-            const response = await fetchWithAuth(`${API_BASE}/analytics/overview?days=${days}`);
+            const [overviewRes, trendsRes] = await Promise.all([
+                fetchWithAuth(`${API_BASE}/analytics/overview?days=${days}`),
+                fetchWithAuth(`${API_BASE}/analytics/trends?days=${days}`)
+            ]);
 
-            if (response.ok) {
-                const json = await response.json();
+            if (overviewRes.ok) {
+                const json = await overviewRes.json();
                 const data = json.data || json;
                 displayOverview(data);
-                displayMessageTypes(data.messagesByType || []);
-                displayMessageVolume(data.messagesByDay || []);
+                renderTypesChart(data.messagesByType || []);
+            }
+
+            if (trendsRes.ok) {
+                const json = await trendsRes.json();
+                const data = json.data || json;
+                renderTrendsChart(Array.isArray(data) ? data : []);
             }
         }
 
@@ -214,20 +199,23 @@
         }
 
         async function loadTopContacts() {
-            const response = await fetchWithAuth(`${API_BASE}/analytics/top-contacts`);
+            const response = await fetchWithAuth(`${API_BASE}/analytics/top-contacts?limit=10`);
             if (response.ok) {
                 const data = await response.json();
-                displayTopContacts(data.data || []);
+                renderContactsChart(data.data || []);
             }
         }
 
+        // ---- KPI DISPLAY ----
+
         function displayOverview(data) {
-            document.getElementById('totalMessages').textContent = data.totalMessages || 0;
+            document.getElementById('totalMessages').textContent = (data.totalMessages || 0).toLocaleString();
+            document.getElementById('sentCount').textContent = (data.sentMessages || 0).toLocaleString();
+            document.getElementById('receivedCount').textContent = (data.receivedMessages || 0).toLocaleString();
             document.getElementById('responseRate').textContent = (data.responseRate || 0) + '%';
             document.getElementById('avgResponseTime').textContent = formatTime(data.avgResponseTime || 0);
-            document.getElementById('activeContacts').textContent = data.activeContacts || 0;
+            document.getElementById('activeContacts').textContent = (data.activeContacts || 0).toLocaleString();
 
-            // Display changes with color coding
             setChangeText('messagesChange', data.messagesChange);
             setChangeText('responseChange', data.responseChange);
             setChangeText('timeChange', data.timeChange);
@@ -238,128 +226,207 @@
             const el = document.getElementById(elementId);
             if (!el) return;
             const v = value || 0;
-            el.textContent = `${v > 0 ? '+' : ''}${v}% from last period`;
-            el.className = v >= 0 ? 'text-sm text-green-600 mt-2' : 'text-sm text-red-600 mt-2';
+            const icon = v > 0 ? 'fa-arrow-up' : v < 0 ? 'fa-arrow-down' : 'fa-minus';
+            const color = v > 0 ? 'text-green-600' : v < 0 ? 'text-red-500' : 'text-gray-400';
+            el.innerHTML = `<span class="${color}"><i class="fas ${icon} mr-1"></i>${Math.abs(v)}% vs previous period</span>`;
         }
 
-        function displayMessageTypes(types) {
-            const container = document.getElementById('messageTypesChart');
-            if (!types || types.length === 0) return;
+        // ---- CHART.JS CHARTS ----
 
-            const colorMap = {
-                TEXT: 'bg-blue-500',
-                IMAGE: 'bg-green-500',
-                DOCUMENT: 'bg-yellow-500',
-                VIDEO: 'bg-red-500',
-                AUDIO: 'bg-indigo-500',
-                PTT: 'bg-indigo-400',
-                STICKER: 'bg-pink-500',
-            };
+        function renderTrendsChart(trends) {
+            const sorted = [...trends].sort((a, b) => a.date.localeCompare(b.date));
+            const labels = sorted.map(t => {
+                const d = new Date(t.date + 'T00:00:00');
+                return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            });
 
-            const total = types.reduce((sum, t) => sum + t.count, 0);
+            const ctx = document.getElementById('trendsChart').getContext('2d');
+            if (trendsChart) trendsChart.destroy();
 
-            container.innerHTML = types.map(t => {
-                const pct = total > 0 ? Math.round((t.count / total) * 100) : 0;
-                const color = colorMap[t.type] || 'bg-purple-500';
-                const label = t.type.charAt(0) + t.type.slice(1).toLowerCase();
-                return `
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-600 w-20">${label}</span>
-                        <div class="flex items-center space-x-2 flex-1 ml-4">
-                            <div class="flex-1 bg-gray-200 rounded-full h-2">
-                                <div class="${color} h-2 rounded-full" style="width: ${pct}%"></div>
-                            </div>
-                            <span class="text-gray-800 font-semibold w-16 text-right">${t.count}</span>
-                        </div>
-                    </div>`;
-            }).join('');
+            trendsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Sent',
+                            data: sorted.map(t => t.sent),
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59,130,246,0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 2,
+                            pointHoverRadius: 5,
+                        },
+                        {
+                            label: 'Received',
+                            data: sorted.map(t => t.received),
+                            borderColor: '#22c55e',
+                            backgroundColor: 'rgba(34,197,94,0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 2,
+                            pointHoverRadius: 5,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { position: 'top', labels: { usePointStyle: true, padding: 15 } },
+                        tooltip: {
+                            backgroundColor: '#1f2937',
+                            titleColor: '#f3f4f6',
+                            bodyColor: '#d1d5db',
+                            padding: 12,
+                            cornerRadius: 8,
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#f3f4f6' }, ticks: { color: '#9ca3af' } },
+                        x: { grid: { display: false }, ticks: { color: '#9ca3af', maxRotation: 45 } }
+                    }
+                }
+            });
         }
 
-        function displayMessageVolume(messagesByDay) {
-            const container = document.getElementById('messageVolumeChart');
-            if (!messagesByDay || messagesByDay.length === 0) {
-                container.innerHTML = '<p class="text-gray-400 text-center">No message data for this period</p>';
+        function renderTypesChart(types) {
+            if (!types || types.length === 0) {
+                document.getElementById('typesChart').parentElement.innerHTML =
+                    '<p class="text-gray-400 text-center">No data</p>';
                 return;
             }
 
-            const maxCount = Math.max(...messagesByDay.map(d => d.count), 1);
-            const sorted = [...messagesByDay].sort((a, b) => a.date.localeCompare(b.date));
+            const colorMap = {
+                TEXT: '#3b82f6',
+                IMAGE: '#22c55e',
+                DOCUMENT: '#eab308',
+                VIDEO: '#ef4444',
+                AUDIO: '#6366f1',
+                PTT: '#8b5cf6',
+                STICKER: '#ec4899',
+            };
 
-            container.innerHTML = '<div class="flex items-end justify-between h-48 gap-1">' +
-                sorted.map(d => {
-                    const heightPct = Math.max((d.count / maxCount) * 100, 4);
-                    const dateLabel = new Date(d.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                    return `
-                        <div class="flex flex-col items-center flex-1" title="${d.date}: ${d.count} messages">
-                            <span class="text-xs text-gray-500 mb-1">${d.count}</span>
-                            <div class="w-full bg-blue-500 rounded-t" style="height: ${heightPct}%"></div>
-                            <span class="text-xs text-gray-400 mt-1 truncate w-full text-center">${dateLabel}</span>
-                        </div>`;
-                }).join('') +
-            '</div>';
+            const labels = types.map(t => t.type.charAt(0) + t.type.slice(1).toLowerCase());
+            const data = types.map(t => t.count);
+            const colors = types.map(t => colorMap[t.type] || '#a855f7');
+
+            const ctx = document.getElementById('typesChart').getContext('2d');
+            if (typesChart) typesChart.destroy();
+
+            typesChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels,
+                    datasets: [{
+                        data,
+                        backgroundColor: colors,
+                        borderWidth: 2,
+                        borderColor: '#fff',
+                        hoverOffset: 8,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '60%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { usePointStyle: true, padding: 12, font: { size: 11 } }
+                        },
+                        tooltip: {
+                            backgroundColor: '#1f2937',
+                            callbacks: {
+                                label: function(ctx) {
+                                    const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                    const pct = Math.round((ctx.parsed / total) * 100);
+                                    return ` ${ctx.label}: ${ctx.parsed.toLocaleString()} (${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
+
+        function renderContactsChart(contacts) {
+            if (!contacts || contacts.length === 0) {
+                document.getElementById('contactsChart').parentElement.innerHTML =
+                    '<p class="text-gray-400 text-center py-8">No contact data</p>';
+                return;
+            }
+
+            const labels = contacts.map(c => (c.name || c.phoneNumber).substring(0, 20));
+            const data = contacts.map(c => c.messageCount);
+
+            const ctx = document.getElementById('contactsChart').getContext('2d');
+            if (contactsChart) contactsChart.destroy();
+
+            contactsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Messages',
+                        data,
+                        backgroundColor: 'rgba(34,197,94,0.7)',
+                        borderColor: '#22c55e',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { backgroundColor: '#1f2937' }
+                    },
+                    scales: {
+                        x: { beginAtZero: true, grid: { color: '#f3f4f6' }, ticks: { color: '#9ca3af' } },
+                        y: { grid: { display: false }, ticks: { color: '#374151', font: { size: 11 } } }
+                    }
+                }
+            });
+        }
+
+        // ---- CAMPAIGNS TABLE ----
 
         function displayCampaigns(campaigns) {
             const tbody = document.getElementById('campaignsBody');
             if (campaigns.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="px-4 py-8 text-center text-gray-500">
-                            No campaign data available
+                tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-8 text-center text-gray-400">No campaigns yet</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = campaigns.map(c => {
+                const rate = c.sentCount ? Math.round((c.deliveredCount / c.sentCount) * 100) : 0;
+                const rateColor = rate >= 90 ? 'text-green-600' : rate >= 70 ? 'text-yellow-600' : 'text-red-500';
+                return `
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-4 py-3 text-gray-800 font-medium">${c.name}</td>
+                        <td class="px-4 py-3 text-gray-600 text-right">${(c.sentCount || 0).toLocaleString()}</td>
+                        <td class="px-4 py-3 text-gray-600 text-right">${(c.deliveredCount || 0).toLocaleString()}</td>
+                        <td class="px-4 py-3 text-right">
+                            <span class="${rateColor} font-semibold">${rate}%</span>
                         </td>
-                    </tr>
-                `;
-                return;
-            }
-
-            tbody.innerHTML = campaigns.map(campaign => `
-                <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-3 text-gray-800">${campaign.name}</td>
-                    <td class="px-4 py-3 text-gray-600">${campaign.sentCount || 0}</td>
-                    <td class="px-4 py-3 text-gray-600">${campaign.deliveredCount || 0}</td>
-                    <td class="px-4 py-3 text-gray-600">${campaign.readCount || 0}</td>
-                    <td class="px-4 py-3">
-                        <span class="text-green-600 font-semibold">
-                            ${calculateRate(campaign.deliveredCount, campaign.sentCount)}%
-                        </span>
-                    </td>
-                </tr>
-            `).join('');
+                    </tr>`;
+            }).join('');
         }
 
-        function displayTopContacts(contacts) {
-            const container = document.getElementById('topContacts');
-            if (contacts.length === 0) {
-                container.innerHTML = '<p class="text-center text-gray-500 py-4">No contact data available</p>';
-                return;
-            }
-
-            container.innerHTML = contacts.map(contact => `
-                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div class="flex items-center space-x-3">
-                        <div class="bg-green-100 w-10 h-10 rounded-full flex items-center justify-center">
-                            <i class="fas fa-user text-green-600"></i>
-                        </div>
-                        <div>
-                            <p class="font-semibold text-gray-800">${contact.name || contact.phoneNumber}</p>
-                            <p class="text-sm text-gray-500">${contact.messageCount || 0} messages</p>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
+        // ---- HELPERS ----
 
         function formatTime(seconds) {
             if (seconds < 60) return `${seconds}s`;
             const minutes = Math.floor(seconds / 60);
             if (minutes < 60) return `${minutes}m`;
             const hours = Math.floor(minutes / 60);
-            return `${hours}h`;
-        }
-
-        function calculateRate(delivered, sent) {
-            if (!sent) return 0;
-            return Math.round((delivered / sent) * 100);
+            const mins = minutes % 60;
+            return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
         }
 
         async function exportReport() {
@@ -370,15 +437,19 @@
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `analytics-report-${Date.now()}.csv`;
+                a.download = `analytics-${days}d-${new Date().toISOString().slice(0,10)}.csv`;
                 a.click();
+                window.URL.revokeObjectURL(url);
             }
         }
 
-        // Event listeners
-        document.getElementById('timeRange').addEventListener('change', loadAnalytics);
+        // ---- INIT ----
 
-        // Initial load
+        document.getElementById('timeRange').addEventListener('change', () => {
+            loadAnalytics();
+            loadTopContacts();
+        });
+
         loadAnalytics();
         loadCampaigns();
         loadTopContacts();
