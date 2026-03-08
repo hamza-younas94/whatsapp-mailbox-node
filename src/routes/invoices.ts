@@ -66,7 +66,7 @@ router.get('/:id/payments', controller.getPayments);
 // PDF Download
 router.get('/:id/pdf', async (req, res) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.user!.id;
     const invoice = await prisma.invoice.findFirst({
       where: { id: req.params.id, userId },
       include: {
@@ -180,7 +180,7 @@ router.get('/:id/pdf', async (req, res) => {
 // Send Invoice via WhatsApp (PDF + caption)
 router.post('/:id/send', async (req, res) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.user!.id;
     const invoice = await prisma.invoice.findFirst({
       where: { id: req.params.id, userId },
       include: {
