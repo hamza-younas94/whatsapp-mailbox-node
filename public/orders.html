@@ -357,8 +357,8 @@
                 const response = await fetchWithAuth(`${API_BASE}/orders?${params}`);
                 if (response.ok) {
                     const data = await response.json();
-                    const orders = data.data?.data || data.data || [];
-                    const pagination = data.data || data;
+                    const orders = data.items || data.data || [];
+                    const pagination = data.pagination || data;
                     displayOrders(orders);
                     displayPagination(pagination);
                     updateStats(orders, pagination);

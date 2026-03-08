@@ -390,8 +390,8 @@
                 const response = await fetchWithAuth(`${API_BASE}/expenses?${params}`);
                 if (response.ok) {
                     const result = await response.json();
-                    const expenses = result.data?.data || result.data || [];
-                    const pagination = result.data || result;
+                    const expenses = result.items || result.data || [];
+                    const pagination = result.pagination || result;
                     displayExpenses(expenses);
                     displayPagination(pagination);
                     updateStats(expenses, pagination);

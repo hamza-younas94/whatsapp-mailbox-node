@@ -437,8 +437,8 @@
                 const response = await fetchWithAuth(`${API_BASE}/invoices?${params}`);
                 if (response.ok) {
                     const data = await response.json();
-                    const invoices = data.data?.data || data.data || [];
-                    const meta = data.data || data;
+                    const invoices = data.items || data.data || [];
+                    const meta = data.pagination || data;
                     displayInvoices(invoices);
                     displayPagination(meta, invoices);
                     updateStats(invoices, meta);

@@ -442,7 +442,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
     if (!contactId) return;
     try {
       const { data } = await api.get(`/orders?contactId=${contactId}`);
-      setOrders((data.data?.data || data.data || []).slice(0, 10));
+      setOrders((data.items || data.data?.items || data.data || []).slice(0, 10));
     } catch {
       // Failed to load orders
     }
@@ -452,7 +452,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
     if (!contactId) return;
     try {
       const { data } = await api.get(`/tasks?contactId=${contactId}`);
-      setTasks((data.data?.data || data.data || []).slice(0, 10));
+      setTasks((data.items || data.data?.items || data.data || []).slice(0, 10));
     } catch {
       // Failed to load tasks
     }
@@ -578,7 +578,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
     if (!contactId) return;
     try {
       const { data } = await api.get(`/appointments?contactId=${contactId}`);
-      setAppointments((data.data?.items || data.data || []).slice(0, 10));
+      setAppointments((data.items || data.data?.items || data.data || []).slice(0, 10));
     } catch { /* Failed */ }
   };
 
@@ -611,7 +611,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
     if (!contactId) return;
     try {
       const { data } = await api.get(`/invoices?contactId=${contactId}`);
-      setInvoices((data.data?.items || data.data || []).slice(0, 10));
+      setInvoices((data.items || data.data?.items || data.data || []).slice(0, 10));
     } catch { /* Failed */ }
   };
 

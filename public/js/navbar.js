@@ -6,7 +6,7 @@ function createNavbar() {
 
     const coreItems = [
         { label: 'Dashboard', href: '/dashboard.html', icon: 'fa-tachometer-alt' },
-        { label: 'Messages', href: '/messages.html', icon: 'fa-comments' },
+        { label: 'Mailbox', href: '/', icon: 'fa-inbox' },
         { label: 'Contacts', href: '/contacts.html', icon: 'fa-address-book' },
         { label: 'Quick Replies', href: '/quick-replies.html', icon: 'fa-bolt' },
     ];
@@ -37,7 +37,7 @@ function createNavbar() {
         { label: 'Analytics', href: '/analytics.html', icon: 'fa-chart-line' },
     ];
 
-    const isActive = (href) => currentPath === href || currentPath.endsWith(href);
+    const isActive = (href) => href === '/' ? currentPath === '/' : (currentPath === href || currentPath.endsWith(href));
     const isDropdownActive = (items) => items.some(item => isActive(item.href));
 
     const makeLink = (item) => `

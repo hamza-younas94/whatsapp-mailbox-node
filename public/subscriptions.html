@@ -321,8 +321,8 @@
                 const response = await fetchWithAuth(`${API_BASE}/customer-subscriptions?${params}`);
                 if (response.ok) {
                     const result = await response.json();
-                    allSubscriptions = result.data?.data || result.data || [];
-                    totalRecords = result.data?.total || result.total || allSubscriptions.length;
+                    allSubscriptions = result.items || result.data || [];
+                    totalRecords = result.pagination?.total || result.total || allSubscriptions.length;
                     totalPages = Math.ceil(totalRecords / PAGE_LIMIT) || 1;
                     updateStats();
                     displaySubscriptions(allSubscriptions);

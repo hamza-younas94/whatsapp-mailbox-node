@@ -352,9 +352,9 @@
                 const response = await fetchWithAuth(`${API_BASE}/products?${params}`);
                 if (response.ok) {
                     const result = await response.json();
-                    const products = result.data?.data || result.data || [];
+                    const products = result.items || result.data || [];
                     allProducts = Array.isArray(products) ? products : [];
-                    const meta = result.data || result;
+                    const meta = result.pagination || result;
                     totalPages = Math.ceil((meta.total || allProducts.length) / PAGE_LIMIT);
                     updateStats(meta);
                     extractCategories(allProducts);
@@ -700,7 +700,7 @@
                 const response = await fetchWithAuth(`${API_BASE}/products/${productId}/inventory`);
                 if (response.ok) {
                     const result = await response.json();
-                    const transactions = result.data?.data || result.data || [];
+                    const transactions = result.items || result.data || [];
                     displayInventoryHistory(Array.isArray(transactions) ? transactions : []);
                 } else {
                     container.innerHTML = '<p class="text-gray-400 text-center py-4">No inventory history found</p>';
