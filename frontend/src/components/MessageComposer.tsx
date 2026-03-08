@@ -32,6 +32,14 @@ const formatShortcut = (value?: string | null) => {
   return normalized ? `/${normalized}` : '';
 };
 
+const EMOJI_CATEGORIES: { label: string; icon: string; emojis: string[] }[] = [
+  { label: 'Smileys', icon: '😀', emojis: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😊','😇','🥰','😍','🤩','😘','😗','😚','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','😐','😑','😶','😏','😒','🙄','😬','😮‍💨','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🥵','🥶','🥴','😵','🤯','🤠','🥳','🥸','😎','🤓','🧐','😕','😟','🙁','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱'] },
+  { label: 'Gestures', icon: '👋', emojis: ['👋','🤚','🖐','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','💪','🦾'] },
+  { label: 'Hearts', icon: '❤️', emojis: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❤️‍🔥','❤️‍🩹','💕','💞','💓','💗','💖','💘','💝','💟'] },
+  { label: 'Objects', icon: '📦', emojis: ['📱','💻','⌨️','🖥','🖨','📷','📸','📹','🎥','📞','☎️','📟','📠','📺','📻','🎙','🎚','🎛','⏱','⏲','⏰','🕰','📡','🔋','🔌','💡','🔦','📁','📂','📄','📃','📑','🗂','📅','📆','📇','🗃','🗄','📊','📈','📉','✏️','✒️','🖋','🖊','🖌','🖍','📝','💼','📌','📍','📎','🔗','📏','📐','✂️','🗑'] },
+  { label: 'Symbols', icon: '✅', emojis: ['✅','❌','❓','❗','‼️','⁉️','💯','🔴','🟠','🟡','🟢','🔵','🟣','⚫','⚪','🟤','🔺','🔻','💠','🔘','🏁','🚩','🎌','🏴','🏳️','✔️','☑️','✖️','➕','➖','➗','♻️','🔃','🔄','🔙','🔚','🔛','🔜','🔝'] },
+];
+
 export const MessageComposer: React.FC<MessageComposerProps> = ({ onSend, isLoading = false, disabled = false }) => {
   const [content, setContent] = useState('');
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
@@ -42,12 +50,15 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ onSend, isLoad
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [emojiCategory, setEmojiCategory] = useState(0);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
 
   // Load quick replies on mount
   useEffect(() => {
@@ -253,6 +264,35 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ onSend, isLoad
     }
   };
 
+  // Close emoji picker on outside click
+  useEffect(() => {
+    if (!showEmojiPicker) return;
+    const handleClick = (e: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showEmojiPicker]);
+
+  const insertEmoji = (emoji: string) => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newContent = content.slice(0, start) + emoji + content.slice(end);
+      setContent(newContent);
+      // Restore cursor after emoji
+      requestAnimationFrame(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
+        textarea.focus();
+      });
+    } else {
+      setContent(prev => prev + emoji);
+    }
+  };
+
   const insertQuickReply = (reply: QuickReply) => {
     const words = content.split(' ');
     words.pop(); // Remove the /shortcut
@@ -378,6 +418,45 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ onSend, isLoad
           className="input-field"
           rows={1}
         />
+
+        <div className="emoji-picker-wrapper" ref={emojiPickerRef}>
+          <button
+            className="emoji-btn"
+            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            disabled={disabled || isLoading || isRecording}
+            title="Emoji"
+          >
+            😊
+          </button>
+
+          {showEmojiPicker && (
+            <div className="emoji-picker-panel">
+              <div className="emoji-tabs">
+                {EMOJI_CATEGORIES.map((cat, i) => (
+                  <button
+                    key={cat.label}
+                    className={`emoji-tab ${i === emojiCategory ? 'active' : ''}`}
+                    onClick={() => setEmojiCategory(i)}
+                    title={cat.label}
+                  >
+                    {cat.icon}
+                  </button>
+                ))}
+              </div>
+              <div className="emoji-grid">
+                {EMOJI_CATEGORIES[emojiCategory].emojis.map((emoji) => (
+                  <button
+                    key={emoji}
+                    className="emoji-item"
+                    onClick={() => insertEmoji(emoji)}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
         <button
           className="send-btn"
