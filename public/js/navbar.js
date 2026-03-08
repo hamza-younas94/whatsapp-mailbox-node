@@ -5,6 +5,7 @@ function createNavbar() {
     const currentPath = window.location.pathname;
 
     const coreItems = [
+        { label: 'Dashboard', href: '/dashboard.html', icon: 'fa-tachometer-alt' },
         { label: 'Messages', href: '/messages.html', icon: 'fa-comments' },
         { label: 'Contacts', href: '/contacts.html', icon: 'fa-address-book' },
         { label: 'Quick Replies', href: '/quick-replies.html', icon: 'fa-bolt' },
@@ -90,7 +91,7 @@ function createNavbar() {
             <div class="max-w-full mx-auto px-4">
                 <div class="flex items-center justify-between py-3">
                     <!-- Logo -->
-                    <a href="/" class="flex items-center space-x-2 flex-shrink-0">
+                    <a href="/dashboard.html" class="flex items-center space-x-2 flex-shrink-0">
                         <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
                             <i class="fab fa-whatsapp text-white text-xl"></i>
                         </div>
