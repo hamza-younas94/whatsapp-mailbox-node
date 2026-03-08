@@ -157,13 +157,13 @@ export class AnalyticsService implements IAnalyticsService {
       // Get recent incoming messages and their first outgoing reply
       const result = await this.prisma.$queryRaw<Array<{ avg_seconds: number | null }>>`
         SELECT AVG(reply_time) as avg_seconds FROM (
-          SELECT TIMESTAMPDIFF(SECOND, inc.createdAt, MIN(out.createdAt)) as reply_time
+          SELECT TIMESTAMPDIFF(SECOND, inc.createdAt, MIN(rpl.createdAt)) as reply_time
           FROM Message inc
-          INNER JOIN Message out ON out.userId = inc.userId
-            AND out.contactId = inc.contactId
-            AND out.direction = 'OUTGOING'
-            AND out.createdAt > inc.createdAt
-            AND out.createdAt < DATE_ADD(inc.createdAt, INTERVAL 24 HOUR)
+          INNER JOIN Message rpl ON rpl.userId = inc.userId
+            AND rpl.contactId = inc.contactId
+            AND rpl.direction = 'OUTGOING'
+            AND rpl.createdAt > inc.createdAt
+            AND rpl.createdAt < DATE_ADD(inc.createdAt, INTERVAL 24 HOUR)
           WHERE inc.userId = ${userId}
             AND inc.direction = 'INCOMING'
             AND inc.createdAt >= ${since}
