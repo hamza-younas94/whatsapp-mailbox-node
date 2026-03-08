@@ -70,7 +70,7 @@
                 if (response.ok) {
                     localStorage.setItem('authToken', data.data.token);
                     localStorage.setItem('user', JSON.stringify(data.data.user));
-                    window.location.href = '/';
+                    window.location.href = '/dashboard.html';
                 } else {
                     errorDiv.textContent = data.error?.message || 'Login failed';
                     errorDiv.classList.remove('hidden');
@@ -83,7 +83,7 @@
 
         // Redirect if already logged in
         if (localStorage.getItem('authToken')) {
-            window.location.href = '/';
+            window.location.href = '/dashboard.html';
         }
     </script>
 </body>

@@ -48,7 +48,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
   const [transactions, setTransactions] = useState<Array<{ id: string; amount: number; description: string; status: string; createdAt: string }>>([]);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [newTransaction, setNewTransaction] = useState({ amount: '', description: '', status: 'pending' });
-  const [activeTab, setActiveTab] = useState<'overview' | 'info' | 'notes' | 'transactions' | 'orders' | 'tasks' | 'automations'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'info' | 'notes' | 'transactions' | 'orders' | 'tasks' | 'appointments' | 'invoices' | 'automations'>('overview');
   const [automations, setAutomations] = useState<Array<{ id: string; name: string; isActive: boolean }>>([]);
   const [allTags, setAllTags] = useState<Array<{ id: string; name: string; color?: string }>>([]);
   const [showTagSuggestions, setShowTagSuggestions] = useState(false);
@@ -65,6 +65,13 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
   const [editNoteContent, setEditNoteContent] = useState('');
   const [editingTx, setEditingTx] = useState<string | null>(null);
   const [editTxForm, setEditTxForm] = useState({ amount: '', description: '', status: '' });
+  const [appointments, setAppointments] = useState<Array<{ id: string; title: string; appointmentDate: string; duration: number; location?: string; status: string; description?: string }>>([]);
+  const [showAppointmentForm, setShowAppointmentForm] = useState(false);
+  const [appointmentForm, setAppointmentForm] = useState({ title: '', appointmentDate: '', duration: 30, location: '', description: '' });
+  const [invoices, setInvoices] = useState<Array<{ id: string; invoiceNumber: string; status: string; totalAmount: number; dueDate?: string; createdAt: string }>>([]);
+  const [showInvoiceForm, setShowInvoiceForm] = useState(false);
+  const [invoiceForm, setInvoiceForm] = useState({ dueDate: '', notes: '' });
+  const [invoiceItems, setInvoiceItems] = useState([{ description: '', quantity: 1, unitPrice: 0 }]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Message[] | null>(null);
@@ -261,6 +268,8 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
       loadContactAutomations();
       loadContactOrders();
       loadContactTasks();
+      loadContactAppointments();
+      loadContactInvoices();
     }
   }, [contactId, showContactInfo]);
 
@@ -274,6 +283,8 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
       else if (event.startsWith('order:')) loadContactOrders();
       else if (event.startsWith('transaction:')) loadContactTransactions();
       else if (event.startsWith('tag:')) loadContactTags();
+      else if (event.startsWith('appointment:')) loadContactAppointments();
+      else if (event.startsWith('invoice:')) loadContactInvoices();
     });
     return unsubscribe;
   }, [contactId, showContactInfo]);
@@ -562,6 +573,77 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
     return cycle[current] || 'TASK_PENDING';
   };
 
+  // === Appointments CRUD ===
+  const loadContactAppointments = async () => {
+    if (!contactId) return;
+    try {
+      const { data } = await api.get(`/appointments?contactId=${contactId}`);
+      setAppointments((data.data?.items || data.data || []).slice(0, 10));
+    } catch { /* Failed */ }
+  };
+
+  const handleCreateAppointment = async () => {
+    if (!appointmentForm.title.trim() || !appointmentForm.appointmentDate || !contactId) return;
+    try {
+      const { data } = await api.post('/appointments', {
+        contactId,
+        title: appointmentForm.title,
+        appointmentDate: new Date(appointmentForm.appointmentDate).toISOString(),
+        duration: appointmentForm.duration,
+        location: appointmentForm.location || undefined,
+        description: appointmentForm.description || undefined,
+      });
+      setAppointments(prev => [data.data || data, ...prev]);
+      setAppointmentForm({ title: '', appointmentDate: '', duration: 30, location: '', description: '' });
+      setShowAppointmentForm(false);
+    } catch { /* Failed */ }
+  };
+
+  const handleDeleteAppointment = async (id: string) => {
+    try {
+      await api.delete(`/appointments/${id}`);
+      setAppointments(prev => prev.filter(a => a.id !== id));
+    } catch { /* Failed */ }
+  };
+
+  // === Invoices CRUD ===
+  const loadContactInvoices = async () => {
+    if (!contactId) return;
+    try {
+      const { data } = await api.get(`/invoices?contactId=${contactId}`);
+      setInvoices((data.data?.items || data.data || []).slice(0, 10));
+    } catch { /* Failed */ }
+  };
+
+  const handleCreateInvoice = async () => {
+    if (!contactId || invoiceItems.every(i => !i.description.trim())) return;
+    try {
+      const validItems = invoiceItems.filter(i => i.description.trim());
+      const { data } = await api.post('/invoices', {
+        contactId,
+        dueDate: invoiceForm.dueDate ? new Date(invoiceForm.dueDate).toISOString() : undefined,
+        notes: invoiceForm.notes || undefined,
+        items: validItems.map(i => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice })),
+      });
+      setInvoices(prev => [data.data || data, ...prev]);
+      setInvoiceForm({ dueDate: '', notes: '' });
+      setInvoiceItems([{ description: '', quantity: 1, unitPrice: 0 }]);
+      setShowInvoiceForm(false);
+    } catch { /* Failed */ }
+  };
+
+  const handleDownloadInvoicePdf = async (invoiceId: string, invoiceNumber: string) => {
+    try {
+      const response = await api.get(`/invoices/${invoiceId}/pdf`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${invoiceNumber || 'invoice'}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch { /* Failed */ }
+  };
+
   // Filter tag suggestions based on input
   const filteredSuggestions = newTag.trim()
     ? allTags.filter((t) => {
@@ -763,6 +845,12 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
               <button className={`modal-tab ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>
                 <span className="tab-icon">✅</span><span className="tab-label">Tasks</span>
               </button>
+              <button className={`modal-tab ${activeTab === 'appointments' ? 'active' : ''}`} onClick={() => setActiveTab('appointments')}>
+                <span className="tab-icon">📅</span><span className="tab-label">Appts</span>
+              </button>
+              <button className={`modal-tab ${activeTab === 'invoices' ? 'active' : ''}`} onClick={() => setActiveTab('invoices')}>
+                <span className="tab-icon">🧾</span><span className="tab-label">Invoices</span>
+              </button>
               <button className={`modal-tab ${activeTab === 'automations' ? 'active' : ''}`} onClick={() => setActiveTab('automations')}>
                 <span className="tab-icon">⚡</span><span className="tab-label">Auto</span>
               </button>
@@ -793,6 +881,16 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                       <div className="overview-value">{notes.length}</div>
                       <div className="overview-label">Notes</div>
                     </div>
+                    <div className="overview-card" onClick={() => setActiveTab('appointments')}>
+                      <div className="overview-card-icon">📅</div>
+                      <div className="overview-value">{appointments.filter(a => a.status === 'SCHEDULED').length}</div>
+                      <div className="overview-label">Upcoming</div>
+                    </div>
+                    <div className="overview-card" onClick={() => setActiveTab('invoices')}>
+                      <div className="overview-card-icon">🧾</div>
+                      <div className="overview-value">{invoices.filter(i => i.status !== 'PAID' && i.status !== 'CANCELLED').length}</div>
+                      <div className="overview-label">Unpaid</div>
+                    </div>
                   </div>
 
                   <div className="section-header">
@@ -818,6 +916,8 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                     <button onClick={() => setActiveTab('transactions')} className="quick-link-card">💰 Sales</button>
                     <button onClick={() => setActiveTab('notes')} className="quick-link-card">📝 Notes</button>
                     <button onClick={() => setActiveTab('info')} className="quick-link-card">🏷️ Tags</button>
+                    <button onClick={() => setActiveTab('appointments')} className="quick-link-card">📅 Appts</button>
+                    <button onClick={() => setActiveTab('invoices')} className="quick-link-card">🧾 Invoices</button>
                     <button onClick={() => setActiveTab('automations')} className="quick-link-card">⚡ Automation</button>
                   </div>
                 </div>
@@ -1132,6 +1232,121 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                                 <span className="task-due">Due: {new Date(task.dueDate).toLocaleDateString()}</span>
                               )}
                               <button className="btn-task-delete" onClick={() => handleDeleteTask(task.id)} title="Delete">🗑️</button>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Appointments Tab */}
+              {activeTab === 'appointments' && (
+                <div className="modal-section">
+                  <div className="section-header">
+                    <h4>Appointments</h4>
+                    <button className="btn-primary-small" onClick={() => setShowAppointmentForm(!showAppointmentForm)}>
+                      {showAppointmentForm ? '- Cancel' : '+ New'}
+                    </button>
+                  </div>
+
+                  {showAppointmentForm && (
+                    <div className="inline-form">
+                      <input type="text" placeholder="Appointment title" value={appointmentForm.title} onChange={e => setAppointmentForm(p => ({ ...p, title: e.target.value }))} />
+                      <div className="inline-form-row">
+                        <input type="datetime-local" value={appointmentForm.appointmentDate} onChange={e => setAppointmentForm(p => ({ ...p, appointmentDate: e.target.value }))} />
+                        <input type="number" placeholder="Min" min={5} step={5} style={{ width: 70 }} value={appointmentForm.duration} onChange={e => setAppointmentForm(p => ({ ...p, duration: parseInt(e.target.value) || 30 }))} />
+                      </div>
+                      <input type="text" placeholder="Location (optional)" value={appointmentForm.location} onChange={e => setAppointmentForm(p => ({ ...p, location: e.target.value }))} />
+                      <textarea placeholder="Description (optional)" value={appointmentForm.description} onChange={e => setAppointmentForm(p => ({ ...p, description: e.target.value }))} rows={2} />
+                      <div className="form-actions">
+                        <button className="btn-inline-save" onClick={handleCreateAppointment} disabled={!appointmentForm.title.trim() || !appointmentForm.appointmentDate}>Schedule</button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="appointments-list-container">
+                    {appointments.length === 0 && !showAppointmentForm ? (
+                      <div className="empty-state-small">
+                        <span>📅</span>
+                        <p>No appointments yet</p>
+                        <button onClick={() => setShowAppointmentForm(true)}>Schedule First</button>
+                      </div>
+                    ) : (
+                      appointments.map((appt) => (
+                        <div key={appt.id} className="tx-card">
+                          <div className="tx-card-info" style={{ flex: 1 }}>
+                            <span className="tx-desc" style={{ fontWeight: 600 }}>{appt.title}</span>
+                            <span className={`tx-badge tx-${appt.status}`}>{appt.status}</span>
+                          </div>
+                          <div className="tx-card-date">
+                            <span>{new Date(appt.appointmentDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                            <span style={{ color: '#9ca3af', fontSize: 11 }}>{appt.duration}min{appt.location ? ` · ${appt.location}` : ''}</span>
+                          </div>
+                          <div className="action-buttons">
+                            <button onClick={() => handleDeleteAppointment(appt.id)} title="Delete">🗑️</button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Invoices Tab */}
+              {activeTab === 'invoices' && (
+                <div className="modal-section">
+                  <div className="section-header">
+                    <h4>Invoices</h4>
+                    <button className="btn-primary-small" onClick={() => setShowInvoiceForm(!showInvoiceForm)}>
+                      {showInvoiceForm ? '- Cancel' : '+ New'}
+                    </button>
+                  </div>
+
+                  {showInvoiceForm && (
+                    <div className="inline-form">
+                      <div className="section-header" style={{ marginTop: 0, marginBottom: 4 }}>
+                        <h4 style={{ fontSize: 12 }}>Items</h4>
+                        <button className="btn-inline-add" onClick={() => setInvoiceItems(p => [...p, { description: '', quantity: 1, unitPrice: 0 }])}>+ Item</button>
+                      </div>
+                      {invoiceItems.map((item, i) => (
+                        <div key={i} className="inline-form-row item-row">
+                          <input type="text" placeholder="Description" value={item.description} onChange={e => { const v = e.target.value; setInvoiceItems(p => p.map((it, idx) => idx === i ? { ...it, description: v } : it)); }} />
+                          <input type="number" placeholder="Qty" min={1} style={{ width: 60 }} value={item.quantity} onChange={e => { const v = parseInt(e.target.value) || 1; setInvoiceItems(p => p.map((it, idx) => idx === i ? { ...it, quantity: v } : it)); }} />
+                          <input type="number" placeholder="Price" min={0} style={{ width: 80 }} value={item.unitPrice} onChange={e => { const v = parseFloat(e.target.value) || 0; setInvoiceItems(p => p.map((it, idx) => idx === i ? { ...it, unitPrice: v } : it)); }} />
+                          {invoiceItems.length > 1 && <button className="btn-inline-remove" onClick={() => setInvoiceItems(p => p.filter((_, idx) => idx !== i))}>x</button>}
+                        </div>
+                      ))}
+                      <div className="inline-form-row">
+                        <input type="date" placeholder="Due date" value={invoiceForm.dueDate} onChange={e => setInvoiceForm(p => ({ ...p, dueDate: e.target.value }))} />
+                      </div>
+                      <input type="text" placeholder="Notes (optional)" value={invoiceForm.notes} onChange={e => setInvoiceForm(p => ({ ...p, notes: e.target.value }))} />
+                      <div className="form-actions">
+                        <button className="btn-inline-save" onClick={handleCreateInvoice} disabled={invoiceItems.every(i => !i.description.trim())}>Create Invoice</button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="invoices-list-container">
+                    {invoices.length === 0 && !showInvoiceForm ? (
+                      <div className="empty-state-small">
+                        <span>🧾</span>
+                        <p>No invoices yet</p>
+                        <button onClick={() => setShowInvoiceForm(true)}>Create First Invoice</button>
+                      </div>
+                    ) : (
+                      invoices.map((inv) => (
+                        <div key={inv.id} className="tx-card">
+                          <div className="tx-card-amount">${(inv.totalAmount || 0).toFixed(2)}</div>
+                          <div className="tx-card-info">
+                            <span className="tx-desc">#{inv.invoiceNumber}</span>
+                            <span className={`tx-badge tx-${inv.status}`}>{inv.status}</span>
+                          </div>
+                          <div className="tx-card-date">
+                            {inv.dueDate ? `Due: ${new Date(inv.dueDate).toLocaleDateString()}` : new Date(inv.createdAt).toLocaleDateString()}
+                            <div className="action-buttons">
+                              <button onClick={() => handleDownloadInvoicePdf(inv.id, inv.invoiceNumber)} title="Download PDF">📄</button>
                             </div>
                           </div>
                         </div>
