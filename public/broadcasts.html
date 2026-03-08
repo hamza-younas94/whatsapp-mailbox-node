@@ -357,12 +357,7 @@
 
         async function loadBroadcasts() {
             try {
-                // Try enhanced API first
-                let response = await fetchWithAuth(`${API_BASE}/broadcasts-enhanced`);
-                if (!response.ok) {
-                    // Fallback to original API
-                    response = await fetchWithAuth(`${API_BASE}/broadcasts`);
-                }
+                const response = await fetchWithAuth(`${API_BASE}/broadcasts`);
                 if (response.ok) {
                     const data = await response.json();
                     allBroadcasts = data.data || [];
@@ -708,25 +703,16 @@
             document.getElementById('submitBtn').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creating...';
 
             try {
-                // Try enhanced API first
-                let response = await fetchWithAuth(`${API_BASE}/broadcasts-enhanced`, {
+                const response = await fetchWithAuth(`${API_BASE}/broadcasts`, {
                     method: 'POST',
                     body: JSON.stringify(data)
                 });
-
-                if (!response.ok) {
-                    // Fallback to original API
-                    response = await fetchWithAuth(`${API_BASE}/broadcasts`, {
-                        method: 'POST',
-                        body: JSON.stringify(data)
-                    });
-                }
 
                 if (response.ok) {
                     const result = await response.json();
                     if (sendNowChecked && result.data?.id) {
                         // Try to send immediately
-                        await fetchWithAuth(`${API_BASE}/broadcasts-enhanced/${result.data.id}/send`, {
+                        await fetchWithAuth(`${API_BASE}/broadcasts/${result.data.id}/send`, {
                             method: 'POST'
                         }).catch(() => {});
                     }
@@ -749,7 +735,7 @@
         async function sendNow(id) {
             if (!confirm('Send this broadcast now?')) return;
             try {
-                const response = await fetchWithAuth(`${API_BASE}/broadcasts-enhanced/${id}/send`, {
+                const response = await fetchWithAuth(`${API_BASE}/broadcasts/${id}/send`, {
                     method: 'POST'
                 });
                 if (response.ok) {
@@ -764,14 +750,9 @@
         async function deleteBroadcast(id) {
             if (!confirm('Are you sure you want to delete this broadcast?')) return;
             try {
-                let response = await fetchWithAuth(`${API_BASE}/broadcasts-enhanced/${id}`, {
-                    method: 'DELETE'
+                const response = await fetchWithAuth(`${API_BASE}/broadcasts/${id}/cancel`, {
+                    method: 'POST'
                 });
-                if (!response.ok) {
-                    response = await fetchWithAuth(`${API_BASE}/broadcasts/${id}`, {
-                        method: 'DELETE'
-                    });
-                }
                 if (response.ok) {
                     loadBroadcasts();
                     showNotification('Broadcast deleted', 'success');
@@ -781,64 +762,51 @@
             }
         }
 
-        async function viewAnalytics(id) {
+        function viewAnalytics(id) {
+            const broadcast = allBroadcasts.find(b => b.id === id);
+            if (!broadcast) return;
+
+            const total = broadcast.recipientCount || 0;
+            const sent = broadcast.sentCount || 0;
+            const failed = broadcast.failedCount || 0;
+            const delivered = sent - failed;
+            const deliveryRate = total > 0 ? Math.round((delivered / total) * 100) : 0;
+            const failureRate = total > 0 ? Math.round((failed / total) * 100) : 0;
+
             document.getElementById('analyticsModal').classList.remove('hidden');
             document.getElementById('analyticsContent').innerHTML = `
-                <div class="flex items-center justify-center py-12">
-                    <i class="fas fa-spinner fa-spin text-4xl text-green-600"></i>
-                </div>
-            `;
-            
-            try {
-                const response = await fetchWithAuth(`${API_BASE}/broadcasts-enhanced/${id}/analytics`);
-                if (response.ok) {
-                    const data = await response.json();
-                    const analytics = data.data || { stats: {}, rates: {} };
-                    document.getElementById('analyticsContent').innerHTML = `
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                            <div class="bg-gray-50 rounded-xl p-4 text-center">
-                                <div class="text-3xl font-bold text-gray-800">${analytics.stats?.total || 0}</div>
-                                <div class="text-sm text-gray-500">Total</div>
-                            </div>
-                            <div class="bg-green-50 rounded-xl p-4 text-center">
-                                <div class="text-3xl font-bold text-green-600">${analytics.stats?.delivered || analytics.stats?.sent || 0}</div>
-                                <div class="text-sm text-gray-500">Delivered</div>
-                            </div>
-                            <div class="bg-blue-50 rounded-xl p-4 text-center">
-                                <div class="text-3xl font-bold text-blue-600">${analytics.stats?.read || 0}</div>
-                                <div class="text-sm text-gray-500">Read</div>
-                            </div>
-                            <div class="bg-red-50 rounded-xl p-4 text-center">
-                                <div class="text-3xl font-bold text-red-600">${analytics.stats?.failed || 0}</div>
-                                <div class="text-sm text-gray-500">Failed</div>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-3 gap-4 bg-gray-50 rounded-xl p-4">
-                            <div class="text-center">
-                                <div class="text-2xl font-bold text-green-600">${analytics.rates?.delivery || 0}%</div>
-                                <div class="text-sm text-gray-500">Delivery Rate</div>
-                            </div>
-                            <div class="text-center">
-                                <div class="text-2xl font-bold text-blue-600">${analytics.rates?.read || 0}%</div>
-                                <div class="text-sm text-gray-500">Read Rate</div>
-                            </div>
-                            <div class="text-center">
-                                <div class="text-2xl font-bold text-red-600">${analytics.rates?.failure || 0}%</div>
-                                <div class="text-sm text-gray-500">Failure Rate</div>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    throw new Error('Failed to load');
-                }
-            } catch (err) {
-                document.getElementById('analyticsContent').innerHTML = `
-                    <div class="text-center py-8">
-                        <i class="fas fa-chart-bar text-4xl text-gray-300 mb-4"></i>
-                        <p class="text-gray-500">Analytics not available yet</p>
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">${broadcast.name || 'Broadcast'}</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-gray-50 rounded-xl p-4 text-center">
+                        <div class="text-3xl font-bold text-gray-800">${total}</div>
+                        <div class="text-sm text-gray-500">Recipients</div>
                     </div>
-                `;
-            }
+                    <div class="bg-blue-50 rounded-xl p-4 text-center">
+                        <div class="text-3xl font-bold text-blue-600">${sent}</div>
+                        <div class="text-sm text-gray-500">Sent</div>
+                    </div>
+                    <div class="bg-green-50 rounded-xl p-4 text-center">
+                        <div class="text-3xl font-bold text-green-600">${delivered}</div>
+                        <div class="text-sm text-gray-500">Delivered</div>
+                    </div>
+                    <div class="bg-red-50 rounded-xl p-4 text-center">
+                        <div class="text-3xl font-bold text-red-600">${failed}</div>
+                        <div class="text-sm text-gray-500">Failed</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 bg-gray-50 rounded-xl p-4">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-green-600">${deliveryRate}%</div>
+                        <div class="text-sm text-gray-500">Delivery Rate</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-red-600">${failureRate}%</div>
+                        <div class="text-sm text-gray-500">Failure Rate</div>
+                    </div>
+                </div>
+                ${broadcast.sentAt ? `<p class="text-sm text-gray-400 mt-4 text-center">Sent: ${new Date(broadcast.sentAt).toLocaleString()}</p>` : ''}
+                ${broadcast.content ? `<div class="mt-4 p-3 bg-gray-50 rounded-lg text-sm text-gray-600 whitespace-pre-wrap">${broadcast.content.substring(0, 300)}</div>` : ''}
+            `;
         }
 
         function hideAnalyticsModal() {
