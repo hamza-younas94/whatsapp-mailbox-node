@@ -39,6 +39,7 @@ function createNavbar() {
     const endItems = [
         { label: 'Analytics', href: '/analytics.html', icon: 'fa-chart-line' },
         { label: 'Activity Logs', href: '/activity-logs.html', icon: 'fa-shield-alt' },
+        { label: 'Settings', href: '/settings.html', icon: 'fa-cog' },
     ];
 
     const isActive = (href) => href === '/' ? currentPath === '/' : (currentPath === href || currentPath.endsWith(href));
@@ -128,6 +129,10 @@ function createNavbar() {
                                 <i class="fas fa-chevron-down text-xs text-gray-500 hidden sm:block"></i>
                             </button>
                             <div id="userMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border py-2 z-50">
+                                <a href="/profile.html" class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50">
+                                    <i class="fas fa-user-edit mr-2 text-gray-400"></i>
+                                    Profile
+                                </a>
                                 <a href="/qr-connect.html" class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50">
                                     <i class="fas fa-qrcode mr-2 text-gray-400"></i>
                                     QR Connect

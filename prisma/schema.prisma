@@ -56,6 +56,7 @@ model User {
   customerSubscriptions CustomerSubscription[]
   autoTagRules          AutoTagRule[]
   tasks                 Task[]
+  automationLogs        AutomationLog[]
 
   @@index([email])
   @@index([username])
@@ -425,6 +426,8 @@ model Automation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  logs      AutomationLog[]
+
   @@index([userId])
   @@index([isActive])
 }
@@ -509,6 +512,25 @@ enum ConfigType {
   NUMBER
   BOOLEAN
   JSON
+}
+
+model AutomationLog {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  automationId String
+  automation   Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  trigger      String?
+  contactId    String?
+  status       String   // SUCCESS, FAILED
+  actionType   String?
+  error        String?  @db.Text
+  details      Json?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([automationId])
+  @@index([createdAt])
 }
 
 // ============================================

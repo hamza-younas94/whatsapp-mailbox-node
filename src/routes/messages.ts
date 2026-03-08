@@ -103,5 +103,25 @@ export function createMessageRoutes(): Router {
   // Webhook endpoint (no auth required)
   router.post('/webhook', controller.webhookReceive);
 
+  // Conversation assignment
+  router.patch('/conversations/:id/assign', authMiddleware, async (req, res, next) => {
+    try {
+      const userId = (req as any).userId;
+      const { id } = req.params;
+      const { assignedToId } = req.body;
+
+      const conversation = await prisma.conversation.findFirst({ where: { id, userId } });
+      if (!conversation) return res.status(404).json({ success: false, error: 'Conversation not found' });
+
+      const updated = await prisma.conversation.update({
+        where: { id },
+        data: { assignedToId: assignedToId || null },
+      });
+      res.json({ success: true, data: updated });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   return router;
 }

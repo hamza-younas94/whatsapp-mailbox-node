@@ -41,6 +41,7 @@ import activityLogRoutes from '@routes/activity-logs';
 import scheduledMessageRoutes from '@routes/scheduled-messages';
 import messageTemplateRoutes from '@routes/message-templates';
 import labelRoutes from '@routes/labels';
+import appConfigRoutes from '@routes/app-config';
 import { globalLimiter } from '@middleware/rate-limit.middleware';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from '@config/swagger';
@@ -159,6 +160,7 @@ export function createApp(): Express {
   app.use('/api/v1/scheduled-messages', scheduledMessageRoutes);
   app.use('/api/v1/message-templates', messageTemplateRoutes);
   app.use('/api/v1/labels', labelRoutes);
+  app.use('/api/v1/app-config', appConfigRoutes);
 
   // Serve index.html for all non-API routes (SPA fallback)
   app.get('*', (req, res) => {

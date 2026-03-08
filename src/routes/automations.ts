@@ -123,4 +123,22 @@ router.post('/:id/enroll', async (req, res, next) => {
   }
 });
 
+// Automation execution logs
+router.get('/:id/logs', async (req, res, next) => {
+  try {
+    const userId = req.user?.id;
+    const { id } = req.params;
+    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+    const logs = await getPrismaClient().automationLog.findMany({
+      where: { automationId: id, userId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+    res.json({ success: true, data: logs });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

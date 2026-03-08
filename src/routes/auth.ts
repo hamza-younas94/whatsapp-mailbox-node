@@ -86,4 +86,53 @@ router.post('/reset-password', validateRequest(resetPasswordSchema), async (req,
     }
 });
 
+// Update profile
+router.put('/me', authenticate, async (req, res, next) => {
+    try {
+        const userId = (req as any).userId;
+        const { name, email, currentPassword, newPassword } = req.body;
+        const updateData: any = {};
+
+        if (name !== undefined) updateData.name = name;
+        if (email !== undefined) updateData.email = email;
+
+        if (currentPassword && newPassword) {
+            const bcrypt = await import('bcryptjs');
+            const user = await prisma.user.findUnique({ where: { id: userId } });
+            if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+            const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+            if (!valid) return res.status(400).json({ success: false, error: 'Current password is incorrect' });
+            if (newPassword.length < 8) return res.status(400).json({ success: false, error: 'Password must be at least 8 characters' });
+            updateData.passwordHash = await bcrypt.hash(newPassword, 12);
+        }
+
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({ success: false, error: 'No fields to update' });
+        }
+
+        const updated = await prisma.user.update({ where: { id: userId }, data: updateData, select: { id: true, name: true, email: true, username: true, role: true } });
+        res.json({ success: true, data: updated });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// List users (ADMIN/MANAGER only)
+router.get('/users', authenticate, async (req, res, next) => {
+    try {
+        const user = await prisma.user.findUnique({ where: { id: (req as any).userId } });
+        if (!user || (user.role !== 'ADMIN' && user.role !== 'MANAGER')) {
+            return res.status(403).json({ success: false, error: 'Forbidden' });
+        }
+        const users = await prisma.user.findMany({
+            where: { isActive: true },
+            select: { id: true, name: true, email: true, username: true, role: true },
+            orderBy: { name: 'asc' },
+        });
+        res.json({ success: true, data: users });
+    } catch (error) {
+        next(error);
+    }
+});
+
 export default router;

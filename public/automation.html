@@ -326,9 +326,13 @@
                                 class="text-blue-600 hover:text-blue-800">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button onclick="deleteAutomation('${automation.id}')" 
+                            <button onclick="deleteAutomation('${automation.id}')"
                                 class="text-red-600 hover:text-red-800">
                                 <i class="fas fa-trash"></i>
+                            </button>
+                            <button onclick="viewLogs('${automation.id}', '${automation.name.replace(/'/g, "\\'")}')"
+                                class="text-gray-600 hover:text-gray-800" title="View Logs">
+                                <i class="fas fa-history"></i>
                             </button>
                         </div>
                     </div>
@@ -742,6 +746,51 @@
             } else {
                 console.log(message);
             }
+        }
+
+        // === Automation Logs ===
+        async function viewLogs(automationId, automationName) {
+            try {
+                const res = await fetchWithAuth(`${API_BASE}/automations/${automationId}/logs`);
+                if (!res.ok) throw new Error('Failed');
+                const json = await res.json();
+                const logs = json.data || [];
+                showLogsModal(automationName, logs);
+            } catch (e) {
+                alert('Failed to load logs');
+            }
+        }
+
+        function showLogsModal(name, logs) {
+            let existing = document.getElementById('logsModal');
+            if (existing) existing.remove();
+
+            const modal = document.createElement('div');
+            modal.id = 'logsModal';
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
+            modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+            const logsHtml = logs.length === 0
+                ? '<p class="text-gray-400 text-center py-8">No execution logs yet</p>'
+                : logs.map(l => `
+                    <div class="flex items-start gap-3 py-3 border-b last:border-0">
+                        <span class="px-2 py-0.5 rounded text-xs font-medium ${l.status === 'SUCCESS' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${l.status}</span>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm text-gray-700">${l.actionType || 'Action'} ${l.trigger ? '— ' + l.trigger : ''}</p>
+                            ${l.error ? `<p class="text-xs text-red-500 mt-1">${l.error}</p>` : ''}
+                            <p class="text-xs text-gray-400 mt-1">${new Date(l.createdAt).toLocaleString()}</p>
+                        </div>
+                    </div>`).join('');
+
+            modal.innerHTML = `
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col">
+                    <div class="p-5 border-b flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-gray-800"><i class="fas fa-history text-green-500 mr-2"></i>Logs: ${name}</h3>
+                        <button onclick="document.getElementById('logsModal').remove()" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+                    </div>
+                    <div class="p-5 overflow-y-auto flex-1">${logsHtml}</div>
+                </div>`;
+            document.body.appendChild(modal);
         }
 
         // Load automations on page load

@@ -48,7 +48,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
   const [transactions, setTransactions] = useState<Array<{ id: string; amount: number; description: string; status: string; createdAt: string }>>([]);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [newTransaction, setNewTransaction] = useState({ amount: '', description: '', status: 'pending' });
-  const [activeTab, setActiveTab] = useState<'overview' | 'info' | 'notes' | 'transactions' | 'orders' | 'tasks' | 'appointments' | 'invoices' | 'automations' | 'tickets' | 'subscriptions'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'info' | 'notes' | 'transactions' | 'orders' | 'tasks' | 'appointments' | 'invoices' | 'automations' | 'tickets' | 'subscriptions' | 'timeline'>('overview');
   const [automations, setAutomations] = useState<Array<{ id: string; name: string; isActive: boolean }>>([]);
   const [allTags, setAllTags] = useState<Array<{ id: string; name: string; color?: string }>>([]);
   const [showTagSuggestions, setShowTagSuggestions] = useState(false);
@@ -97,6 +97,12 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
   const [ticketForm, setTicketForm] = useState({ title: '', description: '', priority: 'MEDIUM' });
   const [showSubForm, setShowSubForm] = useState(false);
   const [subForm, setSubForm] = useState({ planName: '', amount: '', billingCycle: 'MONTHLY' });
+  // Timeline
+  const [timelineEvents, setTimelineEvents] = useState<any[]>([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  // Conversation assignment
+  const [assignedToId, setAssignedToId] = useState<string | null>(null);
+  const [teamUsers, setTeamUsers] = useState<any[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Message[] | null>(null);
@@ -866,6 +872,54 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
     } catch { /* Failed */ }
   };
 
+  // === Timeline ===
+  const loadTimeline = async () => {
+    if (!contactId) return;
+    setTimelineLoading(true);
+    try {
+      const [msgRes, noteRes, orderRes, invoiceRes, apptRes, taskRes] = await Promise.all([
+        api.get(`/messages/contact/${contactId}?limit=20`).catch(() => ({ data: { data: [] } })),
+        api.get(`/notes?contactId=${contactId}`).catch(() => ({ data: { data: [] } })),
+        api.get(`/orders?contactId=${contactId}`).catch(() => ({ data: { data: [] } })),
+        api.get(`/invoices?contactId=${contactId}`).catch(() => ({ data: { data: [] } })),
+        api.get(`/appointments?contactId=${contactId}`).catch(() => ({ data: { data: [] } })),
+        api.get(`/tasks?contactId=${contactId}`).catch(() => ({ data: { data: [] } })),
+      ]);
+      const events: any[] = [];
+      (msgRes.data.data || []).forEach((m: any) => events.push({ type: 'message', date: m.createdAt, icon: m.direction === 'INCOMING' ? '📩' : '📤', title: `${m.direction === 'INCOMING' ? 'Received' : 'Sent'} message`, detail: (m.content || '').substring(0, 80) }));
+      (noteRes.data.data || []).forEach((n: any) => events.push({ type: 'note', date: n.createdAt, icon: '📝', title: 'Note added', detail: (n.content || '').substring(0, 80) }));
+      ((orderRes.data.data?.items || orderRes.data.data) || []).forEach((o: any) => events.push({ type: 'order', date: o.createdAt || o.orderDate, icon: '📦', title: `Order #${o.orderNumber}`, detail: `${o.status} — $${(o.totalAmount || 0).toFixed(2)}` }));
+      ((invoiceRes.data.data?.items || invoiceRes.data.data) || []).forEach((i: any) => events.push({ type: 'invoice', date: i.createdAt, icon: '🧾', title: `Invoice #${i.invoiceNumber}`, detail: `${i.status} — $${(i.totalAmount || 0).toFixed(2)}` }));
+      ((apptRes.data.data?.items || apptRes.data.data) || []).forEach((a: any) => events.push({ type: 'appointment', date: a.appointmentDate, icon: '📅', title: a.title, detail: `${a.status} — ${a.duration}min` }));
+      ((taskRes.data.data?.items || taskRes.data.data) || []).forEach((t: any) => events.push({ type: 'task', date: t.createdAt, icon: '✅', title: t.title, detail: t.status.replace('TASK_', '') }));
+      events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setTimelineEvents(events.slice(0, 50));
+    } catch { /* Failed */ }
+    setTimelineLoading(false);
+  };
+
+  // === Conversation Assignment ===
+  const loadTeamUsers = async () => {
+    try {
+      const { data } = await api.get('/auth/users');
+      setTeamUsers(data.data || []);
+    } catch { /* Failed — user may not be admin */ }
+  };
+
+  const handleAssign = async (userId: string) => {
+    if (!contactId) return;
+    try {
+      // Find conversation for this contact
+      const { data: msgData } = await api.get(`/messages/contact/${contactId}?limit=1`);
+      const msgs = msgData.data || [];
+      const convId = msgs[0]?.conversationId;
+      if (!convId) { showToast('No conversation found', 'error'); return; }
+      await api.patch(`/messages/conversations/${convId}/assign`, { assignedToId: userId || null });
+      setAssignedToId(userId || null);
+      showToast(userId ? 'Conversation assigned!' : 'Assignment removed');
+    } catch { showToast('Failed to assign', 'error'); }
+  };
+
   // Handle send message — tempId declared before try for proper scope in catch
   const handleSend = async (content: string, mediaUrl?: string) => {
     if (!contactId || (!content && !mediaUrl)) return;
@@ -1081,6 +1135,9 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
               <button className={`modal-tab ${activeTab === 'subscriptions' ? 'active' : ''}`} onClick={() => { setActiveTab('subscriptions'); if (subscriptions.length === 0) loadSubscriptions(); }}>
                 <span className="tab-icon">🔄</span><span className="tab-label">Subs</span>
               </button>
+              <button className={`modal-tab ${activeTab === 'timeline' ? 'active' : ''}`} onClick={() => { setActiveTab('timeline'); loadTimeline(); }}>
+                <span className="tab-icon">📈</span><span className="tab-label">Timeline</span>
+              </button>
             </div>
 
             <div className="modal-body">
@@ -1142,6 +1199,24 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                         <span key={tag.id} className="tag-chip">{tag.name}</span>
                       ))
                     )}
+                  </div>
+
+                  <div className="section-header" style={{ marginTop: 16 }}>
+                    <h4>Assign To</h4>
+                  </div>
+                  <div style={{ marginBottom: 16 }}>
+                    <select
+                      className="status-select"
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: 8 }}
+                      value={assignedToId || ''}
+                      onChange={e => handleAssign(e.target.value)}
+                      onFocus={() => { if (teamUsers.length === 0) loadTeamUsers(); }}
+                    >
+                      <option value="">Unassigned</option>
+                      {teamUsers.map((u: any) => (
+                        <option key={u.id} value={u.id}>{u.name || u.email} ({u.role})</option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="section-header" style={{ marginTop: 16 }}>
@@ -1812,6 +1887,34 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                       ))
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* Timeline Tab */}
+              {activeTab === 'timeline' && (
+                <div className="modal-section">
+                  <div className="section-header">
+                    <h4>Activity Timeline</h4>
+                    <button className="btn-primary-small" onClick={loadTimeline}>Refresh</button>
+                  </div>
+                  {timelineLoading ? (
+                    <div className="empty-state-small"><span>Loading...</span></div>
+                  ) : timelineEvents.length === 0 ? (
+                    <div className="empty-state-small"><span>📈</span><p>No activity yet</p></div>
+                  ) : (
+                    <div style={{ position: 'relative', paddingLeft: 24, borderLeft: '2px solid #e0e0e0' }}>
+                      {timelineEvents.map((ev, i) => (
+                        <div key={i} style={{ marginBottom: 16, position: 'relative' }}>
+                          <div style={{ position: 'absolute', left: -32, top: 2, width: 20, height: 20, borderRadius: '50%', background: 'white', border: '2px solid #128C7E', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>
+                            {ev.icon}
+                          </div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>{ev.title}</div>
+                          {ev.detail && <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{ev.detail}</div>}
+                          <div style={{ fontSize: 10, color: '#bbb', marginTop: 2 }}>{new Date(ev.date).toLocaleString()}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
