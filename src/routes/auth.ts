@@ -7,6 +7,7 @@ import { AuthService } from '@services/auth.service';
 import getPrismaClient from '@config/database';
 import { authenticate } from '@middleware/auth.middleware';
 import { validateRequest } from '@middleware/validation.middleware';
+import { createRateLimiter } from '@middleware/rate-limit.middleware';
 import { z } from 'zod';
 
 const router = Router();
@@ -33,9 +34,13 @@ const refreshSchema = z.object({
     refreshToken: z.string(),
 });
 
+// Rate limiters for auth endpoints
+const loginLimiter = createRateLimiter(15 * 60 * 1000, 5);   // 5 attempts per 15 min
+const registerLimiter = createRateLimiter(60 * 60 * 1000, 3); // 3 per hour
+
 // Routes
-router.post('/register', validateRequest(registerSchema), controller.register);
-router.post('/login', validateRequest(loginSchema), controller.login);
+router.post('/register', registerLimiter, validateRequest(registerSchema), controller.register);
+router.post('/login', loginLimiter, validateRequest(loginSchema), controller.login);
 router.post('/refresh', validateRequest(refreshSchema), controller.refresh);
 router.get('/me', authenticate, controller.me);
 

@@ -69,6 +69,7 @@ export function createApp(): Express {
           "'unsafe-eval'",
           'https://cdn.tailwindcss.com',
           'https://cdnjs.cloudflare.com',
+          'https://cdn.jsdelivr.net',
           'https://static.cloudflareinsights.com',
         ],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com', 'https://fonts.googleapis.com'],
