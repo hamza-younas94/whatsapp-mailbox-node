@@ -208,8 +208,13 @@ export class MessageService implements IMessageService {
         if (isGroup) {
           // Groups use the full chatId directly — no phone number verification needed
           targetChatId = chatId;
+        } else if (chatIdToUse) {
+          // Contact already has a stored chatId from a previous conversation — use it directly
+          // This handles WhatsApp Business API numbers where getNumberId() returns null
+          targetChatId = chatIdToUse;
+          logger.info({ chatIdToUse }, 'Using stored chatId, skipping getNumberId verification');
         } else {
-          // Individual contacts — verify number is registered on WhatsApp
+          // New contact without stored chatId — verify number is registered on WhatsApp
           const numberId = await withTimeout(
             activeSession.client.getNumberId(sanitizedPhone),
             30000,
