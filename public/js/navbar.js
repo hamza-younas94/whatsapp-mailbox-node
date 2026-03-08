@@ -35,6 +35,7 @@ function createNavbar() {
 
     const endItems = [
         { label: 'Analytics', href: '/analytics.html', icon: 'fa-chart-line' },
+        { label: 'Activity Logs', href: '/activity-logs.html', icon: 'fa-shield-alt' },
     ];
 
     const isActive = (href) => href === '/' ? currentPath === '/' : (currentPath === href || currentPath.endsWith(href));

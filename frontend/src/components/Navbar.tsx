@@ -46,6 +46,7 @@ const crmItems: NavItem[] = [
 
 const endItems: NavItem[] = [
   { label: 'Analytics', href: '/analytics.html', icon: 'fa-chart-line' },
+  { label: 'Activity Logs', href: '/activity-logs.html', icon: 'fa-shield-alt' },
 ];
 
 const statusLabels: Record<SessionState, string> = {
@@ -197,6 +198,10 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onSearch, sessionStatus = 'UN
                 <a href="/automation.html" className="menu-item">
                   <i className="fas fa-robot"></i>
                   <span>Automations</span>
+                </a>
+                <a href="/activity-logs.html" className="menu-item">
+                  <i className="fas fa-shield-alt"></i>
+                  <span>Activity Logs</span>
                 </a>
                 <hr className="menu-divider" />
                 <button className="menu-item logout-button" onClick={handleLogout}>

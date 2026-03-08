@@ -36,6 +36,7 @@ import expenseRoutes from '@routes/expenses';
 import customerSubscriptionRoutes from '@routes/customer-subscriptions';
 import autoTagRuleRoutes from '@routes/auto-tag-rules';
 import taskRoutes from '@routes/tasks';
+import activityLogRoutes from '@routes/activity-logs';
 import { globalLimiter } from '@middleware/rate-limit.middleware';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from '@config/swagger';
@@ -150,6 +151,7 @@ export function createApp(): Express {
   app.use('/api/v1/customer-subscriptions', customerSubscriptionRoutes);
   app.use('/api/v1/auto-tag-rules', autoTagRuleRoutes);
   app.use('/api/v1/tasks', taskRoutes);
+  app.use('/api/v1/activity-logs', activityLogRoutes);
 
   // Serve index.html for all non-API routes (SPA fallback)
   app.get('*', (req, res) => {

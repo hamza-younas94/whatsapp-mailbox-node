@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity Logs - WhatsApp Mailbox</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://whatshub.nexofydigital.com:3000 https://whatshub.nexofydigital.com:3000;">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <script>if (!localStorage.getItem('authToken')) window.location.href = '/login.html';</script>
+    <script src="/js/navbar.js"></script>
+
+    <div class="max-w-7xl mx-auto px-4 py-6">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800"><i class="fas fa-shield-alt text-blue-500 mr-2"></i>Activity Logs</h1>
+                <p class="text-gray-600 mt-1">Login history and security events</p>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-blue-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-3xl font-bold text-gray-800" id="statTotal">-</div>
+                        <div class="text-sm text-gray-500">Total Events</div>
+                    </div>
+                    <div class="p-3 bg-blue-50 rounded-full">
+                        <i class="fas fa-list text-blue-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-green-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-3xl font-bold text-green-600" id="statLogins">-</div>
+                        <div class="text-sm text-gray-500">Login Events</div>
+                    </div>
+                    <div class="p-3 bg-green-50 rounded-full">
+                        <i class="fas fa-sign-in-alt text-green-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-purple-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-3xl font-bold text-purple-600" id="statLastLogin">-</div>
+                        <div class="text-sm text-gray-500">Last Login</div>
+                    </div>
+                    <div class="p-3 bg-purple-50 rounded-full">
+                        <i class="fas fa-clock text-purple-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
+            <div class="flex flex-wrap items-center gap-3">
+                <select id="filterAction" onchange="loadLogs()" class="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-400">
+                    <option value="">All Actions</option>
+                    <option value="LOGIN">Login</option>
+                    <option value="LOGOUT">Logout</option>
+                    <option value="MESSAGE_SENT">Message Sent</option>
+                    <option value="CONTACT_CREATED">Contact Created</option>
+                    <option value="CONTACT_UPDATED">Contact Updated</option>
+                    <option value="TAG_CREATED">Tag Created</option>
+                    <option value="TAG_DELETED">Tag Deleted</option>
+                    <option value="AUTOMATION_TRIGGERED">Automation Triggered</option>
+                    <option value="CAMPAIGN_STARTED">Campaign Started</option>
+                </select>
+                <input type="date" id="filterStartDate" onchange="loadLogs()" class="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-300" placeholder="From">
+                <input type="date" id="filterEndDate" onchange="loadLogs()" class="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-300" placeholder="To">
+                <button onclick="clearFilters()" class="px-3 py-2 text-sm text-gray-500 hover:text-gray-800 transition">
+                    <i class="fas fa-times mr-1"></i>Clear
+                </button>
+            </div>
+        </div>
+
+        <!-- Logs Table -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Details</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP Address</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Browser</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date & Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsBody" class="divide-y divide-gray-100">
+                        <tr><td colspan="5" class="px-4 py-8 text-center text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i>Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="flex items-center justify-between px-4 py-3 border-t bg-gray-50">
+                <div class="text-sm text-gray-500" id="paginationInfo">-</div>
+                <div class="flex gap-2" id="paginationButtons"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="fixed top-4 right-4 z-50 hidden transform transition-all duration-300 translate-x-full">
+        <div class="px-6 py-3 rounded-xl shadow-lg text-white font-medium text-sm" id="notificationInner"></div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api/v1';
+        let currentPage = 1;
+        const perPage = 30;
+
+        async function fetchWithAuth(url, options = {}) {
+            const token = localStorage.getItem('authToken');
+            const headers = {
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` }),
+                ...options.headers
+            };
+            const response = await fetch(url, { ...options, headers });
+            if (response.status === 401) {
+                localStorage.removeItem('authToken');
+                window.location.href = '/login.html';
+            }
+            return response;
+        }
+
+        function showNotification(message, type = 'success') {
+            const el = document.getElementById('notification');
+            const inner = document.getElementById('notificationInner');
+            inner.textContent = message;
+            inner.className = `px-6 py-3 rounded-xl shadow-lg text-white font-medium text-sm ${type === 'error' ? 'bg-red-500' : 'bg-green-500'}`;
+            el.classList.remove('hidden', 'translate-x-full');
+            setTimeout(() => { el.classList.add('translate-x-full'); setTimeout(() => el.classList.add('hidden'), 300); }, 3000);
+        }
+
+        const actionConfig = {
+            LOGIN: { icon: 'fa-sign-in-alt', color: 'green', label: 'Login' },
+            LOGOUT: { icon: 'fa-sign-out-alt', color: 'gray', label: 'Logout' },
+            MESSAGE_SENT: { icon: 'fa-paper-plane', color: 'blue', label: 'Message Sent' },
+            MESSAGE_RECEIVED: { icon: 'fa-envelope', color: 'indigo', label: 'Message Received' },
+            CONTACT_CREATED: { icon: 'fa-user-plus', color: 'teal', label: 'Contact Created' },
+            CONTACT_UPDATED: { icon: 'fa-user-edit', color: 'yellow', label: 'Contact Updated' },
+            TAG_CREATED: { icon: 'fa-tag', color: 'purple', label: 'Tag Created' },
+            TAG_DELETED: { icon: 'fa-tag', color: 'red', label: 'Tag Deleted' },
+            AUTOMATION_TRIGGERED: { icon: 'fa-robot', color: 'orange', label: 'Automation' },
+            CAMPAIGN_STARTED: { icon: 'fa-bullhorn', color: 'pink', label: 'Campaign' },
+        };
+
+        function parseUserAgent(ua) {
+            if (!ua || ua === 'unknown') return 'Unknown';
+            // Extract browser name
+            if (ua.includes('Chrome') && !ua.includes('Edg')) return 'Chrome';
+            if (ua.includes('Firefox')) return 'Firefox';
+            if (ua.includes('Safari') && !ua.includes('Chrome')) return 'Safari';
+            if (ua.includes('Edg')) return 'Edge';
+            if (ua.includes('Opera') || ua.includes('OPR')) return 'Opera';
+            return ua.substring(0, 30) + '...';
+        }
+
+        async function loadLogs() {
+            try {
+                const action = document.getElementById('filterAction').value;
+                const startDate = document.getElementById('filterStartDate').value;
+                const endDate = document.getElementById('filterEndDate').value;
+
+                let url = `${API_BASE}/activity-logs?page=${currentPage}&limit=${perPage}`;
+                if (action) url += `&action=${action}`;
+                if (startDate) url += `&startDate=${startDate}`;
+                if (endDate) url += `&endDate=${endDate}`;
+
+                const res = await fetchWithAuth(url);
+                if (!res.ok) throw new Error('Failed to load logs');
+
+                const json = await res.json();
+                const items = json.items || [];
+                const pagination = json.pagination || {};
+
+                renderLogs(items);
+                renderPagination(pagination);
+                updateStats(pagination);
+            } catch (err) {
+                document.getElementById('logsBody').innerHTML =
+                    `<tr><td colspan="5" class="px-4 py-8 text-center text-gray-400">Failed to load logs</td></tr>`;
+            }
+        }
+
+        function renderLogs(items) {
+            const tbody = document.getElementById('logsBody');
+            if (!items || items.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-gray-400">No activity logs found</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = items.map(log => {
+                const config = actionConfig[log.action] || { icon: 'fa-circle', color: 'gray', label: log.action };
+                const details = log.details || {};
+                const detailStr = details.email || details.resourceType || '-';
+                const date = new Date(log.createdAt);
+                const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                return `
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-4 py-3">
+                            <div class="flex items-center">
+                                <span class="w-8 h-8 rounded-full bg-${config.color}-100 flex items-center justify-center mr-3">
+                                    <i class="fas ${config.icon} text-${config.color}-600 text-xs"></i>
+                                </span>
+                                <span class="text-sm font-medium text-gray-800">${config.label}</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-600">${detailStr}</td>
+                        <td class="px-4 py-3">
+                            <span class="text-sm text-gray-600 font-mono">${log.ipAddress || '-'}</span>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-500">${parseUserAgent(log.userAgent)}</td>
+                        <td class="px-4 py-3">
+                            <div class="text-sm text-gray-800">${dateStr}</div>
+                            <div class="text-xs text-gray-400">${timeStr}</div>
+                        </td>
+                    </tr>`;
+            }).join('');
+        }
+
+        function renderPagination(pagination) {
+            const { total = 0, page = 1, totalPages = 1 } = pagination;
+            const start = Math.min((page - 1) * perPage + 1, total);
+            const end = Math.min(page * perPage, total);
+
+            document.getElementById('paginationInfo').textContent =
+                total > 0 ? `Showing ${start}-${end} of ${total} events` : 'No events';
+
+            const btns = document.getElementById('paginationButtons');
+            if (totalPages <= 1) { btns.innerHTML = ''; return; }
+
+            let html = '';
+            if (page > 1) html += `<button onclick="goToPage(${page - 1})" class="px-3 py-1 rounded-lg border text-sm hover:bg-gray-100">Prev</button>`;
+            html += `<span class="px-3 py-1 text-sm text-gray-500">${page} / ${totalPages}</span>`;
+            if (page < totalPages) html += `<button onclick="goToPage(${page + 1})" class="px-3 py-1 rounded-lg border text-sm hover:bg-gray-100">Next</button>`;
+            btns.innerHTML = html;
+        }
+
+        async function updateStats(pagination) {
+            document.getElementById('statTotal').textContent = (pagination.total || 0).toLocaleString();
+
+            // Load login count
+            try {
+                const res = await fetchWithAuth(`${API_BASE}/activity-logs/logins?limit=1`);
+                if (res.ok) {
+                    const json = await res.json();
+                    const loginTotal = json.pagination?.total || 0;
+                    document.getElementById('statLogins').textContent = loginTotal.toLocaleString();
+
+                    // Last login
+                    const items = json.items || [];
+                    if (items.length > 0) {
+                        const lastLogin = new Date(items[0].createdAt);
+                        document.getElementById('statLastLogin').textContent =
+                            lastLogin.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+                            lastLogin.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    }
+                }
+            } catch {}
+        }
+
+        function goToPage(page) {
+            currentPage = page;
+            loadLogs();
+        }
+
+        function clearFilters() {
+            document.getElementById('filterAction').value = '';
+            document.getElementById('filterStartDate').value = '';
+            document.getElementById('filterEndDate').value = '';
+            currentPage = 1;
+            loadLogs();
+        }
+
+        // Init
+        loadLogs();
+    </script>
+</body>
+</html>
