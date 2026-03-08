@@ -16,7 +16,8 @@ interface NavItem {
 }
 
 const coreItems: NavItem[] = [
-  { label: 'Messages', href: '/messages.html', icon: 'fa-comments' },
+  { label: 'Dashboard', href: '/dashboard.html', icon: 'fa-tachometer-alt' },
+  { label: 'Mailbox', href: '/', icon: 'fa-inbox' },
   { label: 'Contacts', href: '/contacts.html', icon: 'fa-address-book' },
   { label: 'Quick Replies', href: '/quick-replies.html', icon: 'fa-bolt' },
 ];
@@ -129,7 +130,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onSearch, sessionStatus = 'UN
       <div className="navbar-container">
         {/* Logo */}
         <div className="navbar-brand">
-          <a href="/" className="navbar-logo">
+          <a href="/dashboard.html" className="navbar-logo">
             <div className="logo-icon-wrapper">
               <i className="fab fa-whatsapp logo-fa-icon"></i>
             </div>
