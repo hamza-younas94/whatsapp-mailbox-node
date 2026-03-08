@@ -48,7 +48,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
   const [transactions, setTransactions] = useState<Array<{ id: string; amount: number; description: string; status: string; createdAt: string }>>([]);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [newTransaction, setNewTransaction] = useState({ amount: '', description: '', status: 'pending' });
-  const [activeTab, setActiveTab] = useState<'overview' | 'info' | 'notes' | 'transactions' | 'orders' | 'tasks' | 'appointments' | 'invoices' | 'automations'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'info' | 'notes' | 'transactions' | 'orders' | 'tasks' | 'appointments' | 'invoices' | 'automations' | 'tickets' | 'subscriptions'>('overview');
   const [automations, setAutomations] = useState<Array<{ id: string; name: string; isActive: boolean }>>([]);
   const [allTags, setAllTags] = useState<Array<{ id: string; name: string; color?: string }>>([]);
   const [showTagSuggestions, setShowTagSuggestions] = useState(false);
@@ -72,6 +72,31 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
   const [invoiceForm, setInvoiceForm] = useState({ dueDate: '', notes: '' });
   const [invoiceItems, setInvoiceItems] = useState([{ description: '', quantity: 1, unitPrice: 0 }]);
+  // Contact info edit state
+  const [contactInfo, setContactInfo] = useState<{ name?: string; email?: string; company?: string; department?: string } | null>(null);
+  const [editingContactInfo, setEditingContactInfo] = useState(false);
+  const [contactInfoForm, setContactInfoForm] = useState({ name: '', email: '', company: '', department: '' });
+  // Order details state
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [orderDetails, setOrderDetails] = useState<any>(null);
+  // Task edit state
+  const [editTaskId, setEditTaskId] = useState<string | null>(null);
+  const [editTaskForm, setEditTaskForm] = useState({ title: '', description: '', dueDate: '', priority: 'TASK_MEDIUM', status: 'TASK_PENDING' });
+  // Appointment edit state
+  const [editApptId, setEditApptId] = useState<string | null>(null);
+  const [editApptForm, setEditApptForm] = useState({ title: '', appointmentDate: '', duration: 30, location: '', status: 'SCHEDULED' });
+  // Invoice payments state
+  const [showPaymentModal, setShowPaymentModal] = useState<string | null>(null);
+  const [paymentForm, setPaymentForm] = useState({ amount: '', method: 'CASH', reference: '' });
+  const [invoicePayments, setInvoicePayments] = useState<any[]>([]);
+  const [showPayments, setShowPayments] = useState<string | null>(null);
+  // Service tickets & subscriptions
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [showTicketForm, setShowTicketForm] = useState(false);
+  const [ticketForm, setTicketForm] = useState({ title: '', description: '', priority: 'MEDIUM' });
+  const [showSubForm, setShowSubForm] = useState(false);
+  const [subForm, setSubForm] = useState({ planName: '', amount: '', billingCycle: 'MONTHLY' });
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Message[] | null>(null);
@@ -239,6 +264,19 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
     setEditingNote(null);
     setEditingTx(null);
     setEditingTask(null);
+    setContactInfo(null);
+    setEditingContactInfo(false);
+    setExpandedOrderId(null);
+    setOrderDetails(null);
+    setEditTaskId(null);
+    setEditApptId(null);
+    setShowPaymentModal(null);
+    setShowPayments(null);
+    setInvoicePayments([]);
+    setTickets([]);
+    setSubscriptions([]);
+    setShowTicketForm(false);
+    setShowSubForm(false);
   }, [contactId]);
 
   // Auto-scroll to bottom on new messages
@@ -279,6 +317,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
       loadContactTasks();
       loadContactAppointments();
       loadContactInvoices();
+      loadContactInfo();
     }
   }, [contactId, showContactInfo]);
 
@@ -679,6 +718,154 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
       })
     : [];
 
+  // === Contact Info CRUD ===
+  const loadContactInfo = async () => {
+    if (!contactId) return;
+    try {
+      const { data } = await api.get(`/contacts/${contactId}`);
+      const c = data.data || data;
+      const info = { name: c.name || '', email: c.email || '', company: c.company || '', department: c.department || '' };
+      setContactInfo(info);
+      setContactInfoForm(info);
+    } catch { /* Failed */ }
+  };
+
+  const saveContactInfo = async () => {
+    if (!contactId) return;
+    try {
+      await api.put(`/contacts/${contactId}`, contactInfoForm);
+      setContactInfo({ ...contactInfoForm });
+      setEditingContactInfo(false);
+      showToast('Contact info updated!');
+    } catch { showToast('Failed to update contact', 'error'); }
+  };
+
+  // === Order Details & Delete ===
+  const loadOrderDetails = async (orderId: string) => {
+    try {
+      const { data } = await api.get(`/orders/${orderId}`);
+      setOrderDetails(data.data || data);
+      setExpandedOrderId(orderId);
+    } catch { /* Failed */ }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    try {
+      await api.delete(`/orders/${orderId}`);
+      setOrders(prev => prev.filter(o => o.id !== orderId));
+      if (expandedOrderId === orderId) { setExpandedOrderId(null); setOrderDetails(null); }
+    } catch { /* Failed */ }
+  };
+
+  // === Task Edit ===
+  const handleEditTask = async () => {
+    if (!editTaskId) return;
+    try {
+      await api.put(`/tasks/${editTaskId}`, {
+        title: editTaskForm.title,
+        description: editTaskForm.description || undefined,
+        dueDate: editTaskForm.dueDate || undefined,
+        priority: editTaskForm.priority,
+        status: editTaskForm.status,
+      });
+      setTasks(prev => prev.map(t => t.id === editTaskId ? { ...t, title: editTaskForm.title, description: editTaskForm.description, dueDate: editTaskForm.dueDate, priority: editTaskForm.priority, status: editTaskForm.status } : t));
+      setEditTaskId(null);
+      showToast('Task updated!');
+    } catch { showToast('Failed to update task', 'error'); }
+  };
+
+  // === Appointment Edit ===
+  const handleEditAppointment = async () => {
+    if (!editApptId) return;
+    try {
+      await api.put(`/appointments/${editApptId}`, {
+        title: editApptForm.title,
+        appointmentDate: editApptForm.appointmentDate ? new Date(editApptForm.appointmentDate).toISOString() : undefined,
+        duration: editApptForm.duration,
+        location: editApptForm.location || undefined,
+        status: editApptForm.status,
+      });
+      setAppointments(prev => prev.map(a => a.id === editApptId ? {
+        ...a, title: editApptForm.title, appointmentDate: editApptForm.appointmentDate,
+        duration: editApptForm.duration, location: editApptForm.location, status: editApptForm.status,
+      } : a));
+      setEditApptId(null);
+      showToast('Appointment updated!');
+    } catch { showToast('Failed to update appointment', 'error'); }
+  };
+
+  // === Invoice Payments ===
+  const handleRecordPayment = async () => {
+    if (!showPaymentModal || !paymentForm.amount) return;
+    try {
+      await api.post(`/invoices/${showPaymentModal}/payments`, {
+        amount: parseFloat(paymentForm.amount),
+        method: paymentForm.method,
+        reference: paymentForm.reference || undefined,
+      });
+      setShowPaymentModal(null);
+      setPaymentForm({ amount: '', method: 'CASH', reference: '' });
+      loadContactInvoices();
+      showToast('Payment recorded!');
+    } catch { showToast('Failed to record payment', 'error'); }
+  };
+
+  const loadInvoicePayments = async (invoiceId: string) => {
+    try {
+      const { data } = await api.get(`/invoices/${invoiceId}/payments`);
+      setInvoicePayments(data.data || data || []);
+      setShowPayments(invoiceId);
+    } catch { /* Failed */ }
+  };
+
+  // === Service Tickets ===
+  const loadTickets = async () => {
+    if (!contactId) return;
+    try {
+      const { data } = await api.get(`/service-tickets?contactId=${contactId}`);
+      setTickets(data.data || data.items || []);
+    } catch { /* Failed */ }
+  };
+
+  const handleCreateTicket = async () => {
+    if (!contactId || !ticketForm.title.trim()) return;
+    try {
+      const { data } = await api.post('/service-tickets', {
+        contactId,
+        title: ticketForm.title,
+        description: ticketForm.description || undefined,
+        priority: ticketForm.priority,
+      });
+      setTickets(prev => [data.data || data, ...prev]);
+      setTicketForm({ title: '', description: '', priority: 'MEDIUM' });
+      setShowTicketForm(false);
+    } catch { /* Failed */ }
+  };
+
+  // === Subscriptions ===
+  const loadSubscriptions = async () => {
+    if (!contactId) return;
+    try {
+      const { data } = await api.get(`/customer-subscriptions?contactId=${contactId}`);
+      setSubscriptions(data.data || data.items || []);
+    } catch { /* Failed */ }
+  };
+
+  const handleCreateSubscription = async () => {
+    if (!contactId || !subForm.planName.trim() || !subForm.amount) return;
+    try {
+      const { data } = await api.post('/customer-subscriptions', {
+        contactId,
+        planName: subForm.planName,
+        amount: parseFloat(subForm.amount),
+        billingCycle: subForm.billingCycle,
+      });
+      setSubscriptions(prev => [data.data || data, ...prev]);
+      setSubForm({ planName: '', amount: '', billingCycle: 'MONTHLY' });
+      setShowSubForm(false);
+    } catch { /* Failed */ }
+  };
+
   // Handle send message — tempId declared before try for proper scope in catch
   const handleSend = async (content: string, mediaUrl?: string) => {
     if (!contactId || (!content && !mediaUrl)) return;
@@ -865,7 +1052,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                 <span className="tab-icon">📊</span><span className="tab-label">Overview</span>
               </button>
               <button className={`modal-tab ${activeTab === 'info' ? 'active' : ''}`} onClick={() => setActiveTab('info')}>
-                <span className="tab-icon">🏷️</span><span className="tab-label">Tags</span>
+                <span className="tab-icon">ℹ️</span><span className="tab-label">Info</span>
               </button>
               <button className={`modal-tab ${activeTab === 'notes' ? 'active' : ''}`} onClick={() => setActiveTab('notes')}>
                 <span className="tab-icon">📝</span><span className="tab-label">Notes</span>
@@ -887,6 +1074,12 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
               </button>
               <button className={`modal-tab ${activeTab === 'automations' ? 'active' : ''}`} onClick={() => setActiveTab('automations')}>
                 <span className="tab-icon">⚡</span><span className="tab-label">Auto</span>
+              </button>
+              <button className={`modal-tab ${activeTab === 'tickets' ? 'active' : ''}`} onClick={() => { setActiveTab('tickets'); if (tickets.length === 0) loadTickets(); }}>
+                <span className="tab-icon">🎫</span><span className="tab-label">Tickets</span>
+              </button>
+              <button className={`modal-tab ${activeTab === 'subscriptions' ? 'active' : ''}`} onClick={() => { setActiveTab('subscriptions'); if (subscriptions.length === 0) loadSubscriptions(); }}>
+                <span className="tab-icon">🔄</span><span className="tab-label">Subs</span>
               </button>
             </div>
 
@@ -925,6 +1118,16 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                       <div className="overview-value">{invoices.filter(i => i.status !== 'PAID' && i.status !== 'CANCELLED').length}</div>
                       <div className="overview-label">Unpaid</div>
                     </div>
+                    <div className="overview-card" onClick={() => { setActiveTab('tickets'); if (tickets.length === 0) loadTickets(); }}>
+                      <div className="overview-card-icon">🎫</div>
+                      <div className="overview-value">{tickets.length}</div>
+                      <div className="overview-label">Tickets</div>
+                    </div>
+                    <div className="overview-card" onClick={() => { setActiveTab('subscriptions'); if (subscriptions.length === 0) loadSubscriptions(); }}>
+                      <div className="overview-card-icon">🔄</div>
+                      <div className="overview-value">{subscriptions.length}</div>
+                      <div className="overview-label">Subs</div>
+                    </div>
                   </div>
 
                   <div className="section-header">
@@ -953,13 +1156,42 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                     <button onClick={() => setActiveTab('appointments')} className="quick-link-card">📅 Appts</button>
                     <button onClick={() => setActiveTab('invoices')} className="quick-link-card">🧾 Invoices</button>
                     <button onClick={() => setActiveTab('automations')} className="quick-link-card">⚡ Automation</button>
+                    <button onClick={() => { setActiveTab('tickets'); if (tickets.length === 0) loadTickets(); }} className="quick-link-card">🎫 Tickets</button>
+                    <button onClick={() => { setActiveTab('subscriptions'); if (subscriptions.length === 0) loadSubscriptions(); }} className="quick-link-card">🔄 Subs</button>
                   </div>
                 </div>
               )}
 
-              {/* Tags Tab */}
+              {/* Info Tab — Contact Details + Tags */}
               {activeTab === 'info' && (
                 <div className="modal-section">
+                  <div className="section-header">
+                    <h4>Contact Details</h4>
+                    {!editingContactInfo && (
+                      <button className="btn-primary-small" onClick={() => setEditingContactInfo(true)}>Edit</button>
+                    )}
+                  </div>
+
+                  {editingContactInfo ? (
+                    <div className="inline-form" style={{ marginBottom: 16 }}>
+                      <input type="text" placeholder="Name" value={contactInfoForm.name} onChange={e => setContactInfoForm(p => ({ ...p, name: e.target.value }))} />
+                      <input type="email" placeholder="Email" value={contactInfoForm.email} onChange={e => setContactInfoForm(p => ({ ...p, email: e.target.value }))} />
+                      <input type="text" placeholder="Company" value={contactInfoForm.company} onChange={e => setContactInfoForm(p => ({ ...p, company: e.target.value }))} />
+                      <input type="text" placeholder="Department" value={contactInfoForm.department} onChange={e => setContactInfoForm(p => ({ ...p, department: e.target.value }))} />
+                      <div className="form-actions">
+                        <button className="btn-inline-save" onClick={saveContactInfo}>Save</button>
+                        <button className="btn-inline-cancel" onClick={() => { setEditingContactInfo(false); if (contactInfo) setContactInfoForm({ name: contactInfo.name || '', email: contactInfo.email || '', company: contactInfo.company || '', department: contactInfo.department || '' }); }}>Cancel</button>
+                      </div>
+                    </div>
+                  ) : contactInfo ? (
+                    <div className="contact-details-grid" style={{ marginBottom: 16 }}>
+                      <div className="info-detail"><label>Name</label><span>{contactInfo.name || '—'}</span></div>
+                      <div className="info-detail"><label>Email</label><span>{contactInfo.email || '—'}</span></div>
+                      <div className="info-detail"><label>Company</label><span>{contactInfo.company || '—'}</span></div>
+                      <div className="info-detail"><label>Department</label><span>{contactInfo.department || '—'}</span></div>
+                    </div>
+                  ) : null}
+
                   <div className="section-header">
                     <h4>Contact Tags</h4>
                     <span className="badge-count">{contactTags.length}</span>
@@ -1188,23 +1420,38 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                       </div>
                     ) : (
                       orders.map((order) => (
-                        <div key={order.id} className="tx-card">
-                          <div className="tx-card-amount">${(order.totalAmount || 0).toFixed(2)}</div>
-                          <div className="tx-card-info">
-                            <span className="tx-desc">#{order.orderNumber}</span>
-                            <select className="status-select" value={order.status} onChange={e => handleUpdateOrderStatus(order.id, e.target.value)}>
-                              <option value="PENDING">Pending</option>
-                              <option value="CONFIRMED">Confirmed</option>
-                              <option value="PREPARING">Preparing</option>
-                              <option value="READY">Ready</option>
-                              <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
-                              <option value="DELIVERED">Delivered</option>
-                              <option value="CANCELLED">Cancelled</option>
-                            </select>
+                        <div key={order.id} className="tx-card" style={{ flexDirection: 'column' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+                            <div className="tx-card-amount">${(order.totalAmount || 0).toFixed(2)}</div>
+                            <div className="tx-card-info" style={{ flex: 1 }}>
+                              <span className="tx-desc">#{order.orderNumber}</span>
+                              <select className="status-select" value={order.status} onChange={e => handleUpdateOrderStatus(order.id, e.target.value)}>
+                                <option value="PENDING">Pending</option>
+                                <option value="CONFIRMED">Confirmed</option>
+                                <option value="PREPARING">Preparing</option>
+                                <option value="READY">Ready</option>
+                                <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
+                                <option value="DELIVERED">Delivered</option>
+                                <option value="CANCELLED">Cancelled</option>
+                              </select>
+                            </div>
+                            <div className="tx-card-date">{new Date(order.orderDate).toLocaleDateString()}</div>
+                            <div className="action-buttons">
+                              <button onClick={() => expandedOrderId === order.id ? (setExpandedOrderId(null), setOrderDetails(null)) : loadOrderDetails(order.id)} title="Details">📋</button>
+                              <button onClick={() => handleDeleteOrder(order.id)} title="Delete">🗑️</button>
+                            </div>
                           </div>
-                          <div className="tx-card-date">
-                            {new Date(order.orderDate).toLocaleDateString()}
-                          </div>
+                          {expandedOrderId === order.id && orderDetails && (
+                            <div style={{ width: '100%', marginTop: 8, padding: '8px 0', borderTop: '1px solid #eee', fontSize: 12, color: '#666' }}>
+                              {(orderDetails.items || []).map((item: any, i: number) => (
+                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
+                                  <span>{item.name || item.description} x{item.quantity}</span>
+                                  <span>${(item.unitPrice * item.quantity).toFixed(2)}</span>
+                                </div>
+                              ))}
+                              {orderDetails.notes && <div style={{ marginTop: 4, fontStyle: 'italic' }}>Note: {orderDetails.notes}</div>}
+                            </div>
+                          )}
                         </div>
                       ))
                     )}
@@ -1251,23 +1498,51 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                     ) : (
                       tasks.map((task) => (
                         <div key={task.id} className="task-card">
-                          <button
-                            className={`task-status-dot ${task.status === 'TASK_COMPLETED' ? 'completed' : ''}`}
-                            onClick={() => handleUpdateTaskStatus(task.id, nextTaskStatus(task.status))}
-                            title={`Click to mark ${nextTaskStatus(task.status).replace('TASK_', '').toLowerCase()}`}
-                          />
-                          <div className="task-card-info">
-                            <span className={`task-title ${task.status === 'TASK_COMPLETED' ? 'completed' : ''}`}>{task.title}</span>
-                            <div className="task-meta">
-                              <span className={`task-priority priority-${(task.priority || '').replace('TASK_', '').toLowerCase()}`}>
-                                {(task.priority || '').replace('TASK_', '')}
-                              </span>
-                              {task.dueDate && (
-                                <span className="task-due">Due: {new Date(task.dueDate).toLocaleDateString()}</span>
-                              )}
-                              <button className="btn-task-delete" onClick={() => handleDeleteTask(task.id)} title="Delete">🗑️</button>
+                          {editTaskId === task.id ? (
+                            <div className="inline-form" style={{ width: '100%' }}>
+                              <input type="text" placeholder="Title" value={editTaskForm.title} onChange={e => setEditTaskForm(p => ({ ...p, title: e.target.value }))} />
+                              <textarea placeholder="Description" value={editTaskForm.description} onChange={e => setEditTaskForm(p => ({ ...p, description: e.target.value }))} rows={2} />
+                              <div className="inline-form-row">
+                                <input type="date" value={editTaskForm.dueDate} onChange={e => setEditTaskForm(p => ({ ...p, dueDate: e.target.value }))} />
+                                <select value={editTaskForm.priority} onChange={e => setEditTaskForm(p => ({ ...p, priority: e.target.value }))}>
+                                  <option value="TASK_LOW">Low</option>
+                                  <option value="TASK_MEDIUM">Medium</option>
+                                  <option value="TASK_HIGH">High</option>
+                                  <option value="TASK_URGENT">Urgent</option>
+                                </select>
+                                <select value={editTaskForm.status} onChange={e => setEditTaskForm(p => ({ ...p, status: e.target.value }))}>
+                                  <option value="TASK_PENDING">Pending</option>
+                                  <option value="TASK_IN_PROGRESS">In Progress</option>
+                                  <option value="TASK_COMPLETED">Completed</option>
+                                </select>
+                              </div>
+                              <div className="form-actions">
+                                <button className="btn-inline-save" onClick={handleEditTask}>Save</button>
+                                <button className="btn-inline-cancel" onClick={() => setEditTaskId(null)}>Cancel</button>
+                              </div>
                             </div>
-                          </div>
+                          ) : (
+                            <>
+                              <button
+                                className={`task-status-dot ${task.status === 'TASK_COMPLETED' ? 'completed' : ''}`}
+                                onClick={() => handleUpdateTaskStatus(task.id, nextTaskStatus(task.status))}
+                                title={`Click to mark ${nextTaskStatus(task.status).replace('TASK_', '').toLowerCase()}`}
+                              />
+                              <div className="task-card-info">
+                                <span className={`task-title ${task.status === 'TASK_COMPLETED' ? 'completed' : ''}`}>{task.title}</span>
+                                <div className="task-meta">
+                                  <span className={`task-priority priority-${(task.priority || '').replace('TASK_', '').toLowerCase()}`}>
+                                    {(task.priority || '').replace('TASK_', '')}
+                                  </span>
+                                  {task.dueDate && (
+                                    <span className="task-due">Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                                  )}
+                                  <button className="btn-task-delete" onClick={() => { setEditTaskId(task.id); setEditTaskForm({ title: task.title, description: task.description || '', dueDate: task.dueDate ? task.dueDate.slice(0, 10) : '', priority: task.priority, status: task.status }); }} title="Edit">✏️</button>
+                                  <button className="btn-task-delete" onClick={() => handleDeleteTask(task.id)} title="Delete">🗑️</button>
+                                </div>
+                              </div>
+                            </>
+                          )}
                         </div>
                       ))
                     )}
@@ -1309,18 +1584,43 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                       </div>
                     ) : (
                       appointments.map((appt) => (
-                        <div key={appt.id} className="tx-card">
-                          <div className="tx-card-info" style={{ flex: 1 }}>
-                            <span className="tx-desc" style={{ fontWeight: 600 }}>{appt.title}</span>
-                            <span className={`tx-badge tx-${appt.status}`}>{appt.status}</span>
-                          </div>
-                          <div className="tx-card-date">
-                            <span>{new Date(appt.appointmentDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
-                            <span style={{ color: '#9ca3af', fontSize: 11 }}>{appt.duration}min{appt.location ? ` · ${appt.location}` : ''}</span>
-                          </div>
-                          <div className="action-buttons">
-                            <button onClick={() => handleDeleteAppointment(appt.id)} title="Delete">🗑️</button>
-                          </div>
+                        <div key={appt.id} className="tx-card" style={{ flexDirection: 'column' }}>
+                          {editApptId === appt.id ? (
+                            <div className="inline-form" style={{ width: '100%' }}>
+                              <input type="text" placeholder="Title" value={editApptForm.title} onChange={e => setEditApptForm(p => ({ ...p, title: e.target.value }))} />
+                              <div className="inline-form-row">
+                                <input type="datetime-local" value={editApptForm.appointmentDate} onChange={e => setEditApptForm(p => ({ ...p, appointmentDate: e.target.value }))} />
+                                <input type="number" placeholder="Min" min={5} step={5} style={{ width: 70 }} value={editApptForm.duration} onChange={e => setEditApptForm(p => ({ ...p, duration: parseInt(e.target.value) || 30 }))} />
+                              </div>
+                              <input type="text" placeholder="Location" value={editApptForm.location} onChange={e => setEditApptForm(p => ({ ...p, location: e.target.value }))} />
+                              <select value={editApptForm.status} onChange={e => setEditApptForm(p => ({ ...p, status: e.target.value }))}>
+                                <option value="SCHEDULED">Scheduled</option>
+                                <option value="CONFIRMED">Confirmed</option>
+                                <option value="COMPLETED">Completed</option>
+                                <option value="CANCELLED">Cancelled</option>
+                                <option value="NO_SHOW">No Show</option>
+                              </select>
+                              <div className="form-actions">
+                                <button className="btn-inline-save" onClick={handleEditAppointment}>Save</button>
+                                <button className="btn-inline-cancel" onClick={() => setEditApptId(null)}>Cancel</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+                              <div className="tx-card-info" style={{ flex: 1 }}>
+                                <span className="tx-desc" style={{ fontWeight: 600 }}>{appt.title}</span>
+                                <span className={`tx-badge tx-${appt.status}`}>{appt.status}</span>
+                              </div>
+                              <div className="tx-card-date">
+                                <span>{new Date(appt.appointmentDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                                <span style={{ color: '#9ca3af', fontSize: 11 }}>{appt.duration}min{appt.location ? ` · ${appt.location}` : ''}</span>
+                              </div>
+                              <div className="action-buttons">
+                                <button onClick={() => { setEditApptId(appt.id); setEditApptForm({ title: appt.title, appointmentDate: appt.appointmentDate.slice(0, 16), duration: appt.duration, location: appt.location || '', status: appt.status }); }} title="Edit">✏️</button>
+                                <button onClick={() => handleDeleteAppointment(appt.id)} title="Delete">🗑️</button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))
                     )}
@@ -1371,20 +1671,142 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                       </div>
                     ) : (
                       invoices.map((inv) => (
-                        <div key={inv.id} className="tx-card">
-                          <div className="tx-card-amount">${(inv.totalAmount || 0).toFixed(2)}</div>
-                          <div className="tx-card-info">
-                            <span className="tx-desc">#{inv.invoiceNumber}</span>
-                            <span className={`tx-badge tx-${inv.status}`}>{inv.status}</span>
-                          </div>
-                          <div className="tx-card-date">
-                            {inv.dueDate ? `Due: ${new Date(inv.dueDate).toLocaleDateString()}` : new Date(inv.createdAt).toLocaleDateString()}
+                        <div key={inv.id} className="tx-card" style={{ flexDirection: 'column' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+                            <div className="tx-card-amount">${(inv.totalAmount || 0).toFixed(2)}</div>
+                            <div className="tx-card-info" style={{ flex: 1 }}>
+                              <span className="tx-desc">#{inv.invoiceNumber}</span>
+                              <span className={`tx-badge tx-${inv.status}`}>{inv.status}</span>
+                            </div>
                             <div className="action-buttons">
+                              {(inv.status === 'SENT' || inv.status === 'OVERDUE') && (
+                                <button onClick={() => { setShowPaymentModal(inv.id); setPaymentForm({ amount: String(inv.totalAmount || 0), method: 'CASH', reference: '' }); }} title="Record Payment">💵</button>
+                              )}
+                              <button onClick={() => showPayments === inv.id ? setShowPayments(null) : loadInvoicePayments(inv.id)} title="View Payments">📊</button>
                               <button onClick={() => handleSendInvoice(inv.id)} title="Send via WhatsApp" disabled={sendingInvoiceId === inv.id}>
                                 {sendingInvoiceId === inv.id ? '⏳' : '📤'}
                               </button>
                               <button onClick={() => handleDownloadInvoicePdf(inv.id, inv.invoiceNumber)} title="Download PDF">📄</button>
                             </div>
+                          </div>
+                          <div style={{ fontSize: 11, color: '#999', marginTop: 4 }}>
+                            {inv.dueDate ? `Due: ${new Date(inv.dueDate).toLocaleDateString()}` : new Date(inv.createdAt).toLocaleDateString()}
+                          </div>
+                          {showPayments === inv.id && (
+                            <div style={{ width: '100%', marginTop: 8, padding: '8px 0', borderTop: '1px solid #eee', fontSize: 12 }}>
+                              {invoicePayments.length === 0 ? (
+                                <span style={{ color: '#999' }}>No payments recorded</span>
+                              ) : invoicePayments.map((pay: any, i: number) => (
+                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: '#555' }}>
+                                  <span>${parseFloat(pay.amount).toFixed(2)} — {pay.method}</span>
+                                  <span>{new Date(pay.createdAt || pay.paymentDate).toLocaleDateString()}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Tickets Tab */}
+              {activeTab === 'tickets' && (
+                <div className="modal-section">
+                  <div className="section-header">
+                    <h4>Service Tickets</h4>
+                    <button className="btn-primary-small" onClick={() => setShowTicketForm(!showTicketForm)}>
+                      {showTicketForm ? '- Cancel' : '+ New'}
+                    </button>
+                  </div>
+
+                  {showTicketForm && (
+                    <div className="inline-form">
+                      <input type="text" placeholder="Ticket title" value={ticketForm.title} onChange={e => setTicketForm(p => ({ ...p, title: e.target.value }))} />
+                      <textarea placeholder="Description (optional)" value={ticketForm.description} onChange={e => setTicketForm(p => ({ ...p, description: e.target.value }))} rows={2} />
+                      <select value={ticketForm.priority} onChange={e => setTicketForm(p => ({ ...p, priority: e.target.value }))}>
+                        <option value="LOW">Low</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="HIGH">High</option>
+                        <option value="URGENT">Urgent</option>
+                      </select>
+                      <div className="form-actions">
+                        <button className="btn-inline-save" onClick={handleCreateTicket} disabled={!ticketForm.title.trim()}>Create Ticket</button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="tasks-list-container">
+                    {tickets.length === 0 && !showTicketForm ? (
+                      <div className="empty-state-small">
+                        <span>🎫</span>
+                        <p>No service tickets</p>
+                        <button onClick={() => setShowTicketForm(true)}>Create First Ticket</button>
+                      </div>
+                    ) : (
+                      tickets.map((ticket: any) => (
+                        <div key={ticket.id} className="tx-card">
+                          <div className="tx-card-info" style={{ flex: 1 }}>
+                            <span className="tx-desc" style={{ fontWeight: 600 }}>{ticket.title}</span>
+                            <span className={`tx-badge tx-${ticket.status}`}>{ticket.status}</span>
+                          </div>
+                          <div className="tx-card-date">
+                            <span className={`task-priority priority-${(ticket.priority || '').toLowerCase()}`}>{ticket.priority}</span>
+                            <span style={{ fontSize: 11, color: '#999' }}>{new Date(ticket.createdAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Subscriptions Tab */}
+              {activeTab === 'subscriptions' && (
+                <div className="modal-section">
+                  <div className="section-header">
+                    <h4>Subscriptions</h4>
+                    <button className="btn-primary-small" onClick={() => setShowSubForm(!showSubForm)}>
+                      {showSubForm ? '- Cancel' : '+ New'}
+                    </button>
+                  </div>
+
+                  {showSubForm && (
+                    <div className="inline-form">
+                      <input type="text" placeholder="Plan name" value={subForm.planName} onChange={e => setSubForm(p => ({ ...p, planName: e.target.value }))} />
+                      <div className="inline-form-row">
+                        <input type="number" placeholder="Amount" min={0} value={subForm.amount} onChange={e => setSubForm(p => ({ ...p, amount: e.target.value }))} />
+                        <select value={subForm.billingCycle} onChange={e => setSubForm(p => ({ ...p, billingCycle: e.target.value }))}>
+                          <option value="WEEKLY">Weekly</option>
+                          <option value="MONTHLY">Monthly</option>
+                          <option value="QUARTERLY">Quarterly</option>
+                          <option value="YEARLY">Yearly</option>
+                        </select>
+                      </div>
+                      <div className="form-actions">
+                        <button className="btn-inline-save" onClick={handleCreateSubscription} disabled={!subForm.planName.trim() || !subForm.amount}>Create</button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="tasks-list-container">
+                    {subscriptions.length === 0 && !showSubForm ? (
+                      <div className="empty-state-small">
+                        <span>🔄</span>
+                        <p>No subscriptions</p>
+                        <button onClick={() => setShowSubForm(true)}>Add First Subscription</button>
+                      </div>
+                    ) : (
+                      subscriptions.map((sub: any) => (
+                        <div key={sub.id} className="tx-card">
+                          <div className="tx-card-amount">${parseFloat(sub.amount || 0).toFixed(2)}</div>
+                          <div className="tx-card-info" style={{ flex: 1 }}>
+                            <span className="tx-desc" style={{ fontWeight: 600 }}>{sub.planName}</span>
+                            <span className={`tx-badge tx-${sub.status}`}>{sub.status}</span>
+                          </div>
+                          <div className="tx-card-date">
+                            <span style={{ fontSize: 11, color: '#888' }}>{sub.billingCycle}</span>
                           </div>
                         </div>
                       ))
@@ -1433,6 +1855,38 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Modal */}
+      {showPaymentModal && (
+        <div className="modal-overlay" onClick={() => setShowPaymentModal(null)} style={{ zIndex: 10001 }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>Record Payment</h3>
+            <div className="form-group">
+              <label>Amount ($)</label>
+              <input type="number" value={paymentForm.amount} onChange={e => setPaymentForm(p => ({ ...p, amount: e.target.value }))} placeholder="0.00" />
+            </div>
+            <div className="form-group">
+              <label>Method</label>
+              <select value={paymentForm.method} onChange={e => setPaymentForm(p => ({ ...p, method: e.target.value }))}>
+                <option value="CASH">Cash</option>
+                <option value="BANK_TRANSFER">Bank Transfer</option>
+                <option value="CREDIT_CARD">Credit Card</option>
+                <option value="DEBIT_CARD">Debit Card</option>
+                <option value="PAYPAL">PayPal</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Reference (optional)</label>
+              <input type="text" value={paymentForm.reference} onChange={e => setPaymentForm(p => ({ ...p, reference: e.target.value }))} placeholder="Transaction reference" />
+            </div>
+            <div className="modal-actions">
+              <button onClick={() => setShowPaymentModal(null)} className="btn-cancel">Cancel</button>
+              <button onClick={handleRecordPayment} className="btn-save" disabled={!paymentForm.amount}>Record Payment</button>
             </div>
           </div>
         </div>

@@ -33,6 +33,8 @@ export function createContactRoutes(): Router {
   const updateContactSchema = z.object({
     name: z.string().optional(),
     email: z.string().email().optional(),
+    company: z.string().optional(),
+    department: z.string().optional(),
   });
 
   const searchContactsSchema = z.object({
