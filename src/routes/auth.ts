@@ -5,7 +5,7 @@ import { Router } from 'express';
 import { AuthController } from '@controllers/auth.controller';
 import { AuthService } from '@services/auth.service';
 import getPrismaClient from '@config/database';
-import { authenticate } from '@middleware/auth.middleware';
+import { authenticate, requireRole } from '@middleware/auth.middleware';
 import { validateRequest } from '@middleware/validation.middleware';
 import { createRateLimiter } from '@middleware/rate-limit.middleware';
 import { z } from 'zod';
@@ -117,19 +117,138 @@ router.put('/me', authenticate, async (req, res, next) => {
     }
 });
 
-// List users (ADMIN/MANAGER only)
+// ── Team User Management (OWNER/ADMIN only) ──
+
+const createUserSchema = z.object({
+    email: z.string().email(),
+    username: z.string().min(3).max(50),
+    password: z.string().min(8),
+    name: z.string().optional(),
+    role: z.enum(['ADMIN', 'MANAGER', 'AGENT']),
+});
+
+const updateUserSchema = z.object({
+    name: z.string().optional(),
+    email: z.string().email().optional(),
+    role: z.enum(['ADMIN', 'MANAGER', 'AGENT']).optional(),
+    isActive: z.boolean().optional(),
+    password: z.string().min(8).optional(),
+});
+
+// List users in org
 router.get('/users', authenticate, async (req, res, next) => {
     try {
-        const user = await prisma.user.findUnique({ where: { id: (req as any).userId } });
-        if (!user || (user.role !== 'ADMIN' && user.role !== 'MANAGER')) {
-            return res.status(403).json({ success: false, error: 'Forbidden' });
-        }
+        const orgId = req.user!.orgId;
         const users = await prisma.user.findMany({
-            where: { isActive: true },
-            select: { id: true, name: true, email: true, username: true, role: true },
-            orderBy: { name: 'asc' },
+            where: { orgId },
+            select: { id: true, name: true, email: true, username: true, role: true, isActive: true, lastLoginAt: true, createdAt: true },
+            orderBy: { createdAt: 'asc' },
         });
         res.json({ success: true, data: users });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Create user in org (OWNER/ADMIN only)
+router.post('/users', authenticate, requireRole('OWNER', 'ADMIN'), validateRequest(createUserSchema), async (req, res, next) => {
+    try {
+        const orgId = req.user!.orgId;
+        const { email, username, password, name, role } = req.body;
+
+        // Check if email or username already exists
+        const existing = await prisma.user.findFirst({
+            where: { OR: [{ email }, { username }] },
+        });
+        if (existing) {
+            return res.status(409).json({ success: false, error: 'A user with this email or username already exists' });
+        }
+
+        // Cannot create OWNER
+        if (role === 'OWNER') {
+            return res.status(400).json({ success: false, error: 'Cannot create another owner' });
+        }
+
+        const bcrypt = await import('bcryptjs');
+        const passwordHash = await bcrypt.hash(password, 10);
+
+        const user = await prisma.user.create({
+            data: { email, username, passwordHash, name, role, orgId, isActive: true },
+            select: { id: true, name: true, email: true, username: true, role: true, isActive: true, createdAt: true },
+        });
+
+        res.status(201).json({ success: true, data: user });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Update user in org (OWNER/ADMIN only)
+router.put('/users/:id', authenticate, requireRole('OWNER', 'ADMIN'), validateRequest(updateUserSchema), async (req, res, next) => {
+    try {
+        const orgId = req.user!.orgId;
+        const targetId = req.params.id;
+
+        // Ensure target user belongs to same org
+        const target = await prisma.user.findFirst({ where: { id: targetId, orgId } });
+        if (!target) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+
+        // Cannot demote the org owner
+        if (target.role === 'OWNER' && req.body.role && req.body.role !== 'OWNER') {
+            return res.status(400).json({ success: false, error: 'Cannot change the owner role' });
+        }
+
+        // Cannot set someone as OWNER
+        if (req.body.role === 'OWNER') {
+            return res.status(400).json({ success: false, error: 'Cannot assign owner role' });
+        }
+
+        const updateData: any = {};
+        if (req.body.name !== undefined) updateData.name = req.body.name;
+        if (req.body.email !== undefined) updateData.email = req.body.email;
+        if (req.body.role !== undefined) updateData.role = req.body.role;
+        if (req.body.isActive !== undefined) updateData.isActive = req.body.isActive;
+        if (req.body.password) {
+            const bcrypt = await import('bcryptjs');
+            updateData.passwordHash = await bcrypt.hash(req.body.password, 10);
+        }
+
+        const updated = await prisma.user.update({
+            where: { id: targetId },
+            data: updateData,
+            select: { id: true, name: true, email: true, username: true, role: true, isActive: true, lastLoginAt: true, createdAt: true },
+        });
+
+        res.json({ success: true, data: updated });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Delete user from org (OWNER only, cannot delete self)
+router.delete('/users/:id', authenticate, requireRole('OWNER'), async (req, res, next) => {
+    try {
+        const orgId = req.user!.orgId;
+        const targetId = req.params.id;
+
+        if (targetId === req.user!.id || targetId === req.user!.userId) {
+            return res.status(400).json({ success: false, error: 'Cannot delete yourself' });
+        }
+
+        const target = await prisma.user.findFirst({ where: { id: targetId, orgId } });
+        if (!target) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+
+        if (target.role === 'OWNER') {
+            return res.status(400).json({ success: false, error: 'Cannot delete the owner' });
+        }
+
+        // Soft delete — deactivate instead of hard delete
+        await prisma.user.update({ where: { id: targetId }, data: { isActive: false } });
+        res.json({ success: true, message: 'User deactivated' });
     } catch (error) {
         next(error);
     }

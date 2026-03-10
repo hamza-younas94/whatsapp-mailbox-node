@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Members - WhatsApp Mailbox</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://whatshub.nexofydigital.com:3000 https://whatshub.nexofydigital.com:3000;">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <script>
+        if (!localStorage.getItem('authToken')) window.location.href = '/login.html';
+    </script>
+    <script src="/js/navbar.js"></script>
+
+    <div class="max-w-5xl mx-auto px-4 py-6">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">Team Members</h1>
+                <p class="text-gray-600 mt-1">Manage your organization's team</p>
+            </div>
+            <button onclick="showCreateModal()" id="addUserBtn" class="hidden bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all">
+                <i class="fas fa-user-plus mr-2"></i>Add Member
+            </button>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-blue-500">
+                <div class="text-2xl font-bold text-blue-600" id="totalUsers">0</div>
+                <div class="text-sm text-gray-500">Total Members</div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-green-500">
+                <div class="text-2xl font-bold text-green-600" id="activeUsers">0</div>
+                <div class="text-sm text-gray-500">Active</div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-yellow-500">
+                <div class="text-2xl font-bold text-yellow-600" id="adminCount">0</div>
+                <div class="text-sm text-gray-500">Admins</div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-purple-500">
+                <div class="text-2xl font-bold text-purple-600" id="agentCount">0</div>
+                <div class="text-sm text-gray-500">Agents</div>
+            </div>
+        </div>
+
+        <!-- Users Table -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50 border-b">
+                        <tr>
+                            <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Member</th>
+                            <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Role</th>
+                            <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
+                            <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Last Login</th>
+                            <th class="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody" class="divide-y">
+                        <tr><td colspan="5" class="text-center py-8 text-gray-400">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create/Edit User Modal -->
+    <div id="userModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4">
+            <div class="p-6 border-b">
+                <div class="flex justify-between items-center">
+                    <h2 id="modalTitle" class="text-xl font-bold text-gray-800">Add Team Member</h2>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+            </div>
+            <form id="userForm" onsubmit="handleSubmit(event)" class="p-6 space-y-4">
+                <input type="hidden" id="editUserId" value="">
+
+                <div id="nameField">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <input type="text" id="userName" class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="John Doe">
+                </div>
+
+                <div id="emailField">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email <span class="text-red-500">*</span></label>
+                    <input type="email" id="userEmail" required class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="john@example.com">
+                </div>
+
+                <div id="usernameField">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Username <span class="text-red-500">*</span></label>
+                    <input type="text" id="userUsername" required minlength="3" class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="johndoe">
+                </div>
+
+                <div id="passwordField">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password <span id="pwdRequired" class="text-red-500">*</span></label>
+                    <input type="password" id="userPassword" minlength="8" class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="Min 8 characters">
+                    <p id="pwdHint" class="hidden text-xs text-gray-400 mt-1">Leave blank to keep current password</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Role <span class="text-red-500">*</span></label>
+                    <select id="userRole" required class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                        <option value="AGENT">Agent — Can view and reply to messages</option>
+                        <option value="MANAGER">Manager — Can manage contacts, orders, tasks</option>
+                        <option value="ADMIN">Admin — Full access except ownership</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-2">
+                    <button type="button" onclick="closeModal()" class="px-5 py-2.5 border rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" id="submitBtn" class="px-5 py-2.5 bg-green-500 text-white rounded-lg hover:bg-green-600 font-medium">
+                        <i class="fas fa-save mr-1"></i> Save
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API = '/api/v1/auth';
+        const token = localStorage.getItem('authToken');
+        const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+        let currentUser = null;
+        let users = [];
+
+        async function init() {
+            // Get current user info
+            try {
+                const meRes = await fetch(`${API}/me`, { headers });
+                const meData = await meRes.json();
+                if (meData.success) {
+                    currentUser = meData.data || meData.user;
+                    // Show add button for OWNER/ADMIN
+                    if (['OWNER', 'ADMIN'].includes(currentUser.role)) {
+                        document.getElementById('addUserBtn').classList.remove('hidden');
+                    }
+                }
+            } catch (e) { console.error('Failed to load current user', e); }
+
+            await loadUsers();
+        }
+
+        async function loadUsers() {
+            try {
+                const res = await fetch(`${API}/users`, { headers });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                users = data.data;
+                renderUsers();
+                updateStats();
+            } catch (e) {
+                document.getElementById('usersTableBody').innerHTML = `<tr><td colspan="5" class="text-center py-8 text-red-400">${e.message}</td></tr>`;
+            }
+        }
+
+        function updateStats() {
+            const active = users.filter(u => u.isActive);
+            document.getElementById('totalUsers').textContent = users.length;
+            document.getElementById('activeUsers').textContent = active.length;
+            document.getElementById('adminCount').textContent = users.filter(u => u.role === 'ADMIN' || u.role === 'OWNER').length;
+            document.getElementById('agentCount').textContent = users.filter(u => u.role === 'AGENT').length;
+        }
+
+        const roleBadge = (role) => {
+            const colors = { OWNER: 'purple', ADMIN: 'red', MANAGER: 'blue', AGENT: 'green' };
+            const c = colors[role] || 'gray';
+            return `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-${c}-100 text-${c}-700">${role}</span>`;
+        };
+
+        const statusBadge = (active) => active
+            ? '<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">Active</span>'
+            : '<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">Disabled</span>';
+
+        function formatDate(d) {
+            if (!d) return '<span class="text-gray-400">Never</span>';
+            return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function renderUsers() {
+            const canManage = currentUser && ['OWNER', 'ADMIN'].includes(currentUser.role);
+            const isOwner = currentUser && currentUser.role === 'OWNER';
+            const tbody = document.getElementById('usersTableBody');
+
+            if (!users.length) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-400">No team members found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = users.map(u => {
+                const isSelf = currentUser && (u.id === currentUser.id);
+                const isTargetOwner = u.role === 'OWNER';
+                const showActions = canManage && !isTargetOwner && !isSelf;
+                const showEdit = canManage && !isTargetOwner;
+
+                return `<tr class="hover:bg-gray-50 ${!u.isActive ? 'opacity-60' : ''}">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                                <i class="fas fa-user text-gray-500"></i>
+                            </div>
+                            <div>
+                                <div class="font-medium text-gray-900">${u.name || u.username}${isSelf ? ' <span class="text-xs text-gray-400">(you)</span>' : ''}</div>
+                                <div class="text-sm text-gray-500">${u.email}</div>
+                                <div class="text-xs text-gray-400">@${u.username}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">${roleBadge(u.role)}</td>
+                    <td class="px-6 py-4">${statusBadge(u.isActive)}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${formatDate(u.lastLoginAt)}</td>
+                    <td class="px-6 py-4 text-right space-x-2">
+                        ${showEdit ? `<button onclick="editUser('${u.id}')" class="text-blue-500 hover:text-blue-700 text-sm"><i class="fas fa-edit mr-1"></i>Edit</button>` : ''}
+                        ${showActions && u.isActive ? `<button onclick="toggleUser('${u.id}', false)" class="text-yellow-500 hover:text-yellow-700 text-sm ml-2"><i class="fas fa-ban mr-1"></i>Disable</button>` : ''}
+                        ${showActions && !u.isActive ? `<button onclick="toggleUser('${u.id}', true)" class="text-green-500 hover:text-green-700 text-sm ml-2"><i class="fas fa-check mr-1"></i>Enable</button>` : ''}
+                        ${isOwner && !isSelf && !isTargetOwner ? `<button onclick="deleteUser('${u.id}', '${(u.name || u.username).replace(/'/g, "\\'")}')" class="text-red-500 hover:text-red-700 text-sm ml-2"><i class="fas fa-trash mr-1"></i></button>` : ''}
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function showCreateModal() {
+            document.getElementById('modalTitle').textContent = 'Add Team Member';
+            document.getElementById('editUserId').value = '';
+            document.getElementById('userForm').reset();
+            document.getElementById('usernameField').classList.remove('hidden');
+            document.getElementById('userPassword').required = true;
+            document.getElementById('pwdRequired').classList.remove('hidden');
+            document.getElementById('pwdHint').classList.add('hidden');
+            document.getElementById('userModal').classList.remove('hidden');
+        }
+
+        function editUser(id) {
+            const u = users.find(x => x.id === id);
+            if (!u) return;
+            document.getElementById('modalTitle').textContent = 'Edit Team Member';
+            document.getElementById('editUserId').value = id;
+            document.getElementById('userName').value = u.name || '';
+            document.getElementById('userEmail').value = u.email;
+            document.getElementById('userUsername').value = u.username;
+            document.getElementById('usernameField').classList.add('hidden');
+            document.getElementById('userPassword').value = '';
+            document.getElementById('userPassword').required = false;
+            document.getElementById('pwdRequired').classList.add('hidden');
+            document.getElementById('pwdHint').classList.remove('hidden');
+            document.getElementById('userRole').value = u.role;
+            document.getElementById('userModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('userModal').classList.add('hidden');
+        }
+
+        async function handleSubmit(e) {
+            e.preventDefault();
+            const editId = document.getElementById('editUserId').value;
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Saving...';
+
+            try {
+                if (editId) {
+                    // Update
+                    const body = { name: document.getElementById('userName').value || undefined, email: document.getElementById('userEmail').value, role: document.getElementById('userRole').value };
+                    const pwd = document.getElementById('userPassword').value;
+                    if (pwd) body.password = pwd;
+                    const res = await fetch(`${API}/users/${editId}`, { method: 'PUT', headers, body: JSON.stringify(body) });
+                    const data = await res.json();
+                    if (!data.success) throw new Error(data.error);
+                } else {
+                    // Create
+                    const body = {
+                        name: document.getElementById('userName').value || undefined,
+                        email: document.getElementById('userEmail').value,
+                        username: document.getElementById('userUsername').value,
+                        password: document.getElementById('userPassword').value,
+                        role: document.getElementById('userRole').value,
+                    };
+                    const res = await fetch(`${API}/users`, { method: 'POST', headers, body: JSON.stringify(body) });
+                    const data = await res.json();
+                    if (!data.success) throw new Error(data.error);
+                }
+                closeModal();
+                await loadUsers();
+            } catch (err) {
+                alert(err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
+            }
+        }
+
+        async function toggleUser(id, activate) {
+            if (!confirm(`${activate ? 'Enable' : 'Disable'} this user?`)) return;
+            try {
+                const res = await fetch(`${API}/users/${id}`, { method: 'PUT', headers, body: JSON.stringify({ isActive: activate }) });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                await loadUsers();
+            } catch (err) { alert(err.message); }
+        }
+
+        async function deleteUser(id, name) {
+            if (!confirm(`Permanently deactivate "${name}"? They will no longer be able to log in.`)) return;
+            try {
+                const res = await fetch(`${API}/users/${id}`, { method: 'DELETE', headers });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                await loadUsers();
+            } catch (err) { alert(err.message); }
+        }
+
+        init();
+    </script>
+</body>
+</html>

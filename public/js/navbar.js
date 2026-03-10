@@ -36,6 +36,7 @@ function createNavbar() {
         { label: 'Tasks', href: '/tasks.html', icon: 'fa-tasks' },
         { label: 'Analytics', href: '/analytics.html', icon: 'fa-chart-line' },
         { label: 'Activity Logs', href: '/activity-logs.html', icon: 'fa-shield-alt' },
+        { label: 'Team', href: '/users.html', icon: 'fa-users' },
     ];
 
     const isActive = (href) => href === '/' ? currentPath === '/' : (currentPath === href || currentPath.endsWith(href));
