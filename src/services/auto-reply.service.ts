@@ -1,7 +1,7 @@
 // src/services/auto-reply.service.ts
-// Advanced auto-reply service with fuzzy matching, deduplication, and rate limiting
+// Advanced auto-reply service with conversation awareness, fuzzy matching, deduplication, and rate limiting
 
-import { QuickReply } from '@prisma/client';
+import { PrismaClient, QuickReply } from '@prisma/client';
 import logger from '@utils/logger';
 
 interface AutoReplyContext {
@@ -20,64 +20,49 @@ interface MatchResult {
 
 // Track recent auto-replies to prevent duplicates
 const recentAutoReplies = new Map<string, { timestamp: number; replyId: string }>();
-const DUPLICATE_WINDOW_MS = 60000; // 1 minute window to prevent duplicate replies
-const RATE_LIMIT_MS = 5000; // Minimum 5 seconds between auto-replies to same contact
+const COOLDOWN_WINDOW_MS = 30 * 60 * 1000; // 30 minutes — don't auto-reply same contact within this window
+const RATE_LIMIT_MS = 10000; // Minimum 10 seconds between auto-replies to same contact
+const ONGOING_CONVERSATION_MS = 4 * 60 * 60 * 1000; // 4 hours — if you sent a message within this window, it's an ongoing conversation
 
 export class AutoReplyService {
-  /**
-   * Clean up old entries from the recent auto-replies cache
-   */
   private cleanupOldEntries(): void {
     const now = Date.now();
     const keysToDelete: string[] = [];
-    
+
     recentAutoReplies.forEach((value, key) => {
-      if (now - value.timestamp > DUPLICATE_WINDOW_MS) {
+      if (now - value.timestamp > COOLDOWN_WINDOW_MS) {
         keysToDelete.push(key);
       }
     });
-    
+
     keysToDelete.forEach(key => recentAutoReplies.delete(key));
   }
 
-  /**
-   * Check if we should skip auto-reply due to rate limiting or recent duplicate
-   */
   private shouldSkipAutoReply(context: AutoReplyContext, replyId: string): boolean {
     this.cleanupOldEntries();
-    
+
     const key = `${context.userId}:${context.contactId}`;
     const recent = recentAutoReplies.get(key);
-    
+
     if (!recent) return false;
-    
+
     const timeSinceLastReply = context.timestamp - recent.timestamp;
-    
-    // Check rate limit
+
+    // Rate limit: minimum gap between auto-replies to same contact
     if (timeSinceLastReply < RATE_LIMIT_MS) {
-      logger.debug({ 
-        contactId: context.contactId, 
-        timeSince: timeSinceLastReply 
-      }, 'Skipping auto-reply due to rate limit');
+      logger.debug({ contactId: context.contactId, timeSince: timeSinceLastReply }, 'Skipping auto-reply: rate limit');
       return true;
     }
-    
-    // Check if same reply sent recently
-    if (recent.replyId === replyId && timeSinceLastReply < DUPLICATE_WINDOW_MS) {
-      logger.debug({ 
-        contactId: context.contactId, 
-        replyId,
-        timeSince: timeSinceLastReply 
-      }, 'Skipping duplicate auto-reply');
+
+    // Cooldown: don't send another auto-reply to same contact within window
+    if (timeSinceLastReply < COOLDOWN_WINDOW_MS) {
+      logger.debug({ contactId: context.contactId, timeSince: timeSinceLastReply }, 'Skipping auto-reply: cooldown window');
       return true;
     }
-    
+
     return false;
   }
 
-  /**
-   * Mark that an auto-reply was sent
-   */
   private markAutoReplySent(context: AutoReplyContext, replyId: string): void {
     const key = `${context.userId}:${context.contactId}`;
     recentAutoReplies.set(key, {
@@ -87,8 +72,32 @@ export class AutoReplyService {
   }
 
   /**
-   * Calculate Levenshtein distance between two strings
+   * Check if this is an ongoing conversation (user sent a message to this contact recently).
+   * If the user already replied manually, the contact is responding to them — don't auto-reply.
    */
+  async isOngoingConversation(prisma: PrismaClient, userId: string, contactId: string): Promise<boolean> {
+    const cutoff = new Date(Date.now() - ONGOING_CONVERSATION_MS);
+
+    const recentOutgoing = await prisma.message.findFirst({
+      where: {
+        userId,
+        contactId,
+        direction: 'OUTGOING',
+        quickReplyId: null, // Exclude previous auto-replies — only check manual messages
+        createdAt: { gte: cutoff },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, createdAt: true },
+    });
+
+    if (recentOutgoing) {
+      logger.info({ contactId, lastOutgoing: recentOutgoing.createdAt }, 'Skipping auto-reply: ongoing conversation (user sent message recently)');
+      return true;
+    }
+
+    return false;
+  }
+
   private levenshteinDistance(str1: string, str2: string): number {
     const len1 = str1.length;
     const len2 = str2.length;
@@ -97,7 +106,6 @@ export class AutoReplyService {
     if (len1 === 0) return len2;
     if (len2 === 0) return len1;
 
-    // Initialize matrix
     for (let i = 0; i <= len1; i++) {
       matrix[i] = [i];
     }
@@ -105,14 +113,13 @@ export class AutoReplyService {
       matrix[0][j] = j;
     }
 
-    // Calculate distances
     for (let i = 1; i <= len1; i++) {
       for (let j = 1; j <= len2; j++) {
         const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
         matrix[i][j] = Math.min(
-          matrix[i - 1][j] + 1,     // deletion
-          matrix[i][j - 1] + 1,     // insertion
-          matrix[i - 1][j - 1] + cost  // substitution
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + cost
         );
       }
     }
@@ -120,20 +127,14 @@ export class AutoReplyService {
     return matrix[len1][len2];
   }
 
-  /**
-   * Calculate similarity score (0-1) using Levenshtein distance
-   */
   private calculateSimilarity(str1: string, str2: string): number {
     const maxLen = Math.max(str1.length, str2.length);
     if (maxLen === 0) return 1.0;
-    
+
     const distance = this.levenshteinDistance(str1, str2);
     return 1 - (distance / maxLen);
   }
 
-  /**
-   * Extract keywords from text (remove common words)
-   */
   private extractKeywords(text: string): string[] {
     const commonWords = new Set([
       'the', 'is', 'at', 'which', 'on', 'in', 'a', 'an', 'and', 'or', 'but',
@@ -144,7 +145,11 @@ export class AutoReplyService {
       'these', 'those', 'am', 'are', 'was', 'were', 'be', 'been', 'being',
       'have', 'has', 'had', 'do', 'does', 'did', 'doing', 'what', 'when',
       'where', 'who', 'why', 'how', 'kya', 'hai', 'ho', 'ka', 'ki', 'ko',
-      'se', 'me', 'ne', 'par', 'ke', 'aur', 'ya', 'bhi', 'abhi', 'yeh'
+      'se', 'me', 'ne', 'par', 'ke', 'aur', 'ya', 'bhi', 'abhi', 'yeh',
+      'please', 'thanks', 'thank', 'okay', 'ok', 'yes', 'no', 'hi', 'hello',
+      'hey', 'salaam', 'salam', 'bro', 'bhai', 'brother', 'sir', 'madam',
+      'sorry', 'good', 'bad', 'just', 'like', 'very', 'much', 'also', 'too',
+      'well', 'now', 'here', 'there', 'then', 'only', 'still', 'already',
     ]);
 
     return text
@@ -154,17 +159,13 @@ export class AutoReplyService {
       .filter(word => word.length > 2 && !commonWords.has(word));
   }
 
-  /**
-   * Find best matching quick reply using multiple strategies
-   */
   findBestMatch(messageText: string, quickReplies: QuickReply[]): MatchResult | null {
     if (!messageText || messageText.trim().length === 0) {
       return null;
     }
 
-    // Filter only active quick replies with shortcuts
     const activeReplies = quickReplies.filter(qr => qr.isActive && qr.shortcut);
-    
+
     if (activeReplies.length === 0) {
       return null;
     }
@@ -182,43 +183,50 @@ export class AutoReplyService {
 
       const shortcut = reply.shortcut.toLowerCase().trim();
       const shortcutWords = shortcut.split(/\s+/).map(word => word.replace(/[^\w]/g, ''));
-      
+
       // Strategy 1: Exact match (highest priority)
       if (normalizedMessage === shortcut) {
         matches.push({ reply, score: 1.0, matchType: 'exact' });
         continue;
       }
 
-      // Strategy 2: Exact word match in message
-      if (messageWords.includes(shortcut) || shortcutWords.every(sw => messageWords.includes(sw))) {
-        matches.push({ reply, score: 0.95, matchType: 'exact' });
+      // Strategy 2: All shortcut words appear in message
+      if (shortcutWords.length > 0 && shortcutWords.every(sw => messageWords.includes(sw))) {
+        // Penalize if message is much longer than shortcut (likely just a coincidence)
+        const lengthRatio = shortcutWords.length / messageWords.length;
+        const score = lengthRatio >= 0.5 ? 0.95 : 0.85 * lengthRatio;
+        if (score >= 0.5) {
+          matches.push({ reply, score, matchType: 'exact' });
+        }
         continue;
       }
 
-      // Strategy 3: Contains match
-      if (normalizedMessage.includes(shortcut) || shortcut.includes(normalizedMessage)) {
-        const containsScore = Math.min(shortcut.length, normalizedMessage.length) / 
-                             Math.max(shortcut.length, normalizedMessage.length);
-        matches.push({ reply, score: 0.85 * containsScore, matchType: 'contains' });
+      // Strategy 3: Contains match — only when shortcut is contained in message (not reverse)
+      if (normalizedMessage.includes(shortcut) && shortcut.length >= 4) {
+        const lengthRatio = shortcut.length / normalizedMessage.length;
+        // Only match if shortcut is a significant portion of the message
+        if (lengthRatio >= 0.3) {
+          matches.push({ reply, score: 0.85 * lengthRatio, matchType: 'contains' });
+        }
         continue;
       }
 
-      // Strategy 4: Keyword overlap (require at least 60% overlap)
+      // Strategy 4: Keyword overlap (require at least 70% overlap)
       const shortcutKeywords = this.extractKeywords(shortcut);
       const commonKeywords = messageKeywords.filter(k => shortcutKeywords.includes(k));
 
-      if (commonKeywords.length > 0 && shortcutKeywords.length > 0) {
+      if (commonKeywords.length >= 2 && shortcutKeywords.length > 0) {
         const keywordScore = commonKeywords.length / Math.max(messageKeywords.length, shortcutKeywords.length);
-        if (keywordScore >= 0.6) {
+        if (keywordScore >= 0.7) {
           matches.push({ reply, score: 0.7 * keywordScore, matchType: 'keyword' });
           continue;
         }
       }
 
-      // Strategy 5: Fuzzy matching — only for very close matches (85%+ similarity)
+      // Strategy 5: Fuzzy matching — only for very close matches (90%+ similarity)
       let maxFuzzyScore = 0;
       for (const word of messageWords) {
-        if (word.length < 4) continue; // Skip short words
+        if (word.length < 4) continue;
 
         for (const shortcutWord of shortcutWords) {
           if (shortcutWord.length < 4) continue;
@@ -230,54 +238,60 @@ export class AutoReplyService {
         }
       }
 
-      if (maxFuzzyScore >= 0.85) {
+      if (maxFuzzyScore >= 0.9) {
         matches.push({ reply, score: 0.6 * maxFuzzyScore, matchType: 'fuzzy' });
       }
     }
 
-    // Sort by score (highest first) and return best match
     if (matches.length === 0) {
       return null;
     }
 
     matches.sort((a, b) => b.score - a.score);
 
-    // Only return matches with score above 0.75 (75% confidence)
+    // Only return matches with score above 0.80 (80% confidence)
     const bestMatch = matches[0];
-    if (bestMatch.score < 0.75) {
-      logger.debug({ 
+    if (bestMatch.score < 0.80) {
+      logger.debug({
         message: messageText.substring(0, 50),
-        bestScore: bestMatch.score 
+        bestScore: bestMatch.score.toFixed(2),
+        matchType: bestMatch.matchType,
       }, 'Best match score too low, skipping auto-reply');
       return null;
     }
 
-    logger.info({ 
+    logger.info({
       message: messageText.substring(0, 50),
       shortcut: bestMatch.reply.shortcut,
-      score: bestMatch.score,
+      score: bestMatch.score.toFixed(2),
       matchType: bestMatch.matchType
     }, 'Found matching auto-reply');
 
     return bestMatch;
   }
 
-  /**
-   * Process auto-reply for incoming message
-   */
   async processAutoReply(
     context: AutoReplyContext,
-    quickReplies: QuickReply[]
+    quickReplies: QuickReply[],
+    prisma?: PrismaClient
   ): Promise<{ reply: QuickReply; matchType: string; score: number } | null> {
     try {
+      // Check if this is an ongoing conversation — don't interrupt with auto-replies
+      if (prisma) {
+        const ongoing = await this.isOngoingConversation(prisma, context.userId, context.contactId);
+        if (ongoing) {
+          return null;
+        }
+      }
+
       // Find best matching reply
       const match = this.findBestMatch(context.messageText, quickReplies);
-      
+
       if (!match) {
         return null;
       }
 
-      // Check if we should skip due to rate limiting or duplicates
+      // Check if we should skip due to rate limiting or cooldown
       if (this.shouldSkipAutoReply(context, match.reply.id)) {
         return null;
       }

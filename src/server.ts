@@ -579,7 +579,8 @@ function setupIncomingMessageListener(): void {
               messageText: body,
               timestamp: Date.now(),
             },
-            allQuickReplies
+            allQuickReplies,
+            db
           );
 
           if (autoReplyResult) {
