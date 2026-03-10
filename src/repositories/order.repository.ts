@@ -12,7 +12,7 @@ export class OrderRepository extends BaseRepository<Order> {
   }
 
   async findByUserId(
-    userId: string,
+    orgId: string,
     options: {
       status?: OrderStatus;
       orderType?: OrderType;
@@ -23,7 +23,7 @@ export class OrderRepository extends BaseRepository<Order> {
       take?: number;
     } = {}
   ): Promise<{ items: Order[]; total: number }> {
-    const where: any = { userId };
+    const where: any = { orgId };
 
     if (options.status) where.status = options.status;
     if (options.orderType) where.orderType = options.orderType;
@@ -64,13 +64,13 @@ export class OrderRepository extends BaseRepository<Order> {
     });
   }
 
-  async getNextOrderNumber(userId: string): Promise<string> {
+  async getNextOrderNumber(orgId: string): Promise<string> {
     const today = new Date();
     const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
     const prefix = `ORD-${dateStr}-`;
 
     const lastOrder = await this.prisma.order.findFirst({
-      where: { userId, orderNumber: { startsWith: prefix } },
+      where: { orgId, orderNumber: { startsWith: prefix } },
       orderBy: { orderNumber: 'desc' },
     });
 

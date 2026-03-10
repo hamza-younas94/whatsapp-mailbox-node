@@ -30,12 +30,12 @@ export interface CreateOrderInput {
 export class OrderService {
   constructor(private repository: OrderRepository) {}
 
-  async createOrder(userId: string, input: CreateOrderInput): Promise<Order> {
+  async createOrder(orgId: string, userId: string, input: CreateOrderInput): Promise<Order> {
     if (!input.items || input.items.length === 0) {
       throw new ValidationError('Order must have at least one item');
     }
 
-    const orderNumber = await this.repository.getNextOrderNumber(userId);
+    const orderNumber = await this.repository.getNextOrderNumber(orgId);
 
     let subtotal = 0;
     let taxAmount = 0;
@@ -57,6 +57,7 @@ export class OrderService {
     const totalAmount = subtotal + deliveryFee + taxAmount - discountAmount;
 
     const orderData = {
+      orgId,
       userId,
       contactId: input.contactId,
       orderNumber,
@@ -85,7 +86,7 @@ export class OrderService {
   }
 
   async getOrders(
-    userId: string,
+    orgId: string,
     options: {
       status?: string;
       orderType?: string;
@@ -100,7 +101,7 @@ export class OrderService {
     const limit = options.limit || 20;
     const skip = (page - 1) * limit;
 
-    const { items, total } = await this.repository.findByUserId(userId, {
+    const { items, total } = await this.repository.findByUserId(orgId, {
       status: options.status as OrderStatus,
       orderType: options.orderType as OrderType,
       contactId: options.contactId,

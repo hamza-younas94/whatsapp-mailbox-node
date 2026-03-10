@@ -29,16 +29,16 @@ export interface IMessageRepository {
     filters?: Omit<MessageFilters, 'conversationId'>,
   ): Promise<PaginatedResult<Message>>;
   findByContact(
-    userId: string,
+    orgId: string,
     contactId: string,
     filters?: MessageFilters,
   ): Promise<PaginatedResult<Message>>;
-  findByUser(userId: string, filters: MessageFilters): Promise<PaginatedResult<Message>>;
+  findByUser(orgId: string, filters: MessageFilters): Promise<PaginatedResult<Message>>;
   create(data: Prisma.MessageCreateInput): Promise<Message>;
   update(id: string, data: Prisma.MessageUpdateInput): Promise<Message>;
   delete(id: string): Promise<Message>;
   findByWaMessageId(waMessageId: string): Promise<Message | null>;
-  findRecentByContent(userId: string, contactId: string, content: string, direction: string, withinSeconds: number): Promise<Message | null>;
+  findRecentByContent(orgId: string, contactId: string, content: string, direction: string, withinSeconds: number): Promise<Message | null>;
   updateStatus(id: string, status: string): Promise<Message>;
   getUnreadCount(conversationId: string): Promise<number>;
 }
@@ -85,7 +85,7 @@ export class MessageRepository extends BaseRepository<Message> implements IMessa
   }
 
   async findByContact(
-    userId: string,
+    orgId: string,
     contactId: string,
     filters?: MessageFilters,
   ): Promise<PaginatedResult<Message>> {
@@ -93,7 +93,7 @@ export class MessageRepository extends BaseRepository<Message> implements IMessa
     const offset = filters?.offset || 0;
 
     const where: Prisma.MessageWhereInput = {
-      userId,
+      orgId,
       contactId,
       ...(filters?.status && { status: filters.status as any }),
       ...(filters?.direction && { direction: filters.direction as any }),
@@ -126,7 +126,7 @@ export class MessageRepository extends BaseRepository<Message> implements IMessa
   }
 
   async findRecentByContent(
-    userId: string,
+    orgId: string,
     contactId: string,
     content: string,
     direction: string,
@@ -135,7 +135,7 @@ export class MessageRepository extends BaseRepository<Message> implements IMessa
     const cutoffTime = new Date(Date.now() - withinSeconds * 1000);
     return this.prisma.message.findFirst({
       where: {
-        userId,
+        orgId,
         contactId,
         content,
         direction: direction as any,
@@ -162,12 +162,12 @@ export class MessageRepository extends BaseRepository<Message> implements IMessa
     });
   }
 
-  async findByUser(userId: string, filters: MessageFilters): Promise<PaginatedResult<Message>> {
+  async findByUser(orgId: string, filters: MessageFilters): Promise<PaginatedResult<Message>> {
     const limit = Math.min(filters.limit || 20, 100);
     const offset = filters.offset || 0;
 
     const where: Prisma.MessageWhereInput = {
-      userId,
+      orgId,
       ...(filters.direction && { direction: filters.direction as any }),
       ...(filters.status && { status: filters.status as any }),
       ...(filters.messageType && { messageType: filters.messageType as any }),

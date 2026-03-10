@@ -4,21 +4,24 @@
 import { Request, Response } from 'express';
 import { ProductService } from '@services/product.service';
 import { asyncHandler } from '@middleware/error.middleware';
+import { requireOrgId } from '@utils/auth-helpers';
 
 export class ProductController {
   constructor(private service: ProductService) {}
 
   create = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
-    const product = await this.service.createProduct(userId, req.body);
+    const orgId = requireOrgId(req);
+    const product = await this.service.createProduct(orgId, userId, req.body);
     res.status(201).json({ success: true, data: product });
   });
 
   list = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
+    const orgId = requireOrgId(req);
     const { category, isActive, lowStock, search, page, limit } = req.query;
 
-    const result = await this.service.getProducts(userId, {
+    const result = await this.service.getProducts(orgId, {
       category: category as string,
       isActive: isActive !== undefined ? isActive === 'true' : undefined,
       lowStock: lowStock === 'true',
@@ -37,7 +40,8 @@ export class ProductController {
 
   update = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
-    const product = await this.service.updateProduct(req.params.id, userId, req.body);
+    const orgId = requireOrgId(req);
+    const product = await this.service.updateProduct(req.params.id, orgId, userId, req.body);
     res.status(200).json({ success: true, data: product });
   });
 

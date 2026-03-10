@@ -12,8 +12,8 @@ export interface CreateTagInput {
 }
 
 export interface ITagService {
-  createTag(userId: string, input: CreateTagInput): Promise<Tag>;
-  getTags(userId: string): Promise<Tag[]>;
+  createTag(orgId: string, userId: string, input: CreateTagInput): Promise<Tag>;
+  getTags(orgId: string): Promise<Tag[]>;
   updateTag(id: string, data: Partial<Tag>): Promise<Tag>;
   deleteTag(id: string): Promise<void>;
   addTagToContact(contactId: string, tagId: string): Promise<void>;
@@ -24,15 +24,16 @@ export interface ITagService {
 export class TagService implements ITagService {
   constructor(private repository: TagRepository) {}
 
-  async createTag(userId: string, input: CreateTagInput): Promise<Tag> {
+  async createTag(orgId: string, userId: string, input: CreateTagInput): Promise<Tag> {
     try {
       // Check for duplicate name
-      const existing = await this.repository.findByName(userId, input.name);
+      const existing = await this.repository.findByName(orgId, input.name);
       if (existing) {
         throw new ConflictError(`Tag '${input.name}' already exists`);
       }
 
       const tag = await this.repository.create({
+        orgId,
         userId,
         name: input.name,
         color: input.color || '#3B82F6',
@@ -46,8 +47,8 @@ export class TagService implements ITagService {
     }
   }
 
-  async getTags(userId: string): Promise<Tag[]> {
-    return this.repository.findByUserId(userId);
+  async getTags(orgId: string): Promise<Tag[]> {
+    return this.repository.findByUserId(orgId);
   }
 
   async updateTag(id: string, data: Partial<Tag>): Promise<Tag> {

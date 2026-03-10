@@ -4,13 +4,13 @@
 import { Request, Response } from 'express';
 import { NoteService } from '@services/note.service';
 import { asyncHandler } from '@middleware/error.middleware';
-
 export class NoteController {
   constructor(private service: NoteService) {}
 
   create = asyncHandler(async (req: Request, res: Response) => {
+    const orgId = req.user!.orgId;
     const userId = req.user!.id;
-    const note = await this.service.createNote(userId, req.body);
+    const note = await this.service.createNote(orgId, userId, req.body);
 
     res.status(201).json({
       success: true,

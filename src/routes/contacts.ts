@@ -78,12 +78,12 @@ export function createContactRoutes(): Router {
   // Sync avatars: download CDN URLs to local storage
   router.post('/sync-avatars', authMiddleware, async (req, res, next) => {
     try {
-      const userId = (req as any).user?.id;
-      if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+      const orgId = (req as any).user?.orgId;
+      if (!orgId) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
       const contacts = await prisma.contact.findMany({
         where: {
-          userId,
+          orgId,
           profilePhotoUrl: { not: null },
           NOT: { profilePhotoUrl: { startsWith: '/' } },
         },
@@ -160,9 +160,9 @@ export function createContactRoutes(): Router {
   // CSV Export
   router.get('/export', authMiddleware, async (req, res) => {
     try {
-      const userId = (req as any).userId;
+      const orgId = req.user?.orgId;
       const contacts = await prisma.contact.findMany({
-        where: { userId },
+        where: { orgId },
         include: { tags: { include: { tag: true } } },
         orderBy: { name: 'asc' },
       });
@@ -193,7 +193,9 @@ export function createContactRoutes(): Router {
   // CSV Import
   router.post('/import', authMiddleware, async (req, res) => {
     try {
-      const userId = (req as any).userId;
+      const userId = req.user?.id;
+      const orgId = req.user?.orgId;
+      if (!userId || !orgId) return res.status(401).json({ success: false, error: 'Unauthorized' });
       const { contacts: rows } = req.body as { contacts: Array<{ phoneNumber: string; name?: string; email?: string; company?: string; department?: string; businessName?: string; tags?: string }> };
 
       if (!Array.isArray(rows) || rows.length === 0) {
@@ -210,10 +212,11 @@ export function createContactRoutes(): Router {
         if (phone.length < 7) { errors.push(`Invalid phone: ${row.phoneNumber}`); skipped++; continue; }
 
         try {
-          // Upsert by phoneNumber + userId
+          // Upsert by phoneNumber + orgId
           await prisma.contact.upsert({
-            where: { userId_phoneNumber: { userId, phoneNumber: phone } },
+            where: { orgId_phoneNumber: { orgId, phoneNumber: phone } },
             create: {
+              orgId,
               userId,
               phoneNumber: phone,
               chatId: phone.replace(/^\+/, '') + '@c.us',
@@ -237,11 +240,11 @@ export function createContactRoutes(): Router {
             const tagNames = row.tags.split(';').map(t => t.trim()).filter(Boolean);
             for (const tagName of tagNames) {
               const tag = await prisma.tag.upsert({
-                where: { userId_name: { userId, name: tagName } },
-                create: { userId, name: tagName },
+                where: { orgId_name: { orgId, name: tagName } },
+                create: { orgId, userId, name: tagName },
                 update: {},
               });
-              const contact = await prisma.contact.findUnique({ where: { userId_phoneNumber: { userId, phoneNumber: phone } } });
+              const contact = await prisma.contact.findUnique({ where: { orgId_phoneNumber: { orgId, phoneNumber: phone } } });
               if (contact) {
                 await prisma.tagOnContact.upsert({
                   where: { contactId_tagId: { contactId: contact.id, tagId: tag.id } },

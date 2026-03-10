@@ -26,12 +26,13 @@ interface PaginatedResult<T> {
 
 export interface IContactRepository {
   findById(id: string): Promise<Contact | null>;
-  findByPhoneNumber(userId: string, phoneNumber: string): Promise<Contact | null>;
-  search(userId: string, filters: ContactFilters): Promise<PaginatedResult<Contact>>;
+  findByPhoneNumber(orgId: string, phoneNumber: string): Promise<Contact | null>;
+  search(orgId: string, filters: ContactFilters): Promise<PaginatedResult<Contact>>;
   create(data: Prisma.ContactCreateInput): Promise<Contact>;
   update(id: string, data: Prisma.ContactUpdateInput): Promise<Contact>;
   delete(id: string): Promise<Contact>;
   findOrCreate(
+    orgId: string,
     userId: string,
     phoneNumber: string,
     data?: Partial<Contact>,
@@ -52,14 +53,14 @@ export class ContactRepository extends BaseRepository<Contact> implements IConta
     });
   }
 
-  async findByPhoneNumber(userId: string, phoneNumber: string): Promise<Contact | null> {
+  async findByPhoneNumber(orgId: string, phoneNumber: string): Promise<Contact | null> {
     return this.prisma.contact.findUnique({
-      where: { userId_phoneNumber: { userId, phoneNumber } },
+      where: { orgId_phoneNumber: { orgId, phoneNumber } },
       include: { tags: { include: { tag: true } } },
     });
   }
 
-  async search(userId: string, filters: ContactFilters): Promise<PaginatedResult<Contact>> {
+  async search(orgId: string, filters: ContactFilters): Promise<PaginatedResult<Contact>> {
     const limit = Math.min(filters.limit || 20, 1000);
     const offset = filters.offset || 0;
 
@@ -67,7 +68,7 @@ export class ContactRepository extends BaseRepository<Contact> implements IConta
 
     // Build where clause with all filter conditions
     const where: any = {
-      userId,
+      orgId,
       isBlocked: filters.isBlocked ?? false,
       ...(searchTerm && {
         OR: [
@@ -142,16 +143,17 @@ export class ContactRepository extends BaseRepository<Contact> implements IConta
   }
 
   async findOrCreate(
+    orgId: string,
     userId: string,
     phoneNumber: string,
     data?: Partial<Contact>,
   ): Promise<Contact> {
-    if (!userId) {
-      throw new Error('userId is required for findOrCreate');
+    if (!orgId) {
+      throw new Error('orgId is required for findOrCreate');
     }
 
     const updateData: Record<string, any> = {};
-    const createData: Record<string, any> = { userId, phoneNumber };
+    const createData: Record<string, any> = { orgId, userId, phoneNumber };
 
     // Map of data fields that should be persisted
     const persistedFields = [
@@ -182,7 +184,7 @@ export class ContactRepository extends BaseRepository<Contact> implements IConta
     }
 
     return this.prisma.contact.upsert({
-      where: { userId_phoneNumber: { userId, phoneNumber } },
+      where: { orgId_phoneNumber: { orgId, phoneNumber } },
       update: updateData,
       create: createData as any,
     });

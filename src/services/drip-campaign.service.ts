@@ -21,7 +21,7 @@ export interface CreateDripCampaignData {
 }
 
 export interface IDripCampaignService {
-  createDripCampaign(userId: string, data: CreateDripCampaignData): Promise<DripCampaign>;
+  createDripCampaign(orgId: string, userId: string, data: CreateDripCampaignData): Promise<DripCampaign>;
   enrollContact(campaignId: string, contactId: string): Promise<void>;
   processDueSteps(): Promise<void>;
 }
@@ -32,9 +32,10 @@ export class DripCampaignService implements IDripCampaignService {
     private whatsappService: WhatsAppService,
   ) {}
 
-  async createDripCampaign(userId: string, data: CreateDripCampaignData): Promise<DripCampaign> {
+  async createDripCampaign(orgId: string, userId: string, data: CreateDripCampaignData): Promise<DripCampaign> {
     const campaign = await this.prisma.dripCampaign.create({
       data: {
+        orgId,
         userId,
         name: data.name,
         description: data.description,

@@ -21,3 +21,21 @@ export function requireUserId(req: Request): string {
   }
   return userId;
 }
+
+/**
+ * Get orgId from authenticated request
+ */
+export function getOrgId(req: Request): string | undefined {
+  return req.user?.orgId;
+}
+
+/**
+ * Get orgId and throw if not found
+ */
+export function requireOrgId(req: Request): string {
+  const orgId = getOrgId(req);
+  if (!orgId) {
+    throw new Error('Organization ID not found in request. Please logout and login again.');
+  }
+  return orgId;
+}

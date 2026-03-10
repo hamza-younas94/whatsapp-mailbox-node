@@ -12,7 +12,7 @@ export class AppointmentRepository extends BaseRepository<Appointment> {
   }
 
   async findByUserId(
-    userId: string,
+    orgId: string,
     options: {
       status?: AppointmentStatus;
       contactId?: string;
@@ -22,7 +22,7 @@ export class AppointmentRepository extends BaseRepository<Appointment> {
       take?: number;
     } = {}
   ): Promise<{ items: Appointment[]; total: number }> {
-    const where: any = { userId };
+    const where: any = { orgId };
 
     if (options.status) where.status = options.status;
     if (options.contactId) where.contactId = options.contactId;

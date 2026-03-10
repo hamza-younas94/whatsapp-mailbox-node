@@ -14,6 +14,7 @@ export interface RegisterData {
   username: string;
   password: string;
   name?: string;
+  orgName?: string;
 }
 
 export interface LoginData {
@@ -54,23 +55,45 @@ export class AuthService implements IAuthService {
     // Hash password
     const passwordHash = await bcrypt.hash(data.password, 10);
 
-    // Create user
-    const user = await this.prisma.user.create({
-      data: {
-        email: data.email,
-        username: data.username,
-        passwordHash,
-        name: data.name,
-        role: 'USER',
-        isActive: true,
-      },
+    // Create organization + user in a transaction
+    const orgName = data.orgName || data.name || data.username;
+    const slug = data.username.toLowerCase().replace(/[^a-z0-9]/g, '-');
+
+    const { org, user } = await this.prisma.$transaction(async (tx) => {
+      const org = await tx.organization.create({
+        data: {
+          name: orgName,
+          slug,
+          ownerId: 'pending', // Will update after user creation
+        },
+      });
+
+      const user = await tx.user.create({
+        data: {
+          email: data.email,
+          username: data.username,
+          passwordHash,
+          name: data.name,
+          orgId: org.id,
+          role: 'OWNER',
+          isActive: true,
+        },
+      });
+
+      // Update org with actual owner ID
+      await tx.organization.update({
+        where: { id: org.id },
+        data: { ownerId: user.id },
+      });
+
+      return { org, user };
     });
 
-    logger.info({ userId: user.id, email: user.email }, 'User registered');
+    logger.info({ userId: user.id, orgId: org.id, email: user.email }, 'User registered with organization');
 
-    // Generate tokens with full user info
-    const token = this.generateToken(user.id, user.email, user.role, '24h');
-    const refreshToken = this.generateToken(user.id, user.email, user.role, '7d');
+    // Generate tokens with full user info including orgId
+    const token = this.generateToken(user.id, user.orgId, user.email, user.role, '24h');
+    const refreshToken = this.generateToken(user.id, user.orgId, user.email, user.role, '7d');
 
     // Remove password from response
     const { passwordHash: _, ...userWithoutPassword } = user;
@@ -110,11 +133,11 @@ export class AuthService implements IAuthService {
       data: { lastLoginAt: new Date() },
     });
 
-    logger.info({ userId: user.id, email: user.email }, 'User logged in');
+    logger.info({ userId: user.id, orgId: user.orgId, email: user.email }, 'User logged in');
 
-    // Generate tokens with full user info
-    const token = this.generateToken(user.id, user.email, user.role, '24h');
-    const refreshToken = this.generateToken(user.id, user.email, user.role, '7d');
+    // Generate tokens with full user info including orgId
+    const token = this.generateToken(user.id, user.orgId, user.email, user.role, '24h');
+    const refreshToken = this.generateToken(user.id, user.orgId, user.email, user.role, '7d');
 
     // Remove password from response
     const { passwordHash: _, ...userWithoutPassword } = user;
@@ -139,7 +162,7 @@ export class AuthService implements IAuthService {
         throw new UnauthorizedError('Invalid refresh token');
       }
 
-      const newToken = this.generateToken(user.id, user.email, user.role, '24h');
+      const newToken = this.generateToken(user.id, user.orgId, user.email, user.role, '24h');
 
       return { token: newToken };
     } catch (error) {
@@ -226,8 +249,8 @@ export class AuthService implements IAuthService {
     logger.info({ userId: user.id }, 'Password reset successfully');
   }
 
-  private generateToken(userId: string, email: string, role: string, expiresIn: string): string {
+  private generateToken(userId: string, orgId: string, email: string, role: string, expiresIn: string): string {
     const env = getEnv();
-    return jwt.sign({ userId, id: userId, email, role }, env.JWT_SECRET, { expiresIn } as any);
+    return jwt.sign({ userId, id: userId, orgId, email, role }, env.JWT_SECRET, { expiresIn } as any);
   }
 }

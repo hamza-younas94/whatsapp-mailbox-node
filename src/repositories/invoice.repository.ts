@@ -12,7 +12,7 @@ export class InvoiceRepository extends BaseRepository<Invoice> {
   }
 
   async findByUserId(
-    userId: string,
+    orgId: string,
     options: {
       status?: InvoiceStatus;
       contactId?: string;
@@ -23,7 +23,7 @@ export class InvoiceRepository extends BaseRepository<Invoice> {
       take?: number;
     } = {}
   ): Promise<{ items: Invoice[]; total: number }> {
-    const where: any = { userId };
+    const where: any = { orgId };
 
     if (options.status) where.status = options.status;
     if (options.contactId) where.contactId = options.contactId;
@@ -70,13 +70,13 @@ export class InvoiceRepository extends BaseRepository<Invoice> {
     });
   }
 
-  async getNextInvoiceNumber(userId: string): Promise<string> {
+  async getNextInvoiceNumber(orgId: string): Promise<string> {
     const today = new Date();
     const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
     const prefix = `INV-${dateStr}-`;
 
     const lastInvoice = await this.prisma.invoice.findFirst({
-      where: { userId, invoiceNumber: { startsWith: prefix } },
+      where: { orgId, invoiceNumber: { startsWith: prefix } },
       orderBy: { invoiceNumber: 'desc' },
     });
 

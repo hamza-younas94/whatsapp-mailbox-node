@@ -4,21 +4,23 @@
 import { Request, Response } from 'express';
 import { InvoiceService } from '@services/invoice.service';
 import { asyncHandler } from '@middleware/error.middleware';
+import { requireOrgId } from '@utils/auth-helpers';
 
 export class InvoiceController {
   constructor(private service: InvoiceService) {}
 
   create = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
-    const invoice = await this.service.createInvoice(userId, req.body);
+    const orgId = requireOrgId(req);
+    const invoice = await this.service.createInvoice(orgId, userId, req.body);
     res.status(201).json({ success: true, data: invoice });
   });
 
   list = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const orgId = requireOrgId(req);
     const { status, contactId, startDate, endDate, search, page, limit } = req.query;
 
-    const result = await this.service.getInvoices(userId, {
+    const result = await this.service.getInvoices(orgId, {
       status: status as string,
       contactId: contactId as string,
       startDate: startDate as string,
@@ -48,6 +50,7 @@ export class InvoiceController {
 
   recordPayment = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
+    const orgId = requireOrgId(req);
     const payment = await this.service.recordPayment(req.params.id, userId, req.body);
     res.status(201).json({ success: true, data: payment });
   });

@@ -32,7 +32,7 @@ router.use(authenticate);
 // Dashboard summary — server-aggregated stats
 router.get('/dashboard-summary', async (req, res) => {
   try {
-    const userId = (req as any).userId;
+    const orgId = req.user!.orgId;
     const now = new Date();
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -48,18 +48,18 @@ router.get('/dashboard-summary', async (req, res) => {
       totalPayments,
       unpaidInvoices,
     ] = await Promise.all([
-      prisma.contact.count({ where: { userId, createdAt: { gte: weekAgo } } }),
-      prisma.broadcast.count({ where: { userId, status: { in: ['SENDING', 'SCHEDULED'] } } }),
-      prisma.dripEnrollment.count({ where: { status: 'ACTIVE', campaign: { userId } } }),
-      prisma.serviceTicket.count({ where: { userId, status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING_PARTS'] } } }),
-      prisma.product.count({ where: { userId, isActive: true, stockQuantity: { lte: prisma.product.fields.lowStockAlert as any } } }).catch(() =>
+      prisma.contact.count({ where: { orgId, createdAt: { gte: weekAgo } } }),
+      prisma.broadcast.count({ where: { orgId, status: { in: ['SENDING', 'SCHEDULED'] } } }),
+      prisma.dripEnrollment.count({ where: { status: 'ACTIVE', campaign: { orgId } } }),
+      prisma.serviceTicket.count({ where: { orgId, status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING_PARTS'] } } }),
+      prisma.product.count({ where: { orgId, isActive: true, stockQuantity: { lte: prisma.product.fields.lowStockAlert as any } } }).catch(() =>
         // fallback: raw query if field comparison not supported
-        prisma.$queryRaw`SELECT COUNT(*) as cnt FROM Product WHERE userId = ${userId} AND isActive = 1 AND stockQuantity <= lowStockAlert`.then((r: any) => Number(r[0]?.cnt || 0))
+        prisma.$queryRaw`SELECT COUNT(*) as cnt FROM Product WHERE orgId = ${orgId} AND isActive = 1 AND stockQuantity <= lowStockAlert`.then((r: any) => Number(r[0]?.cnt || 0))
       ),
-      prisma.payment.aggregate({ where: { userId, paymentDate: { gte: monthStart } }, _sum: { amount: true } }),
-      prisma.expense.aggregate({ where: { userId, expenseDate: { gte: monthStart } }, _sum: { amount: true } }),
-      prisma.payment.aggregate({ where: { userId }, _sum: { amount: true } }),
-      prisma.invoice.aggregate({ where: { userId, status: { in: ['SENT', 'OVERDUE'] } }, _sum: { totalAmount: true } }),
+      prisma.payment.aggregate({ where: { invoice: { orgId }, paymentDate: { gte: monthStart } }, _sum: { amount: true } }),
+      prisma.expense.aggregate({ where: { orgId, expenseDate: { gte: monthStart } }, _sum: { amount: true } }),
+      prisma.payment.aggregate({ where: { invoice: { orgId } }, _sum: { amount: true } }),
+      prisma.invoice.aggregate({ where: { orgId, status: { in: ['SENT', 'OVERDUE'] } }, _sum: { totalAmount: true } }),
     ]);
 
     res.json({
@@ -70,9 +70,9 @@ router.get('/dashboard-summary', async (req, res) => {
         activeDripEnrollments,
         openTickets,
         lowStockProducts,
-        monthRevenue: monthPayments._sum.amount || 0,
-        monthExpenses: monthExpenses._sum.amount || 0,
-        totalRevenue: totalPayments._sum.amount || 0,
+        monthRevenue: monthPayments._sum?.amount || 0,
+        monthExpenses: monthExpenses._sum?.amount || 0,
+        totalRevenue: totalPayments._sum?.amount || 0,
         outstandingAmount: unpaidInvoices._sum.totalAmount || 0,
       },
     });

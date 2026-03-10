@@ -12,7 +12,7 @@ export class ProductRepository extends BaseRepository<Product> {
   }
 
   async findByUserId(
-    userId: string,
+    orgId: string,
     options: {
       category?: string;
       isActive?: boolean;
@@ -22,7 +22,7 @@ export class ProductRepository extends BaseRepository<Product> {
       take?: number;
     } = {}
   ): Promise<{ items: Product[]; total: number }> {
-    const where: any = { userId };
+    const where: any = { orgId };
 
     if (options.category) where.category = options.category;
     if (options.isActive !== undefined) where.isActive = options.isActive;
@@ -52,7 +52,7 @@ export class ProductRepository extends BaseRepository<Product> {
       this.prisma.product.findMany({
         where: options.lowStock
           ? {
-              userId,
+              orgId,
               isActive: true,
               ...(options.search
                 ? {
@@ -69,7 +69,7 @@ export class ProductRepository extends BaseRepository<Product> {
         take: Math.min(options.take || 20, 100),
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.product.count({ where: options.lowStock ? { userId, isActive: true } : where }),
+      this.prisma.product.count({ where: options.lowStock ? { orgId, isActive: true } : where }),
     ]);
 
     // Filter low stock in memory (stockQuantity <= lowStockAlert)
@@ -93,9 +93,9 @@ export class ProductRepository extends BaseRepository<Product> {
     });
   }
 
-  async findBySku(userId: string, sku: string): Promise<Product | null> {
+  async findBySku(orgId: string, sku: string): Promise<Product | null> {
     return this.prisma.product.findUnique({
-      where: { userId_sku: { userId, sku } },
+      where: { orgId_sku: { orgId, sku } },
     });
   }
 

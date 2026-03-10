@@ -12,7 +12,7 @@ export class CustomerSubscriptionRepository extends BaseRepository<CustomerSubsc
   }
 
   async findByUserId(
-    userId: string,
+    orgId: string,
     options: {
       status?: SubscriptionStatus;
       contactId?: string;
@@ -21,7 +21,7 @@ export class CustomerSubscriptionRepository extends BaseRepository<CustomerSubsc
       take?: number;
     } = {}
   ): Promise<{ items: CustomerSubscription[]; total: number }> {
-    const where: any = { userId };
+    const where: any = { orgId };
 
     if (options.status) where.status = options.status;
     if (options.contactId) where.contactId = options.contactId;
@@ -52,11 +52,11 @@ export class CustomerSubscriptionRepository extends BaseRepository<CustomerSubsc
     });
   }
 
-  async findDueForRenewal(userId: string): Promise<CustomerSubscription[]> {
+  async findDueForRenewal(orgId: string): Promise<CustomerSubscription[]> {
     const now = new Date();
     return this.prisma.customerSubscription.findMany({
       where: {
-        userId,
+        orgId,
         status: 'ACTIVE',
         autoRenew: true,
         nextBillingDate: { lte: now },

@@ -30,15 +30,16 @@ export interface UpdateProductInput extends Partial<CreateProductInput> {
 export class ProductService {
   constructor(private repository: ProductRepository) {}
 
-  async createProduct(userId: string, input: CreateProductInput): Promise<Product> {
+  async createProduct(orgId: string, userId: string, input: CreateProductInput): Promise<Product> {
     if (input.sku) {
-      const existing = await this.repository.findBySku(userId, input.sku);
+      const existing = await this.repository.findBySku(orgId, input.sku);
       if (existing) {
         throw new ConflictError(`Product with SKU '${input.sku}' already exists`);
       }
     }
 
     const product = await this.repository.create({
+      orgId,
       userId,
       ...input,
       stockQuantity: input.stockQuantity || 0,
@@ -61,7 +62,7 @@ export class ProductService {
   }
 
   async getProducts(
-    userId: string,
+    orgId: string,
     options: {
       category?: string;
       isActive?: boolean;
@@ -75,7 +76,7 @@ export class ProductService {
     const limit = options.limit || 20;
     const skip = (page - 1) * limit;
 
-    const { items, total } = await this.repository.findByUserId(userId, {
+    const { items, total } = await this.repository.findByUserId(orgId, {
       ...options,
       skip,
       take: limit,
@@ -98,13 +99,13 @@ export class ProductService {
     return product;
   }
 
-  async updateProduct(id: string, userId: string, input: UpdateProductInput): Promise<Product> {
+  async updateProduct(id: string, orgId: string, userId: string, input: UpdateProductInput): Promise<Product> {
     const existing = await this.repository.findById(id);
     if (!existing) throw new NotFoundError('Product');
 
     // Check SKU uniqueness if changing
     if (input.sku && input.sku !== (existing as any).sku) {
-      const duplicate = await this.repository.findBySku(userId, input.sku);
+      const duplicate = await this.repository.findBySku(orgId, input.sku);
       if (duplicate) throw new ConflictError(`Product with SKU '${input.sku}' already exists`);
     }
 

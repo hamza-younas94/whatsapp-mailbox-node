@@ -18,7 +18,7 @@ export interface CreateBroadcastInput {
 }
 
 export interface IBroadcastService {
-  createBroadcast(userId: string, input: CreateBroadcastInput): Promise<Campaign>;
+  createBroadcast(orgId: string, userId: string, input: CreateBroadcastInput): Promise<Campaign>;
   getBroadcasts(): Promise<Campaign[]>;
   sendBroadcast(campaignId: string): Promise<void>;
   scheduleBroadcast(campaignId: string, scheduleTime: Date): Promise<Campaign>;
@@ -32,7 +32,7 @@ export class BroadcastService implements IBroadcastService {
     private messageService: MessageService,
   ) {}
 
-  async createBroadcast(userId: string, input: CreateBroadcastInput): Promise<Campaign> {
+  async createBroadcast(orgId: string, userId: string, input: CreateBroadcastInput): Promise<Campaign> {
     try {
       // Get recipient list
       let recipientIds: string[] = [];
@@ -53,7 +53,7 @@ export class BroadcastService implements IBroadcastService {
         mediaUrl: input.mediaUrl,
         scheduleTime: input.scheduleTime,
         recipientCount: recipientIds.length,
-        metadata: { recipientIds, userId },
+        metadata: { recipientIds, orgId, userId },
       });
 
       logger.info({ id: campaign.id, recipients: recipientIds.length }, 'Broadcast created');
@@ -86,6 +86,7 @@ export class BroadcastService implements IBroadcastService {
 
       const metadata = campaign.metadata as any;
       const recipientIds: string[] = metadata.recipientIds || [];
+      const orgId: string = metadata.orgId;
       const userId: string = metadata.userId;
 
       logger.info({ campaignId, recipients: recipientIds.length }, 'Starting broadcast');
@@ -97,7 +98,7 @@ export class BroadcastService implements IBroadcastService {
 
         const results = await Promise.allSettled(
           batch.map((contactId) =>
-            this.messageService.sendMessage(userId, {
+            this.messageService.sendMessage(orgId, userId, {
               contactId,
               content: campaign.content || '',
               mediaUrl: campaign.mediaUrl || undefined,

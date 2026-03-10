@@ -4,7 +4,6 @@
 import { Request, Response } from 'express';
 import { SegmentService } from '@services/segment.service';
 import { asyncHandler } from '@middleware/error.middleware';
-
 export class SegmentController {
   constructor(private service: SegmentService) {}
 

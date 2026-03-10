@@ -4,13 +4,15 @@
 import { Request, Response } from 'express';
 import { TagService } from '@services/tag.service';
 import { asyncHandler } from '@middleware/error.middleware';
+import { requireOrgId } from '@utils/auth-helpers';
 
 export class TagController {
   constructor(private service: TagService) {}
 
   create = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
-    const tag = await this.service.createTag(userId, req.body);
+    const orgId = requireOrgId(req);
+    const tag = await this.service.createTag(orgId, userId, req.body);
 
     res.status(201).json({
       success: true,
@@ -19,8 +21,8 @@ export class TagController {
   });
 
   list = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
-    const tags = await this.service.getTags(userId);
+    const orgId = requireOrgId(req);
+    const tags = await this.service.getTags(orgId);
 
     res.status(200).json({
       success: true,

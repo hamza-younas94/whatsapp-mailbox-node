@@ -22,17 +22,17 @@ export interface AnalyticsStats {
 }
 
 export interface IAnalyticsService {
-  getStats(userId: string, days?: number): Promise<AnalyticsStats>;
-  getMessageTrends(userId: string, days: number): Promise<Array<{ date: string; sent: number; received: number }>>;
-  getTopContacts(userId: string, limit?: number): Promise<Array<{ name: string; phoneNumber: string; messageCount: number }>>;
-  getCampaigns(userId: string): Promise<Array<{ name: string; sentCount: number; deliveredCount: number; readCount: number }>>;
-  exportReport(userId: string, days: number): Promise<string>;
+  getStats(orgId: string, days?: number): Promise<AnalyticsStats>;
+  getMessageTrends(orgId: string, days: number): Promise<Array<{ date: string; sent: number; received: number }>>;
+  getTopContacts(orgId: string, limit?: number): Promise<Array<{ name: string; phoneNumber: string; messageCount: number }>>;
+  getCampaigns(orgId: string): Promise<Array<{ name: string; sentCount: number; deliveredCount: number; readCount: number }>>;
+  exportReport(orgId: string, days: number): Promise<string>;
 }
 
 export class AnalyticsService implements IAnalyticsService {
   constructor(private prisma: PrismaClient) {}
 
-  async getStats(userId: string, days: number = 7): Promise<AnalyticsStats> {
+  async getStats(orgId: string, days: number = 7): Promise<AnalyticsStats> {
     const now = new Date();
     const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
     const previousStartDate = new Date(startDate.getTime() - days * 24 * 60 * 60 * 1000);
@@ -52,25 +52,25 @@ export class AnalyticsService implements IAnalyticsService {
     ] = await Promise.all([
       // Total messages in period
       this.prisma.message.count({
-        where: { userId, createdAt: { gte: startDate } },
+        where: { orgId, createdAt: { gte: startDate } },
       }),
 
       // Sent messages in period
       this.prisma.message.count({
-        where: { userId, direction: 'OUTGOING', createdAt: { gte: startDate } },
+        where: { orgId, direction: 'OUTGOING', createdAt: { gte: startDate } },
       }),
 
       // Received messages in period
       this.prisma.message.count({
-        where: { userId, direction: 'INCOMING', createdAt: { gte: startDate } },
+        where: { orgId, direction: 'INCOMING', createdAt: { gte: startDate } },
       }),
 
       // Total contacts
-      this.prisma.contact.count({ where: { userId } }),
+      this.prisma.contact.count({ where: { orgId } }),
 
       // Active contacts (messaged in this period)
       this.prisma.contact.count({
-        where: { userId, lastMessageAt: { gte: startDate } },
+        where: { orgId, lastMessageAt: { gte: startDate } },
       }),
 
       // Campaigns sent
@@ -81,18 +81,18 @@ export class AnalyticsService implements IAnalyticsService {
       // Messages by type
       this.prisma.message.groupBy({
         by: ['messageType'],
-        where: { userId, createdAt: { gte: startDate } },
+        where: { orgId, createdAt: { gte: startDate } },
         _count: { id: true },
       }),
 
       // Previous period: total messages
       this.prisma.message.count({
-        where: { userId, createdAt: { gte: previousStartDate, lt: startDate } },
+        where: { orgId, createdAt: { gte: previousStartDate, lt: startDate } },
       }),
 
       // Previous period: active contacts
       this.prisma.contact.count({
-        where: { userId, lastMessageAt: { gte: previousStartDate, lt: startDate } },
+        where: { orgId, lastMessageAt: { gte: previousStartDate, lt: startDate } },
       }),
     ]);
 
@@ -104,14 +104,14 @@ export class AnalyticsService implements IAnalyticsService {
 
     // Calculate avg response time (in seconds)
     // Get pairs of incoming messages followed by outgoing messages
-    const avgResponseTime = await this.calculateAvgResponseTime(userId, startDate);
+    const avgResponseTime = await this.calculateAvgResponseTime(orgId, startDate);
 
     // Previous period response rate for comparison
     const prevSent = await this.prisma.message.count({
-      where: { userId, direction: 'OUTGOING', createdAt: { gte: previousStartDate, lt: startDate } },
+      where: { orgId, direction: 'OUTGOING', createdAt: { gte: previousStartDate, lt: startDate } },
     });
     const prevReceived = await this.prisma.message.count({
-      where: { userId, direction: 'INCOMING', createdAt: { gte: previousStartDate, lt: startDate } },
+      where: { orgId, direction: 'INCOMING', createdAt: { gte: previousStartDate, lt: startDate } },
     });
     const prevResponseRate = prevReceived > 0
       ? Math.min(Math.round((prevSent / prevReceived) * 100), 100)
@@ -129,7 +129,7 @@ export class AnalyticsService implements IAnalyticsService {
       : (activeContacts > 0 ? 100 : 0);
 
     // Messages by day
-    const messagesByDay = await this.getMessagesByDay(userId, days);
+    const messagesByDay = await this.getMessagesByDay(orgId, days);
 
     return {
       totalMessages,
@@ -152,19 +152,19 @@ export class AnalyticsService implements IAnalyticsService {
     };
   }
 
-  private async calculateAvgResponseTime(userId: string, since: Date): Promise<number> {
+  private async calculateAvgResponseTime(orgId: string, since: Date): Promise<number> {
     try {
       // Get recent incoming messages and their first outgoing reply
       const result = await this.prisma.$queryRaw<Array<{ avg_seconds: number | null }>>`
         SELECT AVG(reply_time) as avg_seconds FROM (
           SELECT TIMESTAMPDIFF(SECOND, inc.createdAt, MIN(rpl.createdAt)) as reply_time
           FROM Message inc
-          INNER JOIN Message rpl ON rpl.userId = inc.userId
+          INNER JOIN Message rpl ON rpl.orgId = inc.orgId
             AND rpl.contactId = inc.contactId
             AND rpl.direction = 'OUTGOING'
             AND rpl.createdAt > inc.createdAt
             AND rpl.createdAt < DATE_ADD(inc.createdAt, INTERVAL 24 HOUR)
-          WHERE inc.userId = ${userId}
+          WHERE inc.orgId = ${orgId}
             AND inc.direction = 'INCOMING'
             AND inc.createdAt >= ${since}
           GROUP BY inc.id
@@ -179,14 +179,14 @@ export class AnalyticsService implements IAnalyticsService {
   }
 
   async getMessageTrends(
-    userId: string,
+    orgId: string,
     days: number,
   ): Promise<Array<{ date: string; sent: number; received: number }>> {
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
     const messages = await this.prisma.message.findMany({
       where: {
-        userId,
+        orgId,
         createdAt: { gte: startDate },
       },
       select: {
@@ -217,10 +217,10 @@ export class AnalyticsService implements IAnalyticsService {
     }));
   }
 
-  async getTopContacts(userId: string, limit: number = 10): Promise<Array<{ name: string; phoneNumber: string; messageCount: number }>> {
+  async getTopContacts(orgId: string, limit: number = 10): Promise<Array<{ name: string; phoneNumber: string; messageCount: number }>> {
     try {
       const contacts = await this.prisma.contact.findMany({
-        where: { userId },
+        where: { orgId },
         select: {
           name: true,
           pushName: true,
@@ -245,7 +245,7 @@ export class AnalyticsService implements IAnalyticsService {
     }
   }
 
-  async getCampaigns(userId: string): Promise<Array<{ name: string; sentCount: number; deliveredCount: number; readCount: number }>> {
+  async getCampaigns(orgId: string): Promise<Array<{ name: string; sentCount: number; deliveredCount: number; readCount: number }>> {
     try {
       const campaigns = await this.prisma.campaign.findMany({
         where: { status: 'COMPLETED' },
@@ -271,10 +271,10 @@ export class AnalyticsService implements IAnalyticsService {
     }
   }
 
-  async exportReport(userId: string, days: number): Promise<string> {
+  async exportReport(orgId: string, days: number): Promise<string> {
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
     const messages = await this.prisma.message.findMany({
-      where: { userId, createdAt: { gte: startDate } },
+      where: { orgId, createdAt: { gte: startDate } },
       select: { createdAt: true, direction: true },
       orderBy: { createdAt: 'asc' },
     });
@@ -295,12 +295,12 @@ export class AnalyticsService implements IAnalyticsService {
     return csv;
   }
 
-  private async getMessagesByDay(userId: string, days: number): Promise<Array<{ date: string; count: number }>> {
+  private async getMessagesByDay(orgId: string, days: number): Promise<Array<{ date: string; count: number }>> {
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
     const messages = await this.prisma.message.findMany({
       where: {
-        userId,
+        orgId,
         createdAt: { gte: startDate },
       },
       select: { createdAt: true },

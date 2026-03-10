@@ -454,6 +454,14 @@ const defaultDripCampaigns: DefaultDripCampaign[] = [
 async function seedDefaultData(userId: string) {
   console.log(`Seeding default data for user: ${userId}`);
 
+  // Look up the user's orgId
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { orgId: true } });
+  if (!user?.orgId) {
+    console.error('❌ User has no orgId. Cannot seed org-scoped data.');
+    process.exit(1);
+  }
+  const orgId = user.orgId;
+
   // Seed Quick Replies
   console.log('\n📝 Seeding Quick Replies...');
   for (const qr of defaultQuickReplies) {
@@ -463,6 +471,7 @@ async function seedDefaultData(userId: string) {
     if (!existing) {
       await prisma.quickReply.create({
         data: {
+          orgId,
           userId,
           shortcut: qr.shortcut,
           title: qr.title,
@@ -486,6 +495,7 @@ async function seedDefaultData(userId: string) {
     if (!existing) {
       await prisma.tag.create({
         data: {
+          orgId,
           userId,
           name: tag.name,
           color: tag.color,
@@ -506,6 +516,7 @@ async function seedDefaultData(userId: string) {
     if (!existing) {
       await prisma.segment.create({
         data: {
+          orgId,
           userId,
           name: segment.name,
           criteria: segment.criteria,
@@ -526,6 +537,7 @@ async function seedDefaultData(userId: string) {
     if (!existing) {
       await prisma.automation.create({
         data: {
+          orgId,
           userId,
           name: automation.name,
           trigger: automation.trigger,
@@ -548,6 +560,7 @@ async function seedDefaultData(userId: string) {
     if (!existing) {
       const createdCampaign = await prisma.dripCampaign.create({
         data: {
+          orgId,
           userId,
           name: campaign.name,
           description: campaign.description,

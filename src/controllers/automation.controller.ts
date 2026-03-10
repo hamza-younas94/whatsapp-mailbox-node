@@ -4,6 +4,7 @@
 import { Request, Response } from 'express';
 import { AutomationService } from '@services/automation.service';
 import { asyncHandler } from '@middleware/error.middleware';
+import { requireOrgId } from '@utils/auth-helpers';
 
 export class AutomationController {
   constructor(private service: AutomationService) {}
@@ -71,8 +72,9 @@ export class AutomationController {
 
   create = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
+    const orgId = requireOrgId(req);
     const normalizedInput = this.normalizeInput(req.body);
-    const automation = await this.service.createAutomation(userId, normalizedInput);
+    const automation = await this.service.createAutomation(orgId, userId, normalizedInput);
 
     res.status(201).json({
       success: true,
@@ -81,8 +83,8 @@ export class AutomationController {
   });
 
   list = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
-    const automations = await this.service.getAutomations(userId);
+    const orgId = requireOrgId(req);
+    const automations = await this.service.getAutomations(orgId);
 
     res.status(200).json({
       success: true,

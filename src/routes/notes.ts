@@ -31,8 +31,9 @@ router.use(authenticate);
 router.post('/', validateRequest(createNoteSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
-    const note = await prisma.note.create({ data: { userId, contactId: req.body.contactId, content: req.body.content } });
+    const orgId = req.user?.orgId;
+    if (!userId || !orgId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+    const note = await prisma.note.create({ data: { orgId, userId, contactId: req.body.contactId, content: req.body.content } });
     emitToUser(userId, 'note:created', { contactId: req.body.contactId, data: note });
     res.status(201).json({ success: true, data: note });
   } catch (error) { next(error); }
@@ -41,10 +42,10 @@ router.post('/', validateRequest(createNoteSchema), async (req: Request, res: Re
 // Get notes - support both query param and path param
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
+    const orgId = req.user?.orgId;
     const { contactId } = req.query;
-    
-    if (!userId) {
+
+    if (!orgId) {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
@@ -53,9 +54,9 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     }
 
     const notes = await prisma.note.findMany({
-      where: { 
+      where: {
         contactId: contactId as string,
-        contact: { userId } // Ensure user owns the contact
+        contact: { orgId } // Ensure org owns the contact
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -70,9 +71,10 @@ router.get('/contact/:contactId', controller.list);
 
 router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const orgId = req.user?.orgId;
     const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
-    const note = await prisma.note.updateMany({ where: { id: req.params.id, userId }, data: { content: req.body.content } });
+    if (!orgId || !userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+    const note = await prisma.note.updateMany({ where: { id: req.params.id, orgId }, data: { content: req.body.content } });
     if (note.count === 0) return res.status(404).json({ success: false, error: 'Note not found' });
     const updated = await prisma.note.findUnique({ where: { id: req.params.id } });
     emitToUser(userId, 'note:updated', { contactId: updated?.contactId, data: updated });
@@ -82,9 +84,10 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
 
 router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const orgId = req.user?.orgId;
     const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
-    const note = await prisma.note.findFirst({ where: { id: req.params.id, userId } });
+    if (!orgId || !userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+    const note = await prisma.note.findFirst({ where: { id: req.params.id, orgId } });
     if (!note) return res.status(404).json({ success: false, error: 'Note not found' });
     await prisma.note.delete({ where: { id: req.params.id } });
     emitToUser(userId, 'note:deleted', { contactId: note.contactId, id: req.params.id });

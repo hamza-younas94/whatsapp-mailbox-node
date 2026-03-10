@@ -11,9 +11,9 @@ export class AutoTagRuleRepository extends BaseRepository<AutoTagRule> {
     super(prisma);
   }
 
-  async findByUserId(userId: string): Promise<AutoTagRule[]> {
+  async findByUserId(orgId: string): Promise<AutoTagRule[]> {
     return this.prisma.autoTagRule.findMany({
-      where: { userId },
+      where: { orgId },
       include: {
         tag: { select: { id: true, name: true, color: true } },
       },
@@ -21,9 +21,9 @@ export class AutoTagRuleRepository extends BaseRepository<AutoTagRule> {
     });
   }
 
-  async findActiveByUserId(userId: string): Promise<AutoTagRule[]> {
+  async findActiveByUserId(orgId: string): Promise<AutoTagRule[]> {
     return this.prisma.autoTagRule.findMany({
-      where: { userId, isActive: true },
+      where: { orgId, isActive: true },
       include: {
         tag: { select: { id: true, name: true, color: true } },
       },
@@ -39,12 +39,12 @@ export class AutoTagRuleRepository extends BaseRepository<AutoTagRule> {
 
   async executeRule(
     ruleId: string,
-    userId: string,
+    orgId: string,
     conditions: any,
     tagId: string
   ): Promise<number> {
     // Build contact query from conditions
-    const where: any = { userId };
+    const where: any = { orgId };
 
     for (const condition of conditions) {
       switch (condition.type) {

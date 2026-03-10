@@ -4,21 +4,24 @@
 import { Request, Response } from 'express';
 import { OrderService } from '@services/order.service';
 import { asyncHandler } from '@middleware/error.middleware';
+import { requireOrgId } from '@utils/auth-helpers';
 
 export class OrderController {
   constructor(private service: OrderService) {}
 
   create = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
-    const order = await this.service.createOrder(userId, req.body);
+    const orgId = requireOrgId(req);
+    const order = await this.service.createOrder(orgId, userId, req.body);
     res.status(201).json({ success: true, data: order });
   });
 
   list = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
+    const orgId = requireOrgId(req);
     const { status, orderType, contactId, startDate, endDate, page, limit } = req.query;
 
-    const result = await this.service.getOrders(userId, {
+    const result = await this.service.getOrders(orgId, {
       status: status as string,
       orderType: orderType as string,
       contactId: contactId as string,

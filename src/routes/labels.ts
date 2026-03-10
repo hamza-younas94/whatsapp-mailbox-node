@@ -30,14 +30,14 @@ const assignSchema = z.object({
   labelId: z.string().min(1),
 });
 
-// GET / - List user's labels
+// GET / - List org's labels
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+    const orgId = req.user?.orgId;
+    if (!orgId) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
     const labels = await prisma.label.findMany({
-      where: { userId },
+      where: { orgId },
       include: { _count: { select: { conversations: true } } },
       orderBy: { name: 'asc' },
     });
@@ -52,13 +52,14 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 router.post('/', validateRequest(createSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+    const orgId = req.user?.orgId;
+    if (!userId || !orgId) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
     const label = await prisma.label.create({
-      data: { userId, ...req.body },
+      data: { orgId, userId, ...req.body },
     });
 
-    logger.info({ labelId: label.id, userId }, 'Label created');
+    logger.info({ labelId: label.id, userId, orgId }, 'Label created');
     res.status(201).json({ success: true, data: label });
   } catch (error: any) {
     if (error.code === 'P2002') {
@@ -71,11 +72,11 @@ router.post('/', validateRequest(createSchema), async (req: Request, res: Respon
 // PUT /:id - Update label
 router.put('/:id', validateRequest(updateSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
+    const orgId = req.user?.orgId;
     const { id } = req.params;
-    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+    if (!orgId) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
-    const existing = await prisma.label.findFirst({ where: { id, userId } });
+    const existing = await prisma.label.findFirst({ where: { id, orgId } });
     if (!existing) {
       return res.status(404).json({ success: false, error: 'Label not found' });
     }
@@ -97,11 +98,11 @@ router.put('/:id', validateRequest(updateSchema), async (req: Request, res: Resp
 // DELETE /:id - Delete label
 router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
+    const orgId = req.user?.orgId;
     const { id } = req.params;
-    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+    if (!orgId) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
-    const existing = await prisma.label.findFirst({ where: { id, userId } });
+    const existing = await prisma.label.findFirst({ where: { id, orgId } });
     if (!existing) {
       return res.status(404).json({ success: false, error: 'Label not found' });
     }
@@ -118,13 +119,13 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
 // POST /assign - Assign label to conversation
 router.post('/assign', validateRequest(assignSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+    const orgId = req.user?.orgId;
+    if (!orgId) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
     const { conversationId, labelId } = req.body;
 
-    // Verify label belongs to user
-    const label = await prisma.label.findFirst({ where: { id: labelId, userId } });
+    // Verify label belongs to org
+    const label = await prisma.label.findFirst({ where: { id: labelId, orgId } });
     if (!label) {
       return res.status(404).json({ success: false, error: 'Label not found' });
     }
@@ -144,8 +145,8 @@ router.post('/assign', validateRequest(assignSchema), async (req: Request, res: 
 // POST /remove - Remove label from conversation
 router.post('/remove', validateRequest(assignSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+    const orgId = req.user?.orgId;
+    if (!orgId) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
     const { conversationId, labelId } = req.body;
 
@@ -162,8 +163,8 @@ router.post('/remove', validateRequest(assignSchema), async (req: Request, res: 
 // GET /conversation/:conversationId - Get labels for a conversation
 router.get('/conversation/:conversationId', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+    const orgId = req.user?.orgId;
+    if (!orgId) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
     const labels = await prisma.conversationLabel.findMany({
       where: { conversationId: req.params.conversationId },

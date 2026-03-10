@@ -5,8 +5,8 @@ import { PrismaClient, Tag, Prisma } from '@prisma/client';
 import { BaseRepository } from './base.repository';
 
 export interface ITagRepository {
-  findByUserId(userId: string): Promise<Tag[]>;
-  findByName(userId: string, name: string): Promise<Tag | null>;
+  findByUserId(orgId: string): Promise<Tag[]>;
+  findByName(orgId: string, name: string): Promise<Tag | null>;
   addToContact(contactId: string, tagId: string): Promise<void>;
   removeFromContact(contactId: string, tagId: string): Promise<void>;
   getContactTags(contactId: string): Promise<Tag[]>;
@@ -19,17 +19,17 @@ export class TagRepository extends BaseRepository<Tag> implements ITagRepository
     super(prisma);
   }
 
-  async findByUserId(userId: string): Promise<Tag[]> {
+  async findByUserId(orgId: string): Promise<Tag[]> {
     return this.prisma.tag.findMany({
-      where: { userId },
+      where: { orgId },
       include: { _count: { select: { contacts: true } } },
       orderBy: { name: 'asc' },
     });
   }
 
-  async findByName(userId: string, name: string): Promise<Tag | null> {
+  async findByName(orgId: string, name: string): Promise<Tag | null> {
     return this.prisma.tag.findUnique({
-      where: { userId_name: { userId, name } },
+      where: { orgId_name: { orgId, name } },
     });
   }
 

@@ -5,11 +5,12 @@ import { authenticate } from '../middleware/auth.middleware';
 const router = Router();
 const prisma = new PrismaClient();
 
-// Get all shops for logged-in user
+// Get all shops for logged-in user's org
 router.get('/shops', authenticate, async (req, res) => {
   try {
+    const orgId = req.user!.orgId;
     const shops = await prisma.shop.findMany({
-      where: { userId: req.user!.id, isActive: true },
+      where: { orgId, isActive: true },
       orderBy: { createdAt: 'desc' },
     });
     res.json({ success: true, data: shops });

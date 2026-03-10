@@ -12,7 +12,7 @@ export class ServiceTicketRepository extends BaseRepository<ServiceTicket> {
   }
 
   async findByUserId(
-    userId: string,
+    orgId: string,
     options: {
       status?: TicketStatus;
       priority?: TicketPriority;
@@ -23,7 +23,7 @@ export class ServiceTicketRepository extends BaseRepository<ServiceTicket> {
       take?: number;
     } = {}
   ): Promise<{ items: ServiceTicket[]; total: number }> {
-    const where: any = { userId };
+    const where: any = { orgId };
 
     if (options.status) where.status = options.status;
     if (options.priority) where.priority = options.priority;
@@ -68,13 +68,13 @@ export class ServiceTicketRepository extends BaseRepository<ServiceTicket> {
     });
   }
 
-  async getNextTicketNumber(userId: string): Promise<string> {
+  async getNextTicketNumber(orgId: string): Promise<string> {
     const today = new Date();
     const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
     const prefix = `TKT-${dateStr}-`;
 
     const lastTicket = await this.prisma.serviceTicket.findFirst({
-      where: { userId, ticketNumber: { startsWith: prefix } },
+      where: { orgId, ticketNumber: { startsWith: prefix } },
       orderBy: { ticketNumber: 'desc' },
     });
 

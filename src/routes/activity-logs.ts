@@ -10,17 +10,17 @@ const prisma = getPrismaClient();
 
 router.use(authenticate);
 
-// List activity logs for current user
+// List activity logs for current org
 router.get('/', async (req, res) => {
   try {
-    const userId = req.user!.id;
+    const orgId = req.user!.orgId;
     const { action, page = '1', limit = '50', startDate, endDate } = req.query;
 
     const pageNum = parseInt(page as string) || 1;
     const limitNum = Math.min(parseInt(limit as string) || 50, 100);
     const skip = (pageNum - 1) * limitNum;
 
-    const where: any = { userId };
+    const where: any = { orgId };
     if (action) where.action = action as string;
     if (startDate || endDate) {
       where.createdAt = {};
@@ -34,6 +34,7 @@ router.get('/', async (req, res) => {
         orderBy: { createdAt: 'desc' },
         skip,
         take: limitNum,
+        include: { user: { select: { id: true, name: true, email: true, role: true } } },
       }),
       prisma.activityLog.count({ where }),
     ]);
@@ -51,13 +52,13 @@ router.get('/', async (req, res) => {
 // Get login-specific logs
 router.get('/logins', async (req, res) => {
   try {
-    const userId = req.user!.id;
+    const orgId = req.user!.orgId;
     const { page = '1', limit = '20' } = req.query;
     const pageNum = parseInt(page as string) || 1;
     const limitNum = Math.min(parseInt(limit as string) || 20, 100);
     const skip = (pageNum - 1) * limitNum;
 
-    const where = { userId, action: 'LOGIN' as const };
+    const where = { orgId, action: 'LOGIN' as const };
 
     const [items, total] = await Promise.all([
       prisma.activityLog.findMany({
@@ -65,6 +66,7 @@ router.get('/logins', async (req, res) => {
         orderBy: { createdAt: 'desc' },
         skip,
         take: limitNum,
+        include: { user: { select: { id: true, name: true, email: true, role: true } } },
       }),
       prisma.activityLog.count({ where }),
     ]);

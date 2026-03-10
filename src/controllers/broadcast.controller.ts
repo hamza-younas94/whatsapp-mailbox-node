@@ -9,8 +9,9 @@ export class BroadcastController {
   constructor(private service: BroadcastService) {}
 
   create = asyncHandler(async (req: Request, res: Response) => {
+    const orgId = req.user!.orgId;
     const userId = req.user!.id;
-    const broadcast = await this.service.createBroadcast(userId, req.body);
+    const broadcast = await this.service.createBroadcast(orgId, userId, req.body);
 
     res.status(201).json({
       success: true,

@@ -4,15 +4,16 @@
 import { Request, Response } from 'express';
 import { AnalyticsService } from '@services/analytics.service';
 import { asyncHandler } from '@middleware/error.middleware';
+import { requireOrgId } from '@utils/auth-helpers';
 
 export class AnalyticsController {
   constructor(private service: AnalyticsService) {}
 
   getStats = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const orgId = requireOrgId(req);
     const { days = '7' } = req.query;
 
-    const stats = await this.service.getStats(userId, parseInt(days as string) || 7);
+    const stats = await this.service.getStats(orgId, parseInt(days as string) || 7);
 
     res.status(200).json({
       success: true,
@@ -21,10 +22,10 @@ export class AnalyticsController {
   });
 
   getTrends = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const orgId = requireOrgId(req);
     const { days = 7 } = req.query;
 
-    const trends = await this.service.getMessageTrends(userId, parseInt(days as string));
+    const trends = await this.service.getMessageTrends(orgId, parseInt(days as string));
 
     res.status(200).json({
       success: true,
@@ -33,8 +34,8 @@ export class AnalyticsController {
   });
 
   getCampaigns = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
-    const campaigns = await this.service.getCampaigns(userId);
+    const orgId = requireOrgId(req);
+    const campaigns = await this.service.getCampaigns(orgId);
 
     res.status(200).json({
       success: true,
@@ -43,9 +44,9 @@ export class AnalyticsController {
   });
 
   getTopContacts = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const orgId = requireOrgId(req);
     const { limit = '10' } = req.query;
-    const contacts = await this.service.getTopContacts(userId, parseInt(limit as string) || 10);
+    const contacts = await this.service.getTopContacts(orgId, parseInt(limit as string) || 10);
 
     res.status(200).json({
       success: true,
@@ -54,9 +55,9 @@ export class AnalyticsController {
   });
 
   exportReport = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const orgId = requireOrgId(req);
     const { days = '7' } = req.query;
-    const csv = await this.service.exportReport(userId, parseInt(days as string) || 7);
+    const csv = await this.service.exportReport(orgId, parseInt(days as string) || 7);
 
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename=report.csv');

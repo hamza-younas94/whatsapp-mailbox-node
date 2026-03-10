@@ -65,15 +65,15 @@ router.post('/', validateRequest(createAutomationSchema), controller.create);
 router.get('/', controller.list);
 router.get('/:id', async (req, res, next) => {
   try {
-    const userId = req.user?.id;
+    const orgId = req.user?.orgId;
     const { id } = req.params;
-    
-    if (!userId) {
+
+    if (!orgId) {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
-    
+
     const automation = await getPrismaClient().automation.findFirst({
-      where: { id, userId }
+      where: { id, orgId }
     });
     
     if (!automation) {
@@ -93,27 +93,28 @@ router.patch('/:id/toggle', validateRequest(toggleSchema), controller.toggle);
 router.post('/:id/enroll', async (req, res, next) => {
   try {
     const userId = req.user?.id;
+    const orgId = req.user?.orgId;
     const { id } = req.params;
     const { contactId } = req.body;
-    
-    if (!userId) {
+
+    if (!userId || !orgId) {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
-    
+
     if (!contactId) {
       return res.status(400).json({ success: false, error: 'contactId is required' });
     }
-    
-    // Verify automation exists and belongs to user
+
+    // Verify automation exists and belongs to org
     const prisma = getPrismaClient();
     const automation = await prisma.automation.findFirst({
-      where: { id, userId, isActive: true }
+      where: { id, orgId, isActive: true }
     });
-    
+
     if (!automation) {
       return res.status(404).json({ success: false, error: 'Active automation not found' });
     }
-    
+
     // Execute the automation for this contact
     await service.executeAutomation(id, { contactId, userId });
     
@@ -126,12 +127,12 @@ router.post('/:id/enroll', async (req, res, next) => {
 // Automation execution logs
 router.get('/:id/logs', async (req, res, next) => {
   try {
-    const userId = req.user?.id;
+    const orgId = req.user?.orgId;
     const { id } = req.params;
-    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+    if (!orgId) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
     const logs = await getPrismaClient().automationLog.findMany({
-      where: { automationId: id, userId },
+      where: { automationId: id, orgId },
       orderBy: { createdAt: 'desc' },
       take: 50,
     });

@@ -4,7 +4,7 @@
 import { Request, Response } from 'express';
 import { ContactService } from '@services/contact.service';
 import { asyncHandler } from '@middleware/error.middleware';
-import { requireUserId } from '@utils/auth-helpers';
+import { requireUserId, requireOrgId } from '@utils/auth-helpers';
 
 interface CreateContactInput {
   phoneNumber: string;
@@ -25,6 +25,7 @@ export class ContactController {
   createContact = asyncHandler(async (req: Request, res: Response) => {
     const { phoneNumber, name, email, tags } = req.body;
     const userId = requireUserId(req);
+    const orgId = requireOrgId(req);
 
     const input: CreateContactInput = {
       phoneNumber,
@@ -33,7 +34,7 @@ export class ContactController {
       tags,
     };
 
-    const contact = await this.contactService.createContact(userId, input);
+    const contact = await this.contactService.createContact(orgId, userId, input);
 
     res.status(201).json({
       success: true,
@@ -66,6 +67,7 @@ export class ContactController {
       page = 1,
     } = req.query;
     const userId = requireUserId(req);
+    const orgId = requireOrgId(req);
 
     const parsedLimit = typeof limit === 'string' ? parseInt(limit) : (typeof limit === 'number' ? limit : 20);
     const parsedPage = typeof page === 'string' ? parseInt(page) : (typeof page === 'number' ? page : 1);
@@ -88,7 +90,7 @@ export class ContactController {
       offset: actualOffset,
     } as any;
 
-    const result = await this.contactService.searchContacts(userId, filters);
+    const result = await this.contactService.searchContacts(orgId, filters);
 
     res.status(200).json({
       success: true,
@@ -136,6 +138,7 @@ export class ContactController {
   // Bulk operations
   bulkTag = asyncHandler(async (req: Request, res: Response) => {
     const userId = requireUserId(req);
+    const orgId = requireOrgId(req);
     const { contactIds, tagId } = req.body;
     const result = await this.contactService.bulkTag(userId, contactIds, tagId);
     res.status(200).json({ success: true, data: result });
@@ -143,6 +146,7 @@ export class ContactController {
 
   bulkStage = asyncHandler(async (req: Request, res: Response) => {
     const userId = requireUserId(req);
+    const orgId = requireOrgId(req);
     const { contactIds, stage } = req.body;
     const result = await this.contactService.bulkUpdateStage(userId, contactIds, stage);
     res.status(200).json({ success: true, data: result });
@@ -150,6 +154,7 @@ export class ContactController {
 
   bulkDelete = asyncHandler(async (req: Request, res: Response) => {
     const userId = requireUserId(req);
+    const orgId = requireOrgId(req);
     const { contactIds } = req.body;
     const result = await this.contactService.bulkDelete(userId, contactIds);
     res.status(200).json({ success: true, data: result });
@@ -157,12 +162,14 @@ export class ContactController {
 
   findDuplicates = asyncHandler(async (req: Request, res: Response) => {
     const userId = requireUserId(req);
-    const duplicates = await this.contactService.findDuplicates(userId);
+    const orgId = requireOrgId(req);
+    const duplicates = await this.contactService.findDuplicates(orgId);
     res.status(200).json({ success: true, data: duplicates });
   });
 
   mergeContacts = asyncHandler(async (req: Request, res: Response) => {
     const userId = requireUserId(req);
+    const orgId = requireOrgId(req);
     const { primaryId, secondaryId } = req.body;
     const contact = await this.contactService.mergeContacts(userId, primaryId, secondaryId);
     res.status(200).json({ success: true, data: contact });

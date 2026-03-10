@@ -12,7 +12,7 @@ export class TaskRepository extends BaseRepository<Task> {
   }
 
   async findByUserId(
-    userId: string,
+    orgId: string,
     options: {
       status?: TaskStatus;
       priority?: TaskPriority;
@@ -23,7 +23,7 @@ export class TaskRepository extends BaseRepository<Task> {
       take?: number;
     } = {}
   ): Promise<{ items: Task[]; total: number }> {
-    const where: any = { userId };
+    const where: any = { orgId };
 
     if (options.status) where.status = options.status;
     if (options.priority) where.priority = options.priority;

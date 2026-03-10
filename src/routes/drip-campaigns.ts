@@ -118,8 +118,14 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
       'MANUAL': DripTriggerType.MANUAL
     };
 
+    const orgId = req.user?.orgId;
+    if (!orgId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
     const campaign = await prisma.dripCampaign.create({
       data: {
+        orgId,
         userId,
         name,
         description,

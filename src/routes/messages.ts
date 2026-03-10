@@ -106,11 +106,11 @@ export function createMessageRoutes(): Router {
   // Conversation assignment
   router.patch('/conversations/:id/assign', authMiddleware, async (req, res, next) => {
     try {
-      const userId = (req as any).userId;
+      const orgId = req.user?.orgId;
       const { id } = req.params;
       const { assignedToId } = req.body;
 
-      const conversation = await prisma.conversation.findFirst({ where: { id, userId } });
+      const conversation = await prisma.conversation.findFirst({ where: { id, orgId } });
       if (!conversation) return res.status(404).json({ success: false, error: 'Conversation not found' });
 
       const updated = await prisma.conversation.update({

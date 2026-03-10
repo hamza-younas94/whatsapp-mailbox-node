@@ -4,20 +4,23 @@
 import { Request, Response } from 'express';
 import { TaskService } from '@services/task.service';
 import { asyncHandler } from '@middleware/error.middleware';
+import { requireOrgId } from '@utils/auth-helpers';
 
 export class TaskController {
   constructor(private service: TaskService) {}
 
   create = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
-    const task = await this.service.createTask(userId, req.body);
+    const orgId = requireOrgId(req);
+    const task = await this.service.createTask(orgId, userId, req.body);
     res.status(201).json({ success: true, data: task });
   });
 
   list = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
+    const orgId = requireOrgId(req);
     const { status, priority, contactId, dueBefore, dueAfter, page, limit } = req.query;
-    const result = await this.service.getTasks(userId, {
+    const result = await this.service.getTasks(orgId, {
       status: status as string, priority: priority as string,
       contactId: contactId as string,
       dueBefore: dueBefore as string, dueAfter: dueAfter as string,

@@ -17,8 +17,9 @@ export interface CreateTaskInput {
 export class TaskService {
   constructor(private repository: TaskRepository) {}
 
-  async createTask(userId: string, input: CreateTaskInput): Promise<Task> {
+  async createTask(orgId: string, userId: string, input: CreateTaskInput): Promise<Task> {
     const task = await this.repository.create({
+      orgId,
       userId,
       contactId: input.contactId || undefined,
       title: input.title,
@@ -31,14 +32,14 @@ export class TaskService {
   }
 
   async getTasks(
-    userId: string,
+    orgId: string,
     options: { status?: string; priority?: string; contactId?: string; dueBefore?: string; dueAfter?: string; page?: number; limit?: number } = {}
   ) {
     const page = options.page || 1;
     const limit = options.limit || 20;
     const skip = (page - 1) * limit;
 
-    const { items, total } = await this.repository.findByUserId(userId, {
+    const { items, total } = await this.repository.findByUserId(orgId, {
       status: options.status as TaskStatus,
       priority: options.priority as TaskPriority,
       contactId: options.contactId,

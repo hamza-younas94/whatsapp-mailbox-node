@@ -15,7 +15,7 @@ export interface UpdateNoteData {
 }
 
 export interface INoteService {
-  createNote(userId: string, data: CreateNoteData): Promise<Note>;
+  createNote(orgId: string, userId: string, data: CreateNoteData): Promise<Note>;
   getNotes(contactId: string): Promise<Note[]>;
   updateNote(noteId: string, data: UpdateNoteData): Promise<Note>;
   deleteNote(noteId: string): Promise<void>;
@@ -24,10 +24,10 @@ export interface INoteService {
 export class NoteService implements INoteService {
   constructor(private prisma: PrismaClient) {}
 
-  async createNote(userId: string, data: CreateNoteData): Promise<Note> {
-    // Verify contact exists and belongs to user
+  async createNote(orgId: string, userId: string, data: CreateNoteData): Promise<Note> {
+    // Verify contact exists and belongs to org
     const contact = await this.prisma.contact.findFirst({
-      where: { id: data.contactId, userId },
+      where: { id: data.contactId, orgId },
     });
 
     if (!contact) {
@@ -36,6 +36,7 @@ export class NoteService implements INoteService {
 
     const note = await this.prisma.note.create({
       data: {
+        orgId,
         userId,
         contactId: data.contactId,
         content: data.content,

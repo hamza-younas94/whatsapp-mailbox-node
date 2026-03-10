@@ -43,6 +43,7 @@ import messageTemplateRoutes from '@routes/message-templates';
 import labelRoutes from '@routes/labels';
 import appConfigRoutes from '@routes/app-config';
 import { globalLimiter } from '@middleware/rate-limit.middleware';
+import { activityLogger, initActivityLogger } from '@middleware/activity.middleware';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from '@config/swagger';
 import { whatsappWebService } from '@services/whatsapp-web.service';
@@ -129,6 +130,10 @@ export function createApp(): Express {
     customCss: '.swagger-ui .topbar { display: none }',
     customSiteTitle: 'WhatsApp Mailbox API Docs',
   }));
+
+  // Activity tracking (auto-logs write operations)
+  initActivityLogger(getPrismaClient());
+  app.use('/api/', activityLogger);
 
   // API routes
   app.use('/api/v1/auth', authRoutes);
@@ -268,6 +273,14 @@ function setupChatSyncListener(): void {
       const contactRepo = new ContactRepository(db);
       const conversationRepo = new ConversationRepository(db);
 
+      // Look up the user's orgId
+      const sessionUser = await db.user.findUnique({ where: { id: userId }, select: { orgId: true } });
+      const orgId = sessionUser?.orgId;
+      if (!orgId) {
+        logger.warn({ userId, sessionId }, 'Chat sync: user has no orgId, skipping sync');
+        return;
+      }
+
       let synced = 0;
       let skipped = 0;
 
@@ -294,7 +307,7 @@ function setupChatSyncListener(): void {
           }
 
           // Create or update contact
-          await contactRepo.findOrCreate(userId, phone, {
+          await contactRepo.findOrCreate(orgId, userId, phone, {
             ...(chat.name ? { name: chat.name } : {}),
             chatId: chat.chatId,
             contactType,
@@ -303,9 +316,9 @@ function setupChatSyncListener(): void {
           });
 
           // Ensure conversation exists
-          const contact = await contactRepo.findByPhoneNumber(userId, phone);
+          const contact = await contactRepo.findByPhoneNumber(orgId, phone);
           if (contact) {
-            await conversationRepo.findOrCreate(userId, contact.id);
+            await conversationRepo.findOrCreate(orgId, userId, contact.id);
           }
 
           synced++;
@@ -406,9 +419,21 @@ function setupIncomingMessageListener(): void {
         return;
       }
 
+      // Create repositories with prisma client
+      const db = getPrismaClient();
+
+      // Look up user's orgId for org-scoped data
+      const user = await db.user.findUnique({ where: { id: userId }, select: { orgId: true } });
+      if (!user?.orgId) {
+        logger.warn({ userId }, 'User has no orgId, skipping message');
+        return;
+      }
+      const orgId = user.orgId;
+
       logger.info(
         {
           userId,
+          orgId,
           phoneNumber: sanitizedPhone,
                     isOutgoing,
           body: body?.substring(0, 50),
@@ -417,9 +442,6 @@ function setupIncomingMessageListener(): void {
         },
         isOutgoing ? 'Processing outgoing WhatsApp message' : 'Processing incoming WhatsApp message'
       );
-
-      // Create repositories with prisma client
-      const db = getPrismaClient();
       const contactRepo = new ContactRepository(db);
       const conversationRepo = new ConversationRepository(db);
       const messageRepo = new MessageRepository(db);
@@ -436,7 +458,7 @@ function setupIncomingMessageListener(): void {
 
       // Get or create contact with enriched data
       const contactTypeEnum = getContactType(from, sanitizedPhone);
-      const existingContact = await contactRepo.findByPhoneNumber(userId, sanitizedPhone);
+      const existingContact = await contactRepo.findByPhoneNumber(orgId, sanitizedPhone);
 
       // Download avatar locally instead of storing expired CDN URL
       let localAvatar: string | undefined;
@@ -447,7 +469,7 @@ function setupIncomingMessageListener(): void {
         localAvatar = profilePhotoUrl;
       }
 
-      const contact = await contactRepo.findOrCreate(userId, sanitizedPhone, {
+      const contact = await contactRepo.findOrCreate(orgId, userId, sanitizedPhone, {
         // Only set name if we have real WhatsApp data, or if brand new contact (use phone as placeholder)
         ...(contactDisplayName
           ? { name: contactDisplayName }
@@ -480,7 +502,7 @@ function setupIncomingMessageListener(): void {
       }
 
       // Get or create conversation
-      const conversation = await conversationRepo.findOrCreate(userId, contact.id);
+      const conversation = await conversationRepo.findOrCreate(orgId, userId, contact.id);
 
       // Derive a Prisma-safe message type from WhatsApp message metadata
       const normalizedType = normalizeMessageType(messageType, hasMedia);
@@ -532,6 +554,7 @@ function setupIncomingMessageListener(): void {
 
       // Save message to database
       const savedMessage = await messageRepo.create({
+        org: { connect: { id: orgId } },
         user: { connect: { id: userId } },
         contact: { connect: { id: contact.id } },
         conversation: { connect: { id: conversation.id } },
@@ -568,7 +591,7 @@ function setupIncomingMessageListener(): void {
       if (!isOutgoing && !isGroupOrChannel && body && body.trim()) {
         try {
           // Get all quick replies for the user
-          const allQuickReplies = await quickReplyRepo.findByUserId(userId);
+          const allQuickReplies = await quickReplyRepo.findByUserId(orgId);
 
           // Use the advanced auto-reply service to find best match
           const autoReplyResult = await autoReplyService.processAutoReply(
@@ -611,6 +634,7 @@ function setupIncomingMessageListener(): void {
                 // Save auto-reply to database history
                 const autoReplyWaId = sentMsg.id?.id || `auto-${from}-${Date.now()}`;
                 const savedAutoReply = await messageRepo.create({
+                  org: { connect: { id: orgId } },
                   user: { connect: { id: userId } },
                   contact: { connect: { id: contact.id } },
                   conversation: { connect: { id: conversation.id } },
@@ -701,6 +725,7 @@ function setupIncomingMessageListener(): void {
 
           // Trigger MESSAGE_RECEIVED automations
           await automationService.triggerAutomations('message_received', {
+            orgId,
             userId,
             contactId: contact.id,
             messageContent: body,
@@ -715,6 +740,7 @@ function setupIncomingMessageListener(): void {
             const keyword = conditions?.keyword;
             if (keyword && body.toLowerCase().includes(keyword.toLowerCase())) {
               await automationService.executeAutomation(auto.id, {
+                orgId,
                 userId,
                 contactId: contact.id,
                 messageContent: body,

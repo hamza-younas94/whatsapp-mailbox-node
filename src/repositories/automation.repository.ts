@@ -6,7 +6,7 @@ import { BaseRepository } from './base.repository';
 
 export interface IAutomationRepository {
   findByTrigger(trigger: string): Promise<Automation[]>;
-  findActive(userId: string): Promise<Automation[]>;
+  findActive(orgId: string): Promise<Automation[]>;
 }
 
 export class AutomationRepository extends BaseRepository<Automation> implements IAutomationRepository {
@@ -22,9 +22,9 @@ export class AutomationRepository extends BaseRepository<Automation> implements 
     });
   }
 
-  async findActive(userId: string): Promise<Automation[]> {
+  async findActive(orgId: string): Promise<Automation[]> {
     return this.prisma.automation.findMany({
-      where: { userId, isActive: true },
+      where: { orgId, isActive: true },
       orderBy: { createdAt: 'desc' },
     });
   }

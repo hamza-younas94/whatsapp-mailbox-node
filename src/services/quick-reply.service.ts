@@ -14,10 +14,10 @@ export interface CreateQuickReplyInput {
 }
 
 export interface IQuickReplyService {
-  createQuickReply(userId: string, input: CreateQuickReplyInput): Promise<QuickReply>;
-  getQuickReplies(userId: string): Promise<QuickReply[]>;
+  createQuickReply(orgId: string, userId: string, input: CreateQuickReplyInput): Promise<QuickReply>;
+  getQuickReplies(orgId: string): Promise<QuickReply[]>;
   getQuickReplyById(id: string): Promise<QuickReply>;
-  searchQuickReplies(userId: string, query: string): Promise<QuickReply[]>;
+  searchQuickReplies(orgId: string, query: string): Promise<QuickReply[]>;
   updateQuickReply(id: string, data: Partial<QuickReply>): Promise<QuickReply>;
   deleteQuickReply(id: string): Promise<void>;
 }
@@ -25,7 +25,7 @@ export interface IQuickReplyService {
 export class QuickReplyService implements IQuickReplyService {
   constructor(private repository: QuickReplyRepository) {}
 
-  async createQuickReply(userId: string, input: CreateQuickReplyInput): Promise<QuickReply> {
+  async createQuickReply(orgId: string, userId: string, input: CreateQuickReplyInput): Promise<QuickReply> {
     try {
       // Validate required fields
       if (!input.title || !input.content) {
@@ -34,13 +34,14 @@ export class QuickReplyService implements IQuickReplyService {
 
       // Validate shortcut uniqueness if provided
       if (input.shortcut) {
-        const existing = await this.repository.findByShortcut(userId, input.shortcut);
+        const existing = await this.repository.findByShortcut(orgId, input.shortcut);
         if (existing) {
           throw new ConflictError(`Shortcut '${input.shortcut}' already exists`);
         }
       }
 
       const quickReply = await this.repository.create({
+        orgId,
         userId,
         title: input.title,
         content: input.content,
@@ -56,8 +57,8 @@ export class QuickReplyService implements IQuickReplyService {
     }
   }
 
-  async getQuickReplies(userId: string): Promise<QuickReply[]> {
-    return this.repository.findByUserId(userId);
+  async getQuickReplies(orgId: string): Promise<QuickReply[]> {
+    return this.repository.findByUserId(orgId);
   }
 
   async getQuickReplyById(id: string): Promise<QuickReply> {
@@ -68,8 +69,8 @@ export class QuickReplyService implements IQuickReplyService {
     return quickReply;
   }
 
-  async searchQuickReplies(userId: string, query: string): Promise<QuickReply[]> {
-    return this.repository.search(userId, query);
+  async searchQuickReplies(orgId: string, query: string): Promise<QuickReply[]> {
+    return this.repository.search(orgId, query);
   }
 
   async updateQuickReply(id: string, data: Partial<QuickReply>): Promise<QuickReply> {

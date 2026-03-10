@@ -5,7 +5,7 @@ import { Request, Response } from 'express';
 import { MessageService } from '@services/message.service';
 import { asyncHandler } from '@middleware/error.middleware';
 import logger from '@utils/logger';
-import { requireUserId } from '@utils/auth-helpers';
+import { requireUserId, requireOrgId } from '@utils/auth-helpers';
 
 interface CreateMessageInput {
   phoneNumber?: string;
@@ -21,6 +21,7 @@ export class MessageController {
 
   listMessages = asyncHandler(async (req: Request, res: Response) => {
     const userId = requireUserId(req);
+    const orgId = requireOrgId(req);
     const { page = 1, limit = 20, search, direction, status } = req.query;
 
     const filters = {
@@ -31,7 +32,7 @@ export class MessageController {
       offset: (parseInt(page as string) - 1) * parseInt(limit as string),
     };
 
-    const result = await this.messageService.listMessages(userId, filters);
+    const result = await this.messageService.listMessages(orgId, filters);
 
     res.status(200).json({
       success: true,
@@ -45,6 +46,7 @@ export class MessageController {
   sendMessage = asyncHandler(async (req: Request, res: Response) => {
     const { contactId, phoneNumber, content, mediaUrl } = req.body;
     const userId = requireUserId(req);
+    const orgId = requireOrgId(req);
 
     const input: CreateMessageInput = {
       phoneNumber,
@@ -53,7 +55,7 @@ export class MessageController {
       mediaUrl,
     };
 
-    const message = await this.messageService.sendMessage(userId, input as any);
+    const message = await this.messageService.sendMessage(orgId, userId, input as any);
 
     res.status(201).json({
       success: true,
@@ -64,10 +66,10 @@ export class MessageController {
   getMessages = asyncHandler(async (req: Request, res: Response) => {
     const { conversationId } = req.params;
     const { limit = 50, offset = 0 } = req.query;
-    const userId = req.user!.id;
+    const orgId = requireOrgId(req);
 
     const result = await this.messageService.getMessages(
-      userId,
+      orgId,
       conversationId,
       parseInt(limit as string),
       parseInt(offset as string),
@@ -82,10 +84,10 @@ export class MessageController {
   getMessagesByContact = asyncHandler(async (req: Request, res: Response) => {
     const { contactId } = req.params;
     const { limit = 50, offset = 0, search } = req.query;
-    const userId = requireUserId(req);
+    const orgId = requireOrgId(req);
 
     const result = await this.messageService.getMessagesByContact(
-      userId,
+      orgId,
       contactId,
       parseInt(limit as string),
       parseInt(offset as string),

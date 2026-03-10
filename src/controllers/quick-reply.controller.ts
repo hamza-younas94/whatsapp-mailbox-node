@@ -4,13 +4,15 @@
 import { Request, Response } from 'express';
 import { QuickReplyService } from '@services/quick-reply.service';
 import { asyncHandler } from '@middleware/error.middleware';
+import { requireOrgId } from '@utils/auth-helpers';
 
 export class QuickReplyController {
   constructor(private service: QuickReplyService) {}
 
   create = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
-    const quickReply = await this.service.createQuickReply(userId, req.body);
+    const orgId = requireOrgId(req);
+    const quickReply = await this.service.createQuickReply(orgId, userId, req.body);
 
     res.status(201).json({
       success: true,
@@ -19,8 +21,8 @@ export class QuickReplyController {
   });
 
   list = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
-    const quickReplies = await this.service.getQuickReplies(userId);
+    const orgId = requireOrgId(req);
+    const quickReplies = await this.service.getQuickReplies(orgId);
 
     res.status(200).json({
       success: true,
@@ -39,10 +41,10 @@ export class QuickReplyController {
   });
 
   search = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const orgId = requireOrgId(req);
     const { q } = req.query;
 
-    const results = await this.service.searchQuickReplies(userId, q as string);
+    const results = await this.service.searchQuickReplies(orgId, q as string);
 
     res.status(200).json({
       success: true,

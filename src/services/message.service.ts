@@ -40,15 +40,15 @@ interface PaginatedResult<T> {
 }
 
 export interface IMessageService {
-  sendMessage(userId: string, input: CreateMessageInput): Promise<Message>;
+  sendMessage(orgId: string, userId: string, input: CreateMessageInput): Promise<Message>;
   receiveMessage(waMessageId: string, payload: unknown): Promise<Message>;
   getMessages(
-    userId: string,
+    orgId: string,
     conversationId: string,
     limit?: number,
     offset?: number,
   ): Promise<PaginatedResult<Message>>;
-  listMessages(userId: string, filters: MessageFilters): Promise<PaginatedResult<Message>>;
+  listMessages(orgId: string, filters: MessageFilters): Promise<PaginatedResult<Message>>;
   markAsRead(messageId: string): Promise<Message>;
   deleteMessage(messageId: string): Promise<void>;
 }
@@ -61,7 +61,7 @@ export class MessageService implements IMessageService {
     private conversationRepository: ConversationRepository,
   ) {}
 
-  async sendMessage(userId: string, input: CreateMessageInput): Promise<Message> {
+  async sendMessage(orgId: string, userId: string, input: CreateMessageInput): Promise<Message> {
     try {
       const withTimeout = async <T>(promise: Promise<T>, ms: number, errorMsg: string): Promise<T> => {
         let timer: NodeJS.Timeout;
@@ -83,18 +83,21 @@ export class MessageService implements IMessageService {
         const base = raw.split('@')[0];
         // Remove all non-digit characters
         const digits = base.replace(/\D/g, '');
-        
+
         // If number starts with 0, remove it (local format like 03462115115)
         // WhatsApp expects international format without leading 0
         if (digits.startsWith('0') && digits.length > 1) {
           return digits.substring(1);
         }
-        
+
         // Return last 20 digits (max phone number length)
         return digits.slice(-20);
       };
 
-      // Validate userId is present
+      // Validate orgId and userId are present
+      if (!orgId) {
+        throw new ValidationError('Organization ID is required');
+      }
       if (!userId) {
         throw new ValidationError('User ID is required - authentication failed');
       }
@@ -115,7 +118,7 @@ export class MessageService implements IMessageService {
         if (!sanitizedPhone) {
           throw new ValidationError('Phone number is invalid after sanitization');
         }
-        const contact = await this.contactRepository.findOrCreate(userId, sanitizedPhone, { name: sanitizedPhone });
+        const contact = await this.contactRepository.findOrCreate(orgId, userId, sanitizedPhone, { name: sanitizedPhone });
         contactId = contact.id;
       }
 
@@ -124,13 +127,14 @@ export class MessageService implements IMessageService {
       }
 
       // Ensure conversation exists
-      const conversation = await this.conversationRepository.findOrCreate(userId, contactId);
+      const conversation = await this.conversationRepository.findOrCreate(orgId, userId, contactId);
 
       // Create message in database (PENDING status)
       // Truncate mediaUrl if too long (max 1000 chars to match database column)
       const mediaUrl = input.mediaUrl ? (input.mediaUrl.length > 1000 ? input.mediaUrl.substring(0, 1000) : input.mediaUrl) : null;
       
       const message = await this.messageRepository.create({
+        org: { connect: { id: orgId } },
         user: { connect: { id: userId } },
         contact: { connect: { id: contactId } },
         conversation: { connect: { id: conversation.id } },
@@ -315,7 +319,7 @@ export class MessageService implements IMessageService {
   }
 
   async getMessagesByContact(
-    userId: string,
+    orgId: string,
     contactId: string,
     limit?: number,
     offset?: number,
@@ -323,11 +327,11 @@ export class MessageService implements IMessageService {
   ): Promise<PaginatedResult<Message>> {
     try {
       const contact = await this.contactRepository.findById(contactId);
-      if (!contact || contact.userId !== userId) {
+      if (!contact || (contact as any).orgId !== orgId) {
         throw new NotFoundError('Contact');
       }
 
-      const conversation = await this.conversationRepository.findOrCreate(userId, contactId);
+      const conversation = await this.conversationRepository.findOrCreate(orgId, (contact as any).userId, contactId);
 
       return await this.messageRepository.findByConversation(conversation.id, {
         limit,
@@ -341,13 +345,13 @@ export class MessageService implements IMessageService {
   }
 
   async getMessages(
-    userId: string,
+    orgId: string,
     conversationId: string,
     limit?: number,
     offset?: number,
   ): Promise<PaginatedResult<Message>> {
     try {
-      // Verify user owns conversation (authorization)
+      // Verify org owns conversation (authorization)
       // ... additional check needed
 
       return await this.messageRepository.findByConversation(conversationId, {
@@ -436,11 +440,11 @@ export class MessageService implements IMessageService {
     }
   }
 
-  async listMessages(userId: string, filters: MessageFilters): Promise<PaginatedResult<Message>> {
+  async listMessages(orgId: string, filters: MessageFilters): Promise<PaginatedResult<Message>> {
     try {
-      return await this.messageRepository.findByUser(userId, filters);
+      return await this.messageRepository.findByUser(orgId, filters);
     } catch (error) {
-      logger.error({ userId, filters, error }, 'Failed to list messages');
+      logger.error({ orgId, filters, error }, 'Failed to list messages');
       throw error;
     }
   }

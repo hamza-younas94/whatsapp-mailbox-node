@@ -21,8 +21,8 @@ export interface AutomationAction {
 }
 
 export interface IAutomationService {
-  createAutomation(userId: string, input: CreateAutomationInput): Promise<Automation>;
-  getAutomations(userId: string): Promise<Automation[]>;
+  createAutomation(orgId: string, userId: string, input: CreateAutomationInput): Promise<Automation>;
+  getAutomations(orgId: string): Promise<Automation[]>;
   updateAutomation(id: string, data: Partial<Automation>): Promise<Automation>;
   deleteAutomation(id: string): Promise<void>;
   toggleAutomation(id: string, isActive: boolean): Promise<Automation>;
@@ -98,8 +98,9 @@ export class AutomationService implements IAutomationService {
     private contactRepository?: ContactRepository,
   ) {}
 
-  async createAutomation(userId: string, input: CreateAutomationInput): Promise<Automation> {
+  async createAutomation(orgId: string, userId: string, input: CreateAutomationInput): Promise<Automation> {
     const automation = await this.repository.create({
+      orgId,
       userId,
       name: input.name,
       trigger: input.trigger,
@@ -111,8 +112,8 @@ export class AutomationService implements IAutomationService {
     return automation;
   }
 
-  async getAutomations(userId: string): Promise<Automation[]> {
-    return this.repository.findActive(userId);
+  async getAutomations(orgId: string): Promise<Automation[]> {
+    return this.repository.findActive(orgId);
   }
 
   async updateAutomation(id: string, data: Partial<Automation>): Promise<Automation> {
@@ -177,7 +178,7 @@ export class AutomationService implements IAutomationService {
   private async executeAction(action: AutomationAction, context: Record<string, any>): Promise<void> {
     switch (action.type) {
       case 'SEND_MESSAGE':
-        await this.messageService.sendMessage(context.userId, {
+        await this.messageService.sendMessage(context.orgId, context.userId, {
           contactId: context.contactId,
           content: action.params.content,
           mediaUrl: action.params.mediaUrl,
@@ -246,7 +247,7 @@ export class AutomationService implements IAutomationService {
         const targetTags: string[] = action.params.targetTags || [];
         if (targetTags.length > 0 && this.contactRepository) {
           try {
-            const result = await this.contactRepository.search(context.userId, {
+            const result = await this.contactRepository.search(context.orgId, {
               tags: targetTags,
               limit: 500,
             });
@@ -288,7 +289,7 @@ export class AutomationService implements IAutomationService {
           }
 
           try {
-            await this.messageService.sendMessage(context.userId, {
+            await this.messageService.sendMessage(context.orgId, context.userId, {
               contactId: targetContactId,
               content: forwardContent,
               mediaUrl: includeMedia ? mediaUrl : undefined,

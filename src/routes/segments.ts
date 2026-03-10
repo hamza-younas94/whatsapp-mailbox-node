@@ -33,8 +33,8 @@ router.use(authenticate);
 // Preview endpoint - calculate matching contacts based on conditions
 router.post('/preview', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) {
+    const orgId = req.user?.orgId;
+    if (!orgId) {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
@@ -65,7 +65,7 @@ router.post('/preview', async (req: Request, res: Response, next: NextFunction) 
       }
     }
 
-    const where: any = { userId };
+    const where: any = { orgId };
     if (clauses.length > 0) {
       where[logic === 'OR' ? 'OR' : 'AND'] = clauses;
     }
@@ -83,15 +83,15 @@ router.post('/', validateRequest(createSegmentSchema), controller.create);
 router.get('/', controller.list);
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
+    const orgId = req.user?.orgId;
     const { id } = req.params;
-    
-    if (!userId) {
+
+    if (!orgId) {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
     const segment = await prisma.segment.findFirst({
-      where: { id, userId }
+      where: { id, orgId }
     });
 
     if (!segment) {

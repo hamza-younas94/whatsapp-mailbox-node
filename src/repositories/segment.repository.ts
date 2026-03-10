@@ -5,7 +5,7 @@ import { PrismaClient, Segment, Prisma } from '@prisma/client';
 import { BaseRepository } from './base.repository';
 
 export interface ISegmentRepository {
-  findByUserId(userId: string): Promise<Segment[]>;
+  findByUserId(orgId: string): Promise<Segment[]>;
   evaluateSegment(segmentId: string): Promise<string[]>;
 }
 
@@ -16,9 +16,9 @@ export class SegmentRepository extends BaseRepository<Segment> implements ISegme
     super(prisma);
   }
 
-  async findByUserId(userId: string): Promise<Segment[]> {
+  async findByUserId(orgId: string): Promise<Segment[]> {
     return this.prisma.segment.findMany({
-      where: { userId },
+      where: { orgId },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -34,7 +34,7 @@ export class SegmentRepository extends BaseRepository<Segment> implements ISegme
     
     // Build dynamic where clause from criteria
     const where: Prisma.ContactWhereInput = {
-      userId: segment.userId,
+      orgId: segment.orgId,
       ...(criteria.tags && { tags: { some: { tag: { name: { in: criteria.tags } } } } }),
       ...(criteria.isBlocked !== undefined && { isBlocked: criteria.isBlocked }),
     };

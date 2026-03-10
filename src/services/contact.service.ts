@@ -33,9 +33,9 @@ interface PaginatedResult<T> {
 }
 
 export interface IContactService {
-  createContact(userId: string, input: CreateContactInput): Promise<Contact>;
+  createContact(orgId: string, userId: string, input: CreateContactInput): Promise<Contact>;
   getContact(id: string): Promise<Contact>;
-  searchContacts(userId: string, filters: ContactFilters): Promise<PaginatedResult<Contact>>;
+  searchContacts(orgId: string, filters: ContactFilters): Promise<PaginatedResult<Contact>>;
   updateContact(id: string, data: Partial<Contact>): Promise<Contact>;
   deleteContact(id: string): Promise<void>;
   blockContact(id: string): Promise<Contact>;
@@ -48,7 +48,7 @@ export class ContactService implements IContactService {
     private tagRepository?: any,
   ) {}
 
-  async createContact(userId: string, input: CreateContactInput): Promise<Contact> {
+  async createContact(orgId: string, userId: string, input: CreateContactInput): Promise<Contact> {
     try {
       // Validate phone number format
       const phonePattern = /^\+?[1-9]\d{1,14}$/; // E.164 format
@@ -57,12 +57,13 @@ export class ContactService implements IContactService {
       }
 
       // Check if contact already exists
-      const existing = await this.contactRepository.findByPhoneNumber(userId, input.phoneNumber);
+      const existing = await this.contactRepository.findByPhoneNumber(orgId, input.phoneNumber);
       if (existing) {
         throw new ConflictError(`Contact with phone ${input.phoneNumber} already exists`);
       }
 
       const contact = await this.contactRepository.create({
+        orgId,
         userId,
         phoneNumber: input.phoneNumber,
         name: input.name,
@@ -72,9 +73,9 @@ export class ContactService implements IContactService {
       // Add tags if provided
       if (input.tags && input.tags.length > 0 && this.tagRepository) {
         for (const tagName of input.tags) {
-          let tag = await this.tagRepository.findByName(userId, tagName);
+          let tag = await this.tagRepository.findByName(orgId, tagName);
           if (!tag) {
-            tag = await this.tagRepository.create({ userId, name: tagName });
+            tag = await this.tagRepository.create({ orgId, userId, name: tagName });
           }
           await this.tagRepository.addToContact(contact.id, tag.id);
         }
@@ -101,9 +102,9 @@ export class ContactService implements IContactService {
     }
   }
 
-  async searchContacts(userId: string, filters: ContactFilters): Promise<PaginatedResult<Contact>> {
+  async searchContacts(orgId: string, filters: ContactFilters): Promise<PaginatedResult<Contact>> {
     try {
-      return await this.contactRepository.search(userId, filters);
+      return await this.contactRepository.search(orgId, filters);
     } catch (error) {
       logger.error({ filters, error }, 'Failed to search contacts');
       throw error;
@@ -216,8 +217,8 @@ export class ContactService implements IContactService {
     return { deletedCount };
   }
 
-  async findDuplicates(userId: string): Promise<any[]> {
-    const allContacts = await this.contactRepository.search(userId, { limit: 1000, offset: 0 });
+  async findDuplicates(orgId: string): Promise<any[]> {
+    const allContacts = await this.contactRepository.search(orgId, { limit: 1000, offset: 0 });
     const phoneMap = new Map<string, any[]>();
 
     for (const contact of allContacts.data) {

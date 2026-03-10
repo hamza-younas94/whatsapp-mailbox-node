@@ -33,11 +33,11 @@ const updateSchema = z.object({
 // GET / - List scheduled messages with optional status filter
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+    const orgId = req.user?.orgId;
+    if (!orgId) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
     const status = req.query.status as string | undefined;
-    const where: any = { userId };
+    const where: any = { orgId };
     if (status) where.status = status;
 
     const messages = await prisma.scheduledMessage.findMany({
@@ -68,12 +68,14 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 router.post('/', validateRequest(createSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+    const orgId = req.user?.orgId;
+    if (!userId || !orgId) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
     const { contactId, message, scheduledFor, mediaUrl, mediaType } = req.body;
 
     const scheduled = await prisma.scheduledMessage.create({
       data: {
+        orgId,
         userId,
         contactId,
         message,
@@ -94,12 +96,12 @@ router.post('/', validateRequest(createSchema), async (req: Request, res: Respon
 // PUT /:id - Update (PENDING only)
 router.put('/:id', validateRequest(updateSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
+    const orgId = req.user?.orgId;
     const { id } = req.params;
-    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+    if (!orgId) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
     const existing = await prisma.scheduledMessage.findFirst({
-      where: { id, userId, status: 'PENDING' },
+      where: { id, orgId, status: 'PENDING' },
     });
 
     if (!existing) {
@@ -126,12 +128,12 @@ router.put('/:id', validateRequest(updateSchema), async (req: Request, res: Resp
 // DELETE /:id - Cancel (set status to CANCELLED)
 router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
+    const orgId = req.user?.orgId;
     const { id } = req.params;
-    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+    if (!orgId) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
     const existing = await prisma.scheduledMessage.findFirst({
-      where: { id, userId },
+      where: { id, orgId },
     });
 
     if (!existing) {

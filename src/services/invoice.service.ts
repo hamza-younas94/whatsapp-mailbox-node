@@ -57,15 +57,16 @@ export class InvoiceService {
     return { subtotal, taxAmount, discountAmount, totalAmount };
   }
 
-  async createInvoice(userId: string, input: CreateInvoiceInput): Promise<Invoice> {
+  async createInvoice(orgId: string, userId: string, input: CreateInvoiceInput): Promise<Invoice> {
     if (!input.items || input.items.length === 0) {
       throw new ValidationError('Invoice must have at least one item');
     }
 
-    const invoiceNumber = await this.repository.getNextInvoiceNumber(userId);
+    const invoiceNumber = await this.repository.getNextInvoiceNumber(orgId);
     const totals = this.calculateInvoiceTotals(input.items);
 
     const invoiceData = {
+      orgId,
       userId,
       contactId: input.contactId,
       invoiceNumber,
@@ -95,7 +96,7 @@ export class InvoiceService {
   }
 
   async getInvoices(
-    userId: string,
+    orgId: string,
     options: {
       status?: string;
       contactId?: string;
@@ -110,7 +111,7 @@ export class InvoiceService {
     const limit = options.limit || 20;
     const skip = (page - 1) * limit;
 
-    const { items, total } = await this.repository.findByUserId(userId, {
+    const { items, total } = await this.repository.findByUserId(orgId, {
       status: options.status as InvoiceStatus,
       contactId: options.contactId,
       startDate: options.startDate ? new Date(options.startDate) : undefined,

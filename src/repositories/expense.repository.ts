@@ -12,7 +12,7 @@ export class ExpenseRepository extends BaseRepository<Expense> {
   }
 
   async findByUserId(
-    userId: string,
+    orgId: string,
     options: {
       category?: string;
       paymentMethod?: string;
@@ -22,7 +22,7 @@ export class ExpenseRepository extends BaseRepository<Expense> {
       take?: number;
     } = {}
   ): Promise<{ items: Expense[]; total: number }> {
-    const where: any = { userId };
+    const where: any = { orgId };
 
     if (options.category) where.category = options.category;
     if (options.paymentMethod) where.paymentMethod = options.paymentMethod;
@@ -45,8 +45,8 @@ export class ExpenseRepository extends BaseRepository<Expense> {
     return { items, total };
   }
 
-  async getSummary(userId: string, startDate?: Date, endDate?: Date) {
-    const where: any = { userId };
+  async getSummary(orgId: string, startDate?: Date, endDate?: Date) {
+    const where: any = { orgId };
     if (startDate || endDate) {
       where.expenseDate = {};
       if (startDate) where.expenseDate.gte = startDate;

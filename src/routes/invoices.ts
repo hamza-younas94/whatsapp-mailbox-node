@@ -67,9 +67,9 @@ router.get('/:id/payments', controller.getPayments);
 // PDF Download
 router.get('/:id/pdf', async (req, res) => {
   try {
-    const userId = req.user!.id;
+    const orgId = req.user!.orgId;
     const invoice = await prisma.invoice.findFirst({
-      where: { id: req.params.id, userId },
+      where: { id: req.params.id, orgId },
       include: {
         items: true,
         contact: true,
@@ -182,8 +182,9 @@ router.get('/:id/pdf', async (req, res) => {
 router.post('/:id/send', async (req, res) => {
   try {
     const userId = req.user!.id;
+    const orgId = req.user!.orgId;
     const invoice = await prisma.invoice.findFirst({
-      where: { id: req.params.id, userId },
+      where: { id: req.params.id, orgId },
       include: {
         items: true,
         contact: true,
@@ -328,13 +329,14 @@ router.post('/:id/send', async (req, res) => {
 
     // Save message in conversation history
     const conversation = await prisma.conversation.findFirst({
-      where: { userId, contactId: invoice.contactId },
+      where: { orgId, contactId: invoice.contactId },
     }) || await prisma.conversation.create({
-      data: { userId, contactId: invoice.contactId },
+      data: { orgId, userId, contactId: invoice.contactId },
     });
 
     await prisma.message.create({
       data: {
+        orgId,
         userId,
         contactId: invoice.contactId,
         conversationId: conversation.id,
