@@ -13,24 +13,68 @@ datasource db {
 }
 
 // ============================================
-// AUTH & USER MANAGEMENT
+// ORGANIZATION & USER MANAGEMENT
 // ============================================
 
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  ownerId   String
+  timezone  String   @default("Asia/Karachi")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users                 User[]
+  contacts              Contact[]
+  conversations         Conversation[]
+  messages              Message[]
+  tags                  Tag[]
+  segments              Segment[]
+  quickReplies          QuickReply[]
+  automations           Automation[]
+  notes                 Note[]
+  activityLogs          ActivityLog[]
+  dripCampaigns         DripCampaign[]
+  broadcasts            Broadcast[]
+  labels                Label[]
+  scheduledMessages     ScheduledMessage[]
+  imports               ImportJob[]
+  products              Product[]
+  invoices              Invoice[]
+  orders                Order[]
+  serviceTickets        ServiceTicket[]
+  appointments          Appointment[]
+  expenses              Expense[]
+  customerSubscriptions CustomerSubscription[]
+  autoTagRules          AutoTagRule[]
+  tasks                 Task[]
+  automationLogs        AutomationLog[]
+  quickReplyCategories  QuickReplyCategory[]
+
+  @@index([slug])
+  @@index([ownerId])
+}
+
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  username     String    @unique
+  id                  String       @id @default(cuid())
+  orgId               String
+  org                 Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  email               String       @unique
+  username            String       @unique
   passwordHash        String
   name                String?
   avatarUrl           String?
-  passwordResetToken  String?   @unique
+  passwordResetToken  String?      @unique
   passwordResetExpiry DateTime?
-  role         UserRole  @default(USER)
-  isActive     Boolean   @default(true)
-  lastLoginAt  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  deletedAt    DateTime?
+  role                UserRole     @default(AGENT)
+  isActive            Boolean      @default(true)
+  lastLoginAt         DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  deletedAt           DateTime?
 
   // Relations
   conversations         Conversation[]
@@ -58,16 +102,17 @@ model User {
   tasks                 Task[]
   automationLogs        AutomationLog[]
 
+  @@index([orgId])
   @@index([email])
   @@index([username])
   @@index([isActive])
 }
 
 enum UserRole {
+  OWNER
   ADMIN
   MANAGER
   AGENT
-  USER
 }
 
 // ============================================
@@ -75,34 +120,36 @@ enum UserRole {
 // ============================================
 
 model Contact {
-  id                String    @id @default(cuid())
+  id                String       @id @default(cuid())
+  orgId             String
+  org               Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId            String
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  phoneNumber       String    @db.VarChar(20)
-  chatId            String?   @db.VarChar(50) // Full WhatsApp ID: phone@c.us or channel@newsletter
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phoneNumber       String       @db.VarChar(20)
+  chatId            String?      @db.VarChar(50) // Full WhatsApp ID: phone@c.us or channel@newsletter
   name              String?
   pushName          String? // Contact's WhatsApp display name
   businessName      String? // For business accounts
   email             String?
-  avatarUrl         String?   @db.Text
-  profilePhotoUrl   String?   @db.Text // WhatsApp profile picture
+  avatarUrl         String?      @db.Text
+  profilePhotoUrl   String?      @db.Text // WhatsApp profile picture
   company           String?
   department        String?
-  contactType       String    @default("individual") // individual, business, group, broadcast
+  contactType       String       @default("individual") // individual, business, group, broadcast
   timezone          String?
   lastMessageAt     DateTime?
   lastActiveAt      DateTime?
-  engagementScore   Float     @default(0) // 0-100 score
-  engagementLevel   String    @default("inactive") // high, medium, low, inactive
-  messageCount      Int       @default(0)
-  totalInteractions Int       @default(0)
-  isBlocked         Boolean   @default(false)
-  isBusiness        Boolean   @default(false)
-  isVerified        Boolean   @default(false)
-  customFields      Json?     @default("{}") // Flexible custom attributes
-  metadata          Json?     @default("{}")
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  engagementScore   Float        @default(0) // 0-100 score
+  engagementLevel   String       @default("inactive") // high, medium, low, inactive
+  messageCount      Int          @default(0)
+  totalInteractions Int          @default(0)
+  isBlocked         Boolean      @default(false)
+  isBusiness        Boolean      @default(false)
+  isVerified        Boolean      @default(false)
+  customFields      Json?        @default("{}") // Flexible custom attributes
+  metadata          Json?        @default("{}")
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
   // Relations
   conversations         Conversation[]
@@ -120,7 +167,8 @@ model Contact {
   tasks                 Task[]
   payments              Payment[]
 
-  @@unique([userId, phoneNumber])
+  @@unique([orgId, phoneNumber])
+  @@index([orgId])
   @@index([userId])
   @@index([phoneNumber])
   @@index([engagementLevel])
@@ -129,11 +177,13 @@ model Contact {
 }
 
 model Conversation {
-  id        String  @id @default(cuid())
+  id        String       @id @default(cuid())
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId    String
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   contactId String
-  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contact   Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
   isActive      Boolean   @default(true)
   status        String    @default("open")
@@ -151,7 +201,8 @@ model Conversation {
   messages Message[]
   labels   ConversationLabel[]
 
-  @@unique([userId, contactId])
+  @@unique([orgId, contactId])
+  @@index([orgId])
   @@index([userId])
   @@index([isActive])
   @@index([status])
@@ -164,6 +215,8 @@ model Conversation {
 
 model Message {
   id             String       @id @default(cuid())
+  orgId          String
+  org            Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId         String
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   contactId      String
@@ -209,6 +262,7 @@ model Message {
   reactions Reaction[]
   notes     Note[]
 
+  @@index([orgId])
   @@index([userId])
   @@index([contactId])
   @@index([conversationId])
@@ -282,18 +336,21 @@ model Reaction {
 // ============================================
 
 model Tag {
-  id        String   @id @default(cuid())
+  id        String       @id @default(cuid())
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String
-  color     String?  @default("#3B82F6")
-  createdAt DateTime @default(now())
+  color     String?      @default("#3B82F6")
+  createdAt DateTime     @default(now())
 
   // Relations
   contacts     TagOnContact[]
   autoTagRules AutoTagRule[]
 
-  @@unique([userId, name])
+  @@unique([orgId, name])
+  @@index([orgId])
   @@index([userId])
 }
 
@@ -313,15 +370,18 @@ model TagOnContact {
 // ============================================
 
 model Segment {
-  id        String   @id @default(cuid())
+  id        String       @id @default(cuid())
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String
   criteria  Json // Saved filter criteria
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
-  @@unique([userId, name])
+  @@unique([orgId, name])
+  @@index([orgId])
   @@index([userId])
 }
 
@@ -373,6 +433,8 @@ enum CampaignStatus {
 
 model QuickReply {
   id                 String              @id @default(cuid())
+  orgId              String
+  org                Organization        @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId             String
   user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   title              String
@@ -392,6 +454,7 @@ model QuickReply {
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
+  @@index([orgId])
   @@index([userId])
   @@index([isActive])
   @@index([categoryId])
@@ -416,18 +479,21 @@ model MessageTemplate {
 // ============================================
 
 model Automation {
-  id        String   @id @default(cuid())
+  id        String       @id @default(cuid())
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String
   trigger   String // MESSAGE_RECEIVED, CONTACT_ADDED, etc.
   actions   Json // Array of actions to execute
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive  Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
-  logs      AutomationLog[]
+  logs AutomationLog[]
 
+  @@index([orgId])
   @@index([userId])
   @@index([isActive])
 }
@@ -445,18 +511,21 @@ model AutoReply {
 // ============================================
 
 model Note {
-  id        String   @id @default(cuid())
+  id        String       @id @default(cuid())
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   contactId String?
-  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  contact   Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
   messageId String?
-  message   Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  message   Message?     @relation(fields: [messageId], references: [id], onDelete: SetNull)
 
   content   String   @db.LongText
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([orgId])
   @@index([userId])
   @@index([contactId])
   @@fulltext([content])
@@ -464,6 +533,8 @@ model Note {
 
 model ActivityLog {
   id           String       @id @default(cuid())
+  orgId        String
+  org          Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId       String
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   action       ActivityType
@@ -474,22 +545,70 @@ model ActivityLog {
   userAgent    String?
   createdAt    DateTime     @default(now())
 
+  @@index([orgId])
   @@index([userId])
   @@index([action])
   @@index([createdAt])
 }
 
 enum ActivityType {
+  // Auth
   LOGIN
   LOGOUT
+  // Messages
   MESSAGE_SENT
   MESSAGE_RECEIVED
+  BROADCAST_SENT
+  // Contacts
   CONTACT_CREATED
   CONTACT_UPDATED
+  CONTACT_DELETED
+  CONTACT_IMPORTED
+  // Tags
   TAG_CREATED
   TAG_DELETED
+  TAG_ASSIGNED
+  TAG_REMOVED
+  // Orders
+  ORDER_CREATED
+  ORDER_UPDATED
+  ORDER_CANCELLED
+  // Invoices
+  INVOICE_CREATED
+  INVOICE_UPDATED
+  INVOICE_SENT
+  PAYMENT_RECEIVED
+  // Tasks
+  TASK_CREATED
+  TASK_UPDATED
+  TASK_COMPLETED
+  TASK_ASSIGNED
+  // Service Tickets
+  TICKET_CREATED
+  TICKET_UPDATED
+  TICKET_COMPLETED
+  // Automations
   AUTOMATION_TRIGGERED
+  AUTOMATION_CREATED
+  AUTOMATION_UPDATED
+  // Campaigns
   CAMPAIGN_STARTED
+  CAMPAIGN_COMPLETED
+  // Notes
+  NOTE_ADDED
+  // Products
+  PRODUCT_CREATED
+  PRODUCT_UPDATED
+  // Appointments
+  APPOINTMENT_CREATED
+  APPOINTMENT_UPDATED
+  // Quick Replies
+  QUICK_REPLY_CREATED
+  QUICK_REPLY_USED
+  // Admin
+  USER_INVITED
+  USER_ROLE_CHANGED
+  SETTINGS_UPDATED
 }
 
 // ============================================
@@ -515,19 +634,22 @@ enum ConfigType {
 }
 
 model AutomationLog {
-  id           String   @id @default(cuid())
+  id           String       @id @default(cuid())
+  orgId        String
+  org          Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   automationId String
-  automation   Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  automation   Automation   @relation(fields: [automationId], references: [id], onDelete: Cascade)
   trigger      String?
   contactId    String?
-  status       String   // SUCCESS, FAILED
+  status       String // SUCCESS, FAILED
   actionType   String?
-  error        String?  @db.Text
+  error        String?      @db.Text
   details      Json?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime     @default(now())
 
+  @@index([orgId])
   @@index([userId])
   @@index([automationId])
   @@index([createdAt])
@@ -539,6 +661,8 @@ model AutomationLog {
 
 model DripCampaign {
   id           String          @id @default(cuid())
+  orgId        String
+  org          Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId       String
   user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   name         String
@@ -553,6 +677,7 @@ model DripCampaign {
   enrollments DripEnrollment[]
   scheduled   DripScheduledMessage[]
 
+  @@index([orgId])
   @@index([userId])
   @@index([isActive])
 }
@@ -644,6 +769,8 @@ model WebhookLog {
 
 model Broadcast {
   id        String          @id @default(cuid())
+  orgId     String
+  org       Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId    String
   name      String
   message   String          @db.LongText
@@ -675,6 +802,7 @@ model Broadcast {
   recipients BroadcastRecipient[]
   User       User                 @relation(fields: [userId], references: [id])
 
+  @@index([orgId])
   @@index([userId])
   @@index([status])
   @@index([scheduledFor])
@@ -724,18 +852,21 @@ enum BroadcastRecipientStatus {
 // ============================================
 
 model Label {
-  id        String   @id @default(cuid())
+  id        String       @id @default(cuid())
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId    String
   name      String
-  color     String   @default("#3B82F6")
+  color     String       @default("#3B82F6")
   icon      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
   conversations ConversationLabel[]
   User          User                @relation(fields: [userId], references: [id])
 
-  @@unique([userId, name])
+  @@unique([orgId, name])
+  @@index([orgId])
   @@index([userId])
 }
 
@@ -757,19 +888,22 @@ model ConversationLabel {
 // ============================================
 
 model QuickReplyCategory {
-  id          String   @id @default(cuid())
+  id          String       @id @default(cuid())
+  orgId       String
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId      String
   name        String
   description String?
   icon        String?
-  color       String?  @default("#6B7280")
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  color       String?      @default("#6B7280")
+  sortOrder   Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   quickReplies QuickReply[]
 
-  @@unique([userId, name])
+  @@unique([orgId, name])
+  @@index([orgId])
   @@index([userId])
 }
 
@@ -839,6 +973,8 @@ model CampaignMetrics {
 
 model ScheduledMessage {
   id           String          @id @default(cuid())
+  orgId        String
+  org          Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId       String
   contactId    String
   message      String          @db.LongText
@@ -854,6 +990,7 @@ model ScheduledMessage {
   updatedAt    DateTime        @updatedAt
   User         User            @relation(fields: [userId], references: [id])
 
+  @@index([orgId])
   @@index([userId])
   @@index([contactId])
   @@index([status])
@@ -873,6 +1010,8 @@ enum ScheduledStatus {
 
 model ImportJob {
   id               String       @id @default(cuid())
+  orgId            String
+  org              Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId           String
   fileName         String
   fileUrl          String?      @db.Text
@@ -888,6 +1027,7 @@ model ImportJob {
   updatedAt        DateTime     @updatedAt
   User             User         @relation(fields: [userId], references: [id])
 
+  @@index([orgId])
   @@index([userId])
   @@index([status])
 }
@@ -935,30 +1075,33 @@ enum TransactionStatus {
 // ============================================
 
 model Product {
-  id            String   @id @default(cuid())
+  id            String       @id @default(cuid())
+  orgId         String
+  org           Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   name          String
   sku           String?
-  description   String?  @db.Text
+  description   String?      @db.Text
   category      String?
-  price         Float    @default(0)
-  cost          Float    @default(0)
-  taxRate       Float    @default(0)
-  unit          String?  @default("pcs")
-  stockQuantity Int      @default(0)
-  lowStockAlert Int      @default(5)
-  isActive      Boolean  @default(true)
-  imageUrl      String?  @db.Text
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  price         Float        @default(0)
+  cost          Float        @default(0)
+  taxRate       Float        @default(0)
+  unit          String?      @default("pcs")
+  stockQuantity Int          @default(0)
+  lowStockAlert Int          @default(5)
+  isActive      Boolean      @default(true)
+  imageUrl      String?      @db.Text
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   inventoryTransactions InventoryTransaction[]
   invoiceItems          InvoiceItem[]
   orderItems            OrderItem[]
   serviceParts          ServicePart[]
 
-  @@unique([userId, sku])
+  @@unique([orgId, sku])
+  @@index([orgId])
   @@index([userId])
   @@index([category])
   @@index([isActive])
@@ -995,29 +1138,32 @@ enum InventoryType {
 // ============================================
 
 model Invoice {
-  id              String        @id @default(cuid())
-  userId          String
-  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  contactId       String
-  contact         Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  invoiceNumber   String        @unique
-  invoiceDate     DateTime      @default(now())
-  dueDate         DateTime?
-  status          InvoiceStatus @default(DRAFT)
-  subtotal        Float         @default(0)
-  taxAmount       Float         @default(0)
-  discountAmount  Float         @default(0)
-  totalAmount     Float         @default(0)
-  paidAmount      Float         @default(0)
-  balanceAmount   Float         @default(0)
-  notes           String?       @db.Text
-  terms           String?       @db.Text
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id             String        @id @default(cuid())
+  orgId          String
+  org            Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contactId      String
+  contact        Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  invoiceNumber  String        @unique
+  invoiceDate    DateTime      @default(now())
+  dueDate        DateTime?
+  status         InvoiceStatus @default(DRAFT)
+  subtotal       Float         @default(0)
+  taxAmount      Float         @default(0)
+  discountAmount Float         @default(0)
+  totalAmount    Float         @default(0)
+  paidAmount     Float         @default(0)
+  balanceAmount  Float         @default(0)
+  notes          String?       @db.Text
+  terms          String?       @db.Text
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   items    InvoiceItem[]
   payments Payment[]
 
+  @@index([orgId])
   @@index([userId])
   @@index([contactId])
   @@index([status])
@@ -1031,7 +1177,7 @@ model InvoiceItem {
   productId      String?
   product        Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
   description    String
-  quantity        Float    @default(1)
+  quantity       Float    @default(1)
   unitPrice      Float    @default(0)
   taxRate        Float    @default(0)
   discountAmount Float    @default(0)
@@ -1087,6 +1233,8 @@ enum PaymentMethod {
 
 model Order {
   id                    String             @id @default(cuid())
+  orgId                 String
+  org                   Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId                String
   user                  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   contactId             String
@@ -1111,6 +1259,7 @@ model Order {
 
   items OrderItem[]
 
+  @@index([orgId])
   @@index([userId])
   @@index([contactId])
   @@index([status])
@@ -1163,6 +1312,8 @@ enum OrderPaymentStatus {
 
 model ServiceTicket {
   id                      String         @id @default(cuid())
+  orgId                   String
+  org                     Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId                  String
   user                    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   contactId               String
@@ -1189,6 +1340,7 @@ model ServiceTicket {
   updates TicketUpdate[]
   parts   ServicePart[]
 
+  @@index([orgId])
   @@index([userId])
   @@index([contactId])
   @@index([status])
@@ -1197,15 +1349,15 @@ model ServiceTicket {
 }
 
 model TicketUpdate {
-  id        String           @id @default(cuid())
-  ticketId  String
-  ticket    ServiceTicket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  userId    String
+  id         String           @id @default(cuid())
+  ticketId   String
+  ticket     ServiceTicket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId     String
   updateType TicketUpdateType @default(NOTE)
-  content   String?          @db.Text
-  oldStatus String?
-  newStatus String?
-  createdAt DateTime         @default(now())
+  content    String?          @db.Text
+  oldStatus  String?
+  newStatus  String?
+  createdAt  DateTime         @default(now())
 
   @@index([ticketId])
   @@index([userId])
@@ -1266,6 +1418,8 @@ enum ServicePartStatus {
 
 model Appointment {
   id              String            @id @default(cuid())
+  orgId           String
+  org             Organization      @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId          String
   user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   contactId       String
@@ -1281,6 +1435,7 @@ model Appointment {
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
+  @@index([orgId])
   @@index([userId])
   @@index([contactId])
   @@index([status])
@@ -1301,20 +1456,23 @@ enum AppointmentStatus {
 // ============================================
 
 model Expense {
-  id            String   @id @default(cuid())
+  id            String       @id @default(cuid())
+  orgId         String
+  org           Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   category      String
-  description   String?  @db.Text
+  description   String?      @db.Text
   amount        Float
-  expenseDate   DateTime @default(now())
+  expenseDate   DateTime     @default(now())
   paymentMethod String?
   vendorName    String?
-  receiptUrl    String?  @db.Text
-  notes         String?  @db.Text
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  receiptUrl    String?      @db.Text
+  notes         String?      @db.Text
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
+  @@index([orgId])
   @@index([userId])
   @@index([category])
   @@index([expenseDate])
@@ -1326,6 +1484,8 @@ model Expense {
 
 model CustomerSubscription {
   id              String             @id @default(cuid())
+  orgId           String
+  org             Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId          String
   user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   contactId       String
@@ -1343,6 +1503,7 @@ model CustomerSubscription {
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
+  @@index([orgId])
   @@index([userId])
   @@index([contactId])
   @@index([status])
@@ -1369,19 +1530,22 @@ enum SubscriptionStatus {
 // ============================================
 
 model AutoTagRule {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
+  orgId          String
+  org            Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   name           String
-  description    String?  @db.Text
-  conditions     Json     @default("[]")
+  description    String?      @db.Text
+  conditions     Json         @default("[]")
   tagId          String
-  tag            Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
-  isActive       Boolean  @default(true)
-  executionCount Int      @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  tag            Tag          @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  isActive       Boolean      @default(true)
+  executionCount Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
+  @@index([orgId])
   @@index([userId])
   @@index([tagId])
   @@index([isActive])
@@ -1393,6 +1557,8 @@ model AutoTagRule {
 
 model Task {
   id          String       @id @default(cuid())
+  orgId       String
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   userId      String
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   contactId   String?
@@ -1406,6 +1572,7 @@ model Task {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
+  @@index([orgId])
   @@index([userId])
   @@index([contactId])
   @@index([status])
