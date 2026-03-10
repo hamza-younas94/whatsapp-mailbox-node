@@ -35,6 +35,9 @@ ALTER TABLE `User` MODIFY COLUMN `orgId` VARCHAR(191) NOT NULL;
 CREATE INDEX `User_orgId_idx` ON `User`(`orgId`);
 ALTER TABLE `User` ADD CONSTRAINT `User_orgId_fkey` FOREIGN KEY (`orgId`) REFERENCES `Organization`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
+-- Add OWNER role to UserRole enum BEFORE updating existing users
+ALTER TABLE `User` MODIFY COLUMN `role` ENUM('OWNER', 'ADMIN', 'USER', 'MANAGER', 'AGENT') NOT NULL DEFAULT 'AGENT';
+
 -- Change default role from USER to AGENT (existing users become OWNER)
 UPDATE `User` SET `role` = 'OWNER';
 
@@ -247,5 +250,5 @@ ALTER TABLE `ActivityLog` MODIFY COLUMN `action` ENUM(
   'USER_INVITED', 'USER_ROLE_CHANGED', 'SETTINGS_UPDATED'
 ) NOT NULL;
 
--- Add OWNER role to UserRole enum
+-- Final role enum cleanup (remove USER, keep only valid roles)
 ALTER TABLE `User` MODIFY COLUMN `role` ENUM('OWNER', 'ADMIN', 'MANAGER', 'AGENT') NOT NULL DEFAULT 'AGENT';
