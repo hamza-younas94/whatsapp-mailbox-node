@@ -482,112 +482,6 @@ function setupIncomingMessageListener(): void {
       // Get or create conversation
       const conversation = await conversationRepo.findOrCreate(userId, contact.id);
 
-      // Auto-reply with quick replies on incoming messages
-      // SKIP for groups (@g.us) and channels (@newsletter) - they don't support auto-replies
-      const isGroupOrChannel = from.includes('@g.us') || from.includes('@newsletter') || from.includes('@broadcast');
-      
-      if (!isOutgoing && !isGroupOrChannel && body && body.trim()) {
-        try {
-          // Get all quick replies for the user
-          const allQuickReplies = await quickReplyRepo.findByUserId(userId);
-          
-          // Use the advanced auto-reply service to find best match
-          const autoReplyResult = await autoReplyService.processAutoReply(
-            {
-              userId,
-              contactId: contact.id,
-              conversationId: conversation.id,
-              messageText: body,
-              timestamp: Date.now(),
-            },
-            allQuickReplies
-          );
-          
-          if (autoReplyResult) {
-            const { reply: matchedReply, matchType, score } = autoReplyResult;
-            const session = whatsappWebService.getSession(sessionId);
-            
-            if (session) {
-              try {
-                // Simulate human typing to look natural and avoid WhatsApp bot detection
-                try {
-                  const chat = await session.client.getChatById(from);
-                  if (chat) {
-                    await chat.sendStateTyping();
-                    // Random delay: 2-5 seconds base + ~30ms per character (capped at 8s)
-                    const charDelay = Math.min(matchedReply.content.length * 30, 5000);
-                    const randomBase = 2000 + Math.random() * 3000;
-                    const typingDelay = Math.min(randomBase + charDelay, 8000);
-                    await new Promise(resolve => setTimeout(resolve, typingDelay));
-                    await chat.clearState();
-                  }
-                } catch (typingErr) {
-                  logger.debug({ error: typingErr }, 'Typing simulation failed, sending anyway');
-                }
-
-                // Send the auto-reply
-                const sentMsg = await session.client.sendMessage(from, matchedReply.content);
-                
-                // Save auto-reply to database history
-                const autoReplyWaId = sentMsg.id?.id || `auto-${from}-${Date.now()}`;
-                const savedAutoReply = await messageRepo.create({
-                  user: { connect: { id: userId } },
-                  contact: { connect: { id: contact.id } },
-                  conversation: { connect: { id: conversation.id } },
-                  content: matchedReply.content,
-                  messageType: 'TEXT' as any,
-                  direction: 'OUTGOING',
-                  status: 'SENT',
-                  waMessageId: autoReplyWaId,
-                  quickReplyId: matchedReply.id,
-                } as any);
-                
-                // Update quick reply usage statistics
-                await quickReplyRepo.update(matchedReply.id, {
-                  usageCount: matchedReply.usageCount + 1,
-                  usageTodayCount: matchedReply.usageTodayCount + 1,
-                  lastUsedAt: new Date(),
-                });
-                
-                // Emit auto-reply to client in real-time
-                if (io) {
-                  io.to(`user:${userId}`).emit('message:received', {
-                    id: savedAutoReply.id,
-                    contactId: contact.id,
-                    conversationId: conversation.id,
-                    content: savedAutoReply.content || '',
-                    createdAt: savedAutoReply.createdAt.toISOString(),
-                    messageType: savedAutoReply.messageType,
-                    direction: savedAutoReply.direction,
-                    status: savedAutoReply.status,
-                  });
-                }
-                
-                logger.info({ 
-                  from, 
-                  shortcut: matchedReply.shortcut,
-                  reply: matchedReply.content.substring(0, 50),
-                  matchType,
-                  score: score.toFixed(2),
-                  savedId: savedAutoReply.id
-                }, 'Auto-reply sent and saved to history');
-              } catch (sendError: any) {
-                // Handle detached frame errors - try to reconnect
-                if (sendError.message?.includes('detached Frame')) {
-                  logger.warn({ sessionId, error: sendError.message }, 'Detached frame detected, will attempt reconnection');
-                  session.status = 'DISCONNECTED';
-                  // Session will be auto-reconnected by the next operation or user action
-                } else {
-                  throw sendError;
-                }
-              }
-            }
-          }
-        } catch (autoReplyError) {
-          logger.debug({ error: autoReplyError }, 'Failed to process auto-reply, continuing with normal message handling');
-        }
-      }
-
       // Derive a Prisma-safe message type from WhatsApp message metadata
       const normalizedType = normalizeMessageType(messageType, hasMedia);
 
@@ -666,6 +560,111 @@ function setupIncomingMessageListener(): void {
       }
 
   logger.info({ userId, phoneNumber: sanitizedPhone, contactId: contact.id, hasMedia, mediaUrl, isOutgoing }, isOutgoing ? 'Saved outgoing message to database' : 'Saved incoming message to database');
+
+      // Auto-reply with quick replies on incoming messages (AFTER saving incoming message to preserve sequence)
+      // SKIP for groups (@g.us) and channels (@newsletter) - they don't support auto-replies
+      const isGroupOrChannel = from.includes('@g.us') || from.includes('@newsletter') || from.includes('@broadcast');
+
+      if (!isOutgoing && !isGroupOrChannel && body && body.trim()) {
+        try {
+          // Get all quick replies for the user
+          const allQuickReplies = await quickReplyRepo.findByUserId(userId);
+
+          // Use the advanced auto-reply service to find best match
+          const autoReplyResult = await autoReplyService.processAutoReply(
+            {
+              userId,
+              contactId: contact.id,
+              conversationId: conversation.id,
+              messageText: body,
+              timestamp: Date.now(),
+            },
+            allQuickReplies
+          );
+
+          if (autoReplyResult) {
+            const { reply: matchedReply, matchType, score } = autoReplyResult;
+            const session = whatsappWebService.getSession(sessionId);
+
+            if (session) {
+              try {
+                // Simulate human typing to look natural and avoid WhatsApp bot detection
+                try {
+                  const chat = await session.client.getChatById(from);
+                  if (chat) {
+                    await chat.sendStateTyping();
+                    // Random delay: 2-5 seconds base + ~30ms per character (capped at 8s)
+                    const charDelay = Math.min(matchedReply.content.length * 30, 5000);
+                    const randomBase = 2000 + Math.random() * 3000;
+                    const typingDelay = Math.min(randomBase + charDelay, 8000);
+                    await new Promise(resolve => setTimeout(resolve, typingDelay));
+                    await chat.clearState();
+                  }
+                } catch (typingErr) {
+                  logger.debug({ error: typingErr }, 'Typing simulation failed, sending anyway');
+                }
+
+                // Send the auto-reply
+                const sentMsg = await session.client.sendMessage(from, matchedReply.content);
+
+                // Save auto-reply to database history
+                const autoReplyWaId = sentMsg.id?.id || `auto-${from}-${Date.now()}`;
+                const savedAutoReply = await messageRepo.create({
+                  user: { connect: { id: userId } },
+                  contact: { connect: { id: contact.id } },
+                  conversation: { connect: { id: conversation.id } },
+                  content: matchedReply.content,
+                  messageType: 'TEXT' as any,
+                  direction: 'OUTGOING',
+                  status: 'SENT',
+                  waMessageId: autoReplyWaId,
+                  quickReplyId: matchedReply.id,
+                } as any);
+
+                // Update quick reply usage statistics
+                await quickReplyRepo.update(matchedReply.id, {
+                  usageCount: matchedReply.usageCount + 1,
+                  usageTodayCount: matchedReply.usageTodayCount + 1,
+                  lastUsedAt: new Date(),
+                });
+
+                // Emit auto-reply to client in real-time
+                if (io) {
+                  io.to(`user:${userId}`).emit('message:received', {
+                    id: savedAutoReply.id,
+                    contactId: contact.id,
+                    conversationId: conversation.id,
+                    content: savedAutoReply.content || '',
+                    createdAt: savedAutoReply.createdAt.toISOString(),
+                    messageType: savedAutoReply.messageType,
+                    direction: savedAutoReply.direction,
+                    status: savedAutoReply.status,
+                  });
+                }
+
+                logger.info({
+                  from,
+                  shortcut: matchedReply.shortcut,
+                  reply: matchedReply.content.substring(0, 50),
+                  matchType,
+                  score: score.toFixed(2),
+                  savedId: savedAutoReply.id
+                }, 'Auto-reply sent and saved to history');
+              } catch (sendError: any) {
+                // Handle detached frame errors - try to reconnect
+                if (sendError.message?.includes('detached Frame')) {
+                  logger.warn({ sessionId, error: sendError.message }, 'Detached frame detected, will attempt reconnection');
+                  session.status = 'DISCONNECTED';
+                } else {
+                  throw sendError;
+                }
+              }
+            }
+          }
+        } catch (autoReplyError) {
+          logger.debug({ error: autoReplyError }, 'Failed to process auto-reply, continuing with normal message handling');
+        }
+      }
 
       // Trigger automations for incoming messages (forwarding, auto-tag, etc.)
       if (!isOutgoing && body) {
