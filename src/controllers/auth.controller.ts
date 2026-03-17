@@ -64,9 +64,17 @@ export class AuthController {
   });
 
   me = asyncHandler(async (req: Request, res: Response) => {
+    const prisma = getPrismaClient();
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.userId || req.user!.id },
+      select: { id: true, name: true, email: true, username: true, role: true, orgId: true, isActive: true },
+    });
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
     res.status(200).json({
       success: true,
-      data: req.user,
+      data: user,
     });
   });
 }

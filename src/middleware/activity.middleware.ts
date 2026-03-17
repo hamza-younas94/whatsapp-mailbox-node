@@ -100,6 +100,11 @@ const ROUTE_ACTIVITY_MAP: Array<{
 
   // Broadcasts
   { method: 'POST', pattern: /\/api\/v1\/broadcasts\/.*\/send/, action: 'BROADCAST_SENT', resourceType: 'broadcast' },
+
+  // User Management
+  { method: 'POST', pattern: /\/api\/v1\/auth\/users$/, action: 'USER_INVITED', resourceType: 'user' },
+  { method: 'PUT', pattern: /\/api\/v1\/auth\/users\//, action: 'USER_ROLE_CHANGED', resourceType: 'user' },
+  { method: 'DELETE', pattern: /\/api\/v1\/auth\/users\//, action: 'SETTINGS_UPDATED', resourceType: 'user' },
 ];
 
 /**
