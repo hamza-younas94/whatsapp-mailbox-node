@@ -128,10 +128,23 @@
         let currentUser = null;
         let users = [];
 
+        function getErrorMessage(data) {
+            if (!data) return 'Unknown error';
+            if (typeof data.error === 'string') return data.error;
+            if (data.error?.message) return data.error.message;
+            if (data.message) return data.message;
+            return JSON.stringify(data.error || data);
+        }
+
         async function init() {
             // Get current user info
             try {
                 const meRes = await fetch(`${API}/me`, { headers });
+                if (meRes.status === 401) {
+                    localStorage.removeItem('authToken');
+                    window.location.href = '/login.html';
+                    return;
+                }
                 const meData = await meRes.json();
                 if (meData.success) {
                     currentUser = meData.data || meData.user;
@@ -149,7 +162,7 @@
             try {
                 const res = await fetch(`${API}/users`, { headers });
                 const data = await res.json();
-                if (!data.success) throw new Error(data.error);
+                if (!data.success) throw new Error(getErrorMessage(data));
                 users = data.data;
                 renderUsers();
                 updateStats();

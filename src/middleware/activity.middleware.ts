@@ -117,22 +117,17 @@ export function activityLogger(req: Request, res: Response, next: NextFunction):
     return next();
   }
 
-  // Only track authenticated requests
-  if (!req.user?.orgId || !req.user?.id) {
-    return next();
-  }
-
   // Hook into response finish to log after success
+  // Note: req.user is checked here (at response time) because authenticate middleware
+  // may run after this middleware hooks res.end
   const originalEnd = res.end;
   res.end = function (...args: any[]) {
-    // Only log successful responses
-    if (res.statusCode >= 200 && res.statusCode < 300) {
+    if (res.statusCode >= 200 && res.statusCode < 300 && req.user?.orgId && req.user?.id) {
       const match = ROUTE_ACTIVITY_MAP.find(
         (r) => r.method === req.method && r.pattern.test(req.originalUrl),
       );
 
       if (match) {
-        // Extract resource ID from URL params or response body
         const resourceId = req.params?.id || undefined;
 
         logActivity(
