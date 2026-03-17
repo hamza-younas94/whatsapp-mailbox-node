@@ -17,7 +17,7 @@
         <div class="flex justify-between items-center mb-6">
             <div>
                 <h1 class="text-3xl font-bold text-gray-800"><i class="fas fa-shield-alt text-blue-500 mr-2"></i>Activity Logs</h1>
-                <p class="text-gray-600 mt-1">Login history and security events</p>
+                <p class="text-gray-600 mt-1">Track who did what — all user actions logged</p>
             </div>
         </div>
 
@@ -63,15 +63,56 @@
             <div class="flex flex-wrap items-center gap-3">
                 <select id="filterAction" onchange="loadLogs()" class="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-400">
                     <option value="">All Actions</option>
-                    <option value="LOGIN">Login</option>
-                    <option value="LOGOUT">Logout</option>
-                    <option value="MESSAGE_SENT">Message Sent</option>
-                    <option value="CONTACT_CREATED">Contact Created</option>
-                    <option value="CONTACT_UPDATED">Contact Updated</option>
-                    <option value="TAG_CREATED">Tag Created</option>
-                    <option value="TAG_DELETED">Tag Deleted</option>
-                    <option value="AUTOMATION_TRIGGERED">Automation Triggered</option>
-                    <option value="CAMPAIGN_STARTED">Campaign Started</option>
+                    <optgroup label="Auth">
+                        <option value="LOGIN">Login</option>
+                        <option value="LOGOUT">Logout</option>
+                    </optgroup>
+                    <optgroup label="Messages">
+                        <option value="MESSAGE_SENT">Message Sent</option>
+                        <option value="BROADCAST_SENT">Broadcast Sent</option>
+                    </optgroup>
+                    <optgroup label="Contacts">
+                        <option value="CONTACT_CREATED">Contact Created</option>
+                        <option value="CONTACT_UPDATED">Contact Updated</option>
+                        <option value="CONTACT_DELETED">Contact Deleted</option>
+                    </optgroup>
+                    <optgroup label="Orders & Invoices">
+                        <option value="ORDER_CREATED">Order Created</option>
+                        <option value="ORDER_UPDATED">Order Updated</option>
+                        <option value="INVOICE_CREATED">Invoice Created</option>
+                        <option value="INVOICE_UPDATED">Invoice Updated</option>
+                    </optgroup>
+                    <optgroup label="Tasks & Appointments">
+                        <option value="TASK_CREATED">Task Created</option>
+                        <option value="TASK_UPDATED">Task Updated</option>
+                        <option value="APPOINTMENT_CREATED">Appointment Created</option>
+                        <option value="APPOINTMENT_UPDATED">Appointment Updated</option>
+                    </optgroup>
+                    <optgroup label="CRM">
+                        <option value="TAG_CREATED">Tag Created</option>
+                        <option value="TAG_DELETED">Tag Deleted</option>
+                        <option value="NOTE_ADDED">Note Added</option>
+                        <option value="QUICK_REPLY_CREATED">Quick Reply Created</option>
+                    </optgroup>
+                    <optgroup label="Automations">
+                        <option value="AUTOMATION_CREATED">Automation Created</option>
+                        <option value="AUTOMATION_UPDATED">Automation Updated</option>
+                        <option value="AUTOMATION_TRIGGERED">Automation Triggered</option>
+                    </optgroup>
+                    <optgroup label="Products & Tickets">
+                        <option value="PRODUCT_CREATED">Product Created</option>
+                        <option value="PRODUCT_UPDATED">Product Updated</option>
+                        <option value="TICKET_CREATED">Ticket Created</option>
+                        <option value="TICKET_UPDATED">Ticket Updated</option>
+                    </optgroup>
+                    <optgroup label="User Management">
+                        <option value="USER_INVITED">User Invited</option>
+                        <option value="USER_ROLE_CHANGED">User Role Changed</option>
+                        <option value="SETTINGS_UPDATED">Settings Updated</option>
+                    </optgroup>
+                </select>
+                <select id="filterUser" onchange="loadLogs()" class="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-400">
+                    <option value="">All Users</option>
                 </select>
                 <input type="date" id="filterStartDate" onchange="loadLogs()" class="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-300" placeholder="From">
                 <input type="date" id="filterEndDate" onchange="loadLogs()" class="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-300" placeholder="To">
@@ -87,15 +128,15 @@
                 <table class="w-full">
                     <thead class="bg-gray-50">
                         <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Details</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP Address</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Browser</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date & Time</th>
                         </tr>
                     </thead>
                     <tbody id="logsBody" class="divide-y divide-gray-100">
-                        <tr><td colspan="5" class="px-4 py-8 text-center text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i>Loading...</td></tr>
+                        <tr><td colspan="6" class="px-4 py-8 text-center text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i>Loading...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -147,12 +188,33 @@
             LOGOUT: { icon: 'fa-sign-out-alt', color: 'gray', label: 'Logout' },
             MESSAGE_SENT: { icon: 'fa-paper-plane', color: 'blue', label: 'Message Sent' },
             MESSAGE_RECEIVED: { icon: 'fa-envelope', color: 'indigo', label: 'Message Received' },
+            BROADCAST_SENT: { icon: 'fa-bullhorn', color: 'pink', label: 'Broadcast Sent' },
             CONTACT_CREATED: { icon: 'fa-user-plus', color: 'teal', label: 'Contact Created' },
             CONTACT_UPDATED: { icon: 'fa-user-edit', color: 'yellow', label: 'Contact Updated' },
+            CONTACT_DELETED: { icon: 'fa-user-minus', color: 'red', label: 'Contact Deleted' },
+            ORDER_CREATED: { icon: 'fa-shopping-cart', color: 'blue', label: 'Order Created' },
+            ORDER_UPDATED: { icon: 'fa-shopping-cart', color: 'indigo', label: 'Order Updated' },
+            INVOICE_CREATED: { icon: 'fa-file-invoice-dollar', color: 'green', label: 'Invoice Created' },
+            INVOICE_UPDATED: { icon: 'fa-file-invoice-dollar', color: 'teal', label: 'Invoice Updated' },
+            TASK_CREATED: { icon: 'fa-tasks', color: 'purple', label: 'Task Created' },
+            TASK_UPDATED: { icon: 'fa-tasks', color: 'indigo', label: 'Task Updated' },
+            APPOINTMENT_CREATED: { icon: 'fa-calendar-plus', color: 'blue', label: 'Appointment Created' },
+            APPOINTMENT_UPDATED: { icon: 'fa-calendar-check', color: 'teal', label: 'Appointment Updated' },
             TAG_CREATED: { icon: 'fa-tag', color: 'purple', label: 'Tag Created' },
             TAG_DELETED: { icon: 'fa-tag', color: 'red', label: 'Tag Deleted' },
-            AUTOMATION_TRIGGERED: { icon: 'fa-robot', color: 'orange', label: 'Automation' },
-            CAMPAIGN_STARTED: { icon: 'fa-bullhorn', color: 'pink', label: 'Campaign' },
+            NOTE_ADDED: { icon: 'fa-sticky-note', color: 'yellow', label: 'Note Added' },
+            QUICK_REPLY_CREATED: { icon: 'fa-reply', color: 'blue', label: 'Quick Reply Created' },
+            AUTOMATION_CREATED: { icon: 'fa-robot', color: 'orange', label: 'Automation Created' },
+            AUTOMATION_UPDATED: { icon: 'fa-robot', color: 'yellow', label: 'Automation Updated' },
+            AUTOMATION_TRIGGERED: { icon: 'fa-robot', color: 'orange', label: 'Automation Triggered' },
+            CAMPAIGN_STARTED: { icon: 'fa-bullhorn', color: 'pink', label: 'Campaign Started' },
+            PRODUCT_CREATED: { icon: 'fa-box', color: 'indigo', label: 'Product Created' },
+            PRODUCT_UPDATED: { icon: 'fa-box', color: 'blue', label: 'Product Updated' },
+            TICKET_CREATED: { icon: 'fa-ticket-alt', color: 'orange', label: 'Ticket Created' },
+            TICKET_UPDATED: { icon: 'fa-ticket-alt', color: 'yellow', label: 'Ticket Updated' },
+            USER_INVITED: { icon: 'fa-user-plus', color: 'green', label: 'User Invited' },
+            USER_ROLE_CHANGED: { icon: 'fa-user-shield', color: 'purple', label: 'User Role Changed' },
+            SETTINGS_UPDATED: { icon: 'fa-cog', color: 'gray', label: 'Settings Updated' },
         };
 
         function parseUserAgent(ua) {
@@ -166,14 +228,33 @@
             return ua.substring(0, 30) + '...';
         }
 
+        async function loadUsers() {
+            try {
+                const res = await fetchWithAuth(`${API_BASE}/auth/users`);
+                if (res.ok) {
+                    const json = await res.json();
+                    const users = json.data || [];
+                    const select = document.getElementById('filterUser');
+                    users.forEach(u => {
+                        const opt = document.createElement('option');
+                        opt.value = u.id;
+                        opt.textContent = u.name || u.email;
+                        select.appendChild(opt);
+                    });
+                }
+            } catch {}
+        }
+
         async function loadLogs() {
             try {
                 const action = document.getElementById('filterAction').value;
+                const userId = document.getElementById('filterUser').value;
                 const startDate = document.getElementById('filterStartDate').value;
                 const endDate = document.getElementById('filterEndDate').value;
 
                 let url = `${API_BASE}/activity-logs?page=${currentPage}&limit=${perPage}`;
                 if (action) url += `&action=${action}`;
+                if (userId) url += `&userId=${userId}`;
                 if (startDate) url += `&startDate=${startDate}`;
                 if (endDate) url += `&endDate=${endDate}`;
 
@@ -196,14 +277,29 @@
         function renderLogs(items) {
             const tbody = document.getElementById('logsBody');
             if (!items || items.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-gray-400">No activity logs found</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-gray-400">No activity logs found</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = items.map(log => {
                 const config = actionConfig[log.action] || { icon: 'fa-circle', color: 'gray', label: log.action };
                 const details = log.details || {};
-                const detailStr = details.email || details.resourceType || '-';
+                const userName = log.user?.name || log.user?.email || 'System';
+                const userRole = log.user?.role || '';
+                const roleBadge = userRole ? `<span class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full font-medium ${
+                    userRole === 'OWNER' ? 'bg-yellow-100 text-yellow-700' :
+                    userRole === 'ADMIN' ? 'bg-red-100 text-red-700' :
+                    userRole === 'MANAGER' ? 'bg-blue-100 text-blue-700' :
+                    'bg-gray-100 text-gray-600'
+                }">${userRole}</span>` : '';
+
+                // Build detail string
+                let detailStr = '';
+                if (details.path) detailStr = details.path;
+                else if (details.email) detailStr = details.email;
+                else if (log.resourceType) detailStr = log.resourceType + (log.resourceId ? ` #${log.resourceId.substring(0, 8)}` : '');
+                else detailStr = '-';
+
                 const date = new Date(log.createdAt);
                 const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                 const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -212,17 +308,27 @@
                     <tr class="hover:bg-gray-50 transition">
                         <td class="px-4 py-3">
                             <div class="flex items-center">
-                                <span class="w-8 h-8 rounded-full bg-${config.color}-100 flex items-center justify-center mr-3">
+                                <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-2 text-xs font-bold text-gray-600">
+                                    ${(userName[0] || '?').toUpperCase()}
+                                </div>
+                                <div>
+                                    <div class="text-sm font-medium text-gray-800">${userName}${roleBadge}</div>
+                                    ${log.user?.email && log.user?.name ? `<div class="text-xs text-gray-400">${log.user.email}</div>` : ''}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="flex items-center">
+                                <span class="w-7 h-7 rounded-full bg-${config.color}-100 flex items-center justify-center mr-2">
                                     <i class="fas ${config.icon} text-${config.color}-600 text-xs"></i>
                                 </span>
                                 <span class="text-sm font-medium text-gray-800">${config.label}</span>
                             </div>
                         </td>
-                        <td class="px-4 py-3 text-sm text-gray-600">${detailStr}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600 max-w-xs truncate" title="${detailStr}">${detailStr}</td>
                         <td class="px-4 py-3">
                             <span class="text-sm text-gray-600 font-mono">${log.ipAddress || '-'}</span>
                         </td>
-                        <td class="px-4 py-3 text-sm text-gray-500">${parseUserAgent(log.userAgent)}</td>
                         <td class="px-4 py-3">
                             <div class="text-sm text-gray-800">${dateStr}</div>
                             <div class="text-xs text-gray-400">${timeStr}</div>
@@ -279,6 +385,7 @@
 
         function clearFilters() {
             document.getElementById('filterAction').value = '';
+            document.getElementById('filterUser').value = '';
             document.getElementById('filterStartDate').value = '';
             document.getElementById('filterEndDate').value = '';
             currentPage = 1;
@@ -286,6 +393,7 @@
         }
 
         // Init
+        loadUsers();
         loadLogs();
     </script>
 </body>

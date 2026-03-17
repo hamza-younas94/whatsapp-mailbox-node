@@ -14,7 +14,7 @@ router.use(authenticate);
 router.get('/', async (req, res) => {
   try {
     const orgId = req.user!.orgId;
-    const { action, page = '1', limit = '50', startDate, endDate } = req.query;
+    const { action, userId, page = '1', limit = '50', startDate, endDate } = req.query;
 
     const pageNum = parseInt(page as string) || 1;
     const limitNum = Math.min(parseInt(limit as string) || 50, 100);
@@ -22,6 +22,7 @@ router.get('/', async (req, res) => {
 
     const where: any = { orgId };
     if (action) where.action = action as string;
+    if (userId) where.userId = userId as string;
     if (startDate || endDate) {
       where.createdAt = {};
       if (startDate) where.createdAt.gte = new Date(startDate as string);
