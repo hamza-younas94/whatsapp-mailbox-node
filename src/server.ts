@@ -881,11 +881,23 @@ export async function startServer(): Promise<void> {
                 const userId = sessionId.replace(/^session_/, ''); // "<userId>"
                 logger.info({ sessionId, userId, dir }, 'Restoring session from saved auth...');
 
-                try {
-                  await whatsappWebService.initializeSession(userId, sessionId);
-                  logger.info({ sessionId }, 'Session restored successfully');
-                } catch (error) {
-                  logger.error({ sessionId, error }, 'Failed to restore session');
+                // Chromium init is flaky on this RAM-constrained box (TargetCloseError ~half
+                // the time). A failed initial restore does NOT emit 'disconnected', so the
+                // auto-reconnect logic never fires — retry here so the session self-heals on boot.
+                let restored = false;
+                for (let attempt = 1; attempt <= 5 && !restored; attempt++) {
+                  try {
+                    await whatsappWebService.initializeSession(userId, sessionId);
+                    logger.info({ sessionId, attempt }, 'Session restored successfully');
+                    restored = true;
+                  } catch (error) {
+                    logger.error({ sessionId, attempt, error }, 'Failed to restore session (will retry)');
+                    try { await whatsappWebService.disconnectSession(sessionId); } catch { /* ignore */ }
+                    await new Promise((r) => setTimeout(r, 8000));
+                  }
+                }
+                if (!restored) {
+                  logger.error({ sessionId }, 'Session restore failed after retries — QR re-scan required');
                 }
               }
             }

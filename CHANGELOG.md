@@ -3,6 +3,17 @@
 All notable changes to this project are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/); versioning is [SemVer](https://semver.org/).
 
+## [2.2.2] - 2026-07-18
+
+### Fixed
+- **Session stuck disconnected after restart.** A failed *startup* session-restore (Chromium
+  `TargetCloseError`, common on this RAM-limited box) did not emit a `disconnected` event, so
+  auto-reconnect never fired and the session stayed dead until a manual QR scan. Startup restore
+  now retries up to 5× with cleanup between attempts, so it self-heals on boot. (`src/server.ts`)
+- **Renderer crash loading chats.** Removed the `--max-old-space-size=350` V8 cap added in 2.2.1 —
+  it was too low to hold 800+ chats and could crash the WhatsApp Web renderer on load.
+  (`src/services/whatsapp-web.service.ts`)
+
 ## [2.2.1] - 2026-07-18
 
 ### Fixed

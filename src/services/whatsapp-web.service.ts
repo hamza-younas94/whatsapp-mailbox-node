@@ -108,8 +108,7 @@ export class WhatsAppWebService extends EventEmitter {
           '--disable-background-networking',
           '--disable-background-timer-throttling',
           '--disable-renderer-backgrounding',
-          '--disable-features=site-per-process,TranslateUI',
-          '--js-flags=--max-old-space-size=350',
+          '--disable-features=TranslateUI',
         ],
       },
     });
