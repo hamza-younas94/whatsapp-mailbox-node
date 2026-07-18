@@ -275,7 +275,7 @@ export class WhatsAppWebController {
 
     res.status(200).json({
       success: true,
-      data: sessions.map((s) => ({
+      data: sessions.map((s: any) => ({
         id: s.id,
         sessionId: s.id,
         status: s.status,

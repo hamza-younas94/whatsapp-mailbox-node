@@ -337,8 +337,8 @@ function setupChatSyncListener(): void {
 
       // Start slow background avatar fetch (non-blocking)
       const chatIdsForAvatars = chats
-        .map(c => c.chatId)
-        .filter(id => id !== 'status@broadcast');
+        .map((c: any) => c.chatId)
+        .filter((id: any) => id !== 'status@broadcast');
       whatsappWebService.fetchAvatarsSlowly(sessionId, chatIdsForAvatars)
         .then(() => logger.info({ sessionId }, 'Background avatar fetch done'))
         .catch((err: any) => logger.error({ err, sessionId }, 'Background avatar fetch error'));
