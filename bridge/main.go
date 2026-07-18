@@ -25,6 +25,7 @@ type Bridge struct {
 	client    *whatsmeow.Client
 	log       waLog.Logger
 	nameCache sync.Map
+	connectMu sync.Mutex // single-flight guard so connect() never runs concurrently
 }
 
 func main() {
@@ -77,12 +78,29 @@ func main() {
 // whatsmeow reconnects automatically after transient drops (EnableAutoReconnect),
 // so this only needs to run for the initial connect / fresh pairing.
 func (b *Bridge) connect() {
+	// Single-flight: multiple callers (startup + /connect) must not create competing
+	// QR channels / connect attempts — that caused the fast timeouts and churn.
+	if !b.connectMu.TryLock() {
+		b.log.Infof("connect already in progress, skipping")
+		return
+	}
+	defer b.connectMu.Unlock()
+
 	if b.client.IsConnected() {
 		return
 	}
 
-	if b.client.Store.ID == nil {
-		// Fresh device — pair via QR. Must obtain the channel BEFORE Connect().
+	if b.client.Store.ID != nil {
+		// Existing session — reconnect without QR.
+		if err := b.client.Connect(); err != nil {
+			b.log.Errorf("reconnect error: %v", err)
+		}
+		return
+	}
+
+	// Fresh device — pair via QR. Re-arm a fresh QR channel until paired so the portal
+	// always has a current, scannable code.
+	for b.client.Store.ID == nil {
 		qrChan, err := b.client.GetQRChannel(context.Background())
 		if err != nil {
 			b.log.Errorf("qr channel error: %v", err)
@@ -93,21 +111,19 @@ func (b *Bridge) connect() {
 			return
 		}
 		for evt := range qrChan {
-			switch evt.Event {
-			case "code":
+			if evt.Event == "code" {
 				b.log.Infof("QR code generated")
 				b.hub.broadcast(Event{Type: "qr", Code: evt.Code})
-			case "success":
-				b.log.Infof("QR pairing success")
-			case "timeout":
-				b.log.Warnf("QR timed out — call /connect to retry")
+			} else {
+				b.log.Infof("QR channel event: %s", evt.Event)
 			}
 		}
-		return
-	}
-
-	// Existing session — reconnect without QR.
-	if err := b.client.Connect(); err != nil {
-		b.log.Errorf("reconnect error: %v", err)
+		if b.client.Store.ID != nil {
+			return // paired
+		}
+		// Channel closed without pairing — disconnect and re-arm a fresh QR.
+		b.log.Warnf("QR sequence ended — re-arming")
+		b.client.Disconnect()
+		time.Sleep(2 * time.Second)
 	}
 }
