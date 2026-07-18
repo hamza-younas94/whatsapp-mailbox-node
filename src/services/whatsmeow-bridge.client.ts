@@ -13,6 +13,7 @@
 
 import { EventEmitter } from 'events';
 import WebSocket from 'ws';
+import axios from 'axios';
 import logger from '@utils/logger';
 
 export interface BridgeMessage {
@@ -116,25 +117,18 @@ export class WhatsmeowBridgeClient extends EventEmitter {
 
   // --- HTTP command helpers ---
 
+  private get authHeaders() {
+    return this.token ? { Authorization: `Bearer ${this.token}` } : {};
+  }
+
   private async post(path: string, body?: unknown): Promise<any> {
-    const res = await fetch(this.baseUrl + path, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    if (!res.ok) throw new Error(`bridge ${path} -> ${res.status}`);
-    return res.json();
+    const res = await axios.post(this.baseUrl + path, body ?? {}, { headers: this.authHeaders });
+    return res.data;
   }
 
   private async get(path: string): Promise<any> {
-    const res = await fetch(this.baseUrl + path, {
-      headers: this.token ? { Authorization: `Bearer ${this.token}` } : {},
-    });
-    if (!res.ok) throw new Error(`bridge ${path} -> ${res.status}`);
-    return res.json();
+    const res = await axios.get(this.baseUrl + path, { headers: this.authHeaders });
+    return res.data;
   }
 
   getStatus(): Promise<{ connected: boolean; loggedIn: boolean; jid: string }> {

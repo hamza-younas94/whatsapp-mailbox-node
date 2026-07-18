@@ -2,7 +2,7 @@
 // WhatsApp Web QR code and session management
 
 import { Request, Response } from 'express';
-import { whatsappWebService } from '@services/whatsapp-web.service';
+import { waService as whatsappWebService } from '@services/wa-engine';
 import { asyncHandler } from '@middleware/error.middleware';
 import logger from '@utils/logger';
 

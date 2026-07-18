@@ -46,7 +46,7 @@ import { globalLimiter } from '@middleware/rate-limit.middleware';
 import { activityLogger, initActivityLogger } from '@middleware/activity.middleware';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from '@config/swagger';
-import { whatsappWebService } from '@services/whatsapp-web.service';
+import { waService as whatsappWebService, WA_ENGINE } from '@services/wa-engine';
 import { autoReplyService } from '@services/auto-reply.service';
 import { getContactType } from '@utils/contact-type';
 import { downloadAvatar } from '@utils/avatar';
@@ -384,6 +384,7 @@ function setupIncomingMessageListener(): void {
         profilePhotoUrl,
         isBusiness,
         senderName,
+        mediaUrl: preResolvedMediaUrl, // set by the whatsmeow bridge (already downloaded)
       } = event;
 
       logger.info(
@@ -541,8 +542,8 @@ function setupIncomingMessageListener(): void {
       }
 
       // Handle media download if message has media
-      let mediaUrl: string | undefined;
-      if (hasMedia && message) {
+      let mediaUrl: string | undefined = preResolvedMediaUrl;
+      if (!mediaUrl && hasMedia && message) {
         try {
           logger.info({ sessionId, from, messageType }, 'Message has media, attempting download');
           mediaUrl = await whatsappWebService.downloadMedia(message);
@@ -861,7 +862,15 @@ export async function startServer(): Promise<void> {
     httpServer.listen(env.PORT, '0.0.0.0', () => {
       logger.info({ port: env.PORT, env: env.NODE_ENV }, 'Server started with Socket.IO');
       
-      // Auto-restore WhatsApp sessions after server starts
+      // whatsmeow bridge engine: just start the adapter (it connects to the bridge,
+      // which persists its own session and auto-reconnects). Skip the webjs auto-restore.
+      if (WA_ENGINE === 'bridge') {
+        logger.info('WA_ENGINE=bridge — starting whatsmeow adapter');
+        (whatsappWebService as any).start?.();
+        return;
+      }
+
+      // Auto-restore WhatsApp sessions after server starts (whatsapp-web.js engine)
       // LocalAuth stores sessions in directories named "session-<clientId>"
       // Our clientId format is "session_<userId>", so dirs are "session-session_<userId>"
       setTimeout(async () => {
