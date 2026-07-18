@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { messageAPI } from '@/api/queries';
+import { scriptClass } from '@/utils/text-script';
 import '@/styles/message-bubble-enhanced.css';
 
 interface Message {
@@ -199,7 +200,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn, hi
       <div ref={bubbleRef} className={`message-bubble ${isOwn ? 'own' : 'other'}`}>
         {/* Sender name — shown for incoming group/channel messages (WhatsApp "who sent what") */}
         {!isOwn && message.senderName && (
-          <div className="message-sender-name">{message.senderName}</div>
+          <div className={`message-sender-name ${scriptClass(message.senderName)}`}>{message.senderName}</div>
         )}
         {/* Media content */}
         {hasMedia && (
@@ -259,7 +260,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn, hi
 
         {/* Text content — skip if it's just a bracketed media label like [AUDIO] */}
         {message.content && !/^\[(IMAGE|VIDEO|AUDIO|DOCUMENT|STICKER|PTT|LOCATION|CONTACT)\]$/i.test(message.content.trim()) && (
-          <p className="message-text">{formatMessageContent(message.content, highlightText)}</p>
+          <p className={`message-text ${scriptClass(message.content)}`}>{formatMessageContent(message.content, highlightText)}</p>
         )}
 
         {/* Message meta */}

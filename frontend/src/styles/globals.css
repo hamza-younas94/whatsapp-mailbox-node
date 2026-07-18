@@ -1,5 +1,21 @@
 /* WhatsApp Mailbox UI Theme */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* Urdu (Nastaliq) + Arabic (Naskh) fonts for proper RTL script rendering */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap');
+
+/* Per-script text rendering: Urdu -> Nastaliq, Arabic -> Naskh, both RTL */
+.script-urdu {
+  font-family: 'Noto Nastaliq Urdu', 'Noto Naskh Arabic', serif;
+  direction: rtl;
+  text-align: right;
+  line-height: 2.25;
+}
+.script-arabic {
+  font-family: 'Noto Naskh Arabic', 'Noto Nastaliq Urdu', serif;
+  direction: rtl;
+  text-align: right;
+  line-height: 1.9;
+}
 
 :root {
   /* Primary colors (WhatsApp green) */

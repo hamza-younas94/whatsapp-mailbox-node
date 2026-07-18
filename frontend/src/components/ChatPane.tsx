@@ -4,6 +4,7 @@ import { messageAPI } from '@/api/queries';
 import { subscribeToMessage, subscribeToMessageStatus, subscribeToReactionUpdated, subscribeToCrmEvents, CrmEventType } from '@/api/socket';
 import { getContactTypeFromId, getContactTypeInfo, getContactTypeBadgeClass } from '@/utils/contact-type';
 import { getAvatarUrl, getAvatarInitial } from '@/utils/avatar';
+import { scriptClass } from '@/utils/text-script';
 import MessageBubble from '@/components/MessageBubble';
 import MessageComposer from '@/components/MessageComposer';
 import '@/styles/chat-pane.css';
@@ -1016,7 +1017,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
           </div>
           <div className="chat-header-text">
             <div className="chat-header-name-row">
-              <h3 className="contact-name">{contactName || 'Unknown'}</h3>
+              <h3 className={`contact-name ${scriptClass(contactName)}`}>{contactName || 'Unknown'}</h3>
               {contactTypeResolved !== 'contact' && (
                 <span
                   className={`conv-type-pill conv-type-${contactTypeResolved}`}

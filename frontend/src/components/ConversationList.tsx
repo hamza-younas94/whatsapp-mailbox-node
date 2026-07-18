@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { contactAPI } from '@/api/queries';
 import { getContactTypeFromId, getContactTypeInfo, ContactTypeEnum } from '@/utils/contact-type';
 import { getAvatarUrl } from '@/utils/avatar';
+import { scriptClass } from '@/utils/text-script';
 import { subscribeToMessage, IMessageReceivedEvent } from '@/api/socket';
 import '@/styles/conversation-list-enhanced.css';
 
@@ -340,7 +341,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
         <div className="conv-content">
           <div className="conv-header">
             <div className="conv-name-row">
-              <span className="conv-name" title={displayName}>{displayName}</span>
+              <span className={`conv-name ${scriptClass(displayName)}`} title={displayName}>{displayName}</span>
               {contactType !== 'contact' && (
                 <span
                   className={`conv-type-pill conv-type-${contactType}`}
@@ -354,7 +355,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
             {timeAgo && <span className="conv-time">{timeAgo}</span>}
           </div>
           <div className="conv-preview-row">
-            <p className="conv-preview" title={conv.lastMessage}>
+            <p className={`conv-preview ${scriptClass(conv.lastMessage)}`} title={conv.lastMessage}>
               {conv.lastMessage || 'No messages yet'}
             </p>
             {conv.unreadCount > 0 && (
