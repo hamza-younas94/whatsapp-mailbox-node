@@ -273,14 +273,18 @@ export class WhatsAppWebService extends EventEmitter {
     // Message reaction event
     client.on('message_reaction', async (reaction: any) => {
       try {
+        // reaction.msgId = the message that was reacted to (what we must look up);
+        // reaction.id = the reaction event's own key. Emitting the latter meant
+        // findByWaMessageId never matched, so contact reactions never saved/displayed.
+        const reactedMsgId = reaction.msgId?._serialized || reaction.id?._serialized;
         this.emit('reaction', {
           sessionId: id,
-          messageId: reaction.id._serialized,
+          messageId: reactedMsgId,
           reaction: reaction.reaction,
-          from: reaction.senderId || reaction.id.remote,
+          from: reaction.senderId || reaction.msgId?.remote || reaction.id?.remote,
           timestamp: reaction.timestamp || Date.now(),
         });
-        logger.info({ sessionId: id, messageId: reaction.id._serialized, reaction: reaction.reaction }, 'Reaction received');
+        logger.info({ sessionId: id, messageId: reactedMsgId, reaction: reaction.reaction }, 'Reaction received');
       } catch (error) {
         logger.error({ error, sessionId: id }, 'Failed to process reaction');
       }

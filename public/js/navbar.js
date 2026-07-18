@@ -1,6 +1,17 @@
 // Shared Navbar Component for WhatsApp Mailbox
 // Include this script at the top of each HTML page
 
+// Inject the shared modern theme stylesheet on every page that loads this
+// script (runs immediately, before the navbar renders). No-op if already present.
+(function injectAppTheme() {
+    var href = '/css/app-theme.css';
+    if (document.querySelector('link[href="' + href + '"]')) return;
+    var link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = href;
+    (document.head || document.documentElement).appendChild(link);
+})();
+
 function createNavbar() {
     const currentPath = window.location.pathname;
 

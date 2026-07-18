@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { messageAPI } from '@/api/queries';
 import '@/styles/message-bubble-enhanced.css';
@@ -75,9 +75,33 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn, hi
   const [selectedReaction, setSelectedReaction] = useState<string | undefined>(
     message.reaction || message.metadata?.reaction
   );
+  // Re-sync when a live reaction:updated arrives from the socket (ChatPane updates the
+  // message prop). Without this the bubble kept its stale mount-time value and incoming
+  // reactions / removals never rendered in real time.
+  useEffect(() => {
+    setSelectedReaction(message.reaction || message.metadata?.reaction);
+  }, [message.reaction, message.metadata?.reaction]);
   const [isLoading, setIsLoading] = useState(false);
   const [showImagePreview, setShowImagePreview] = useState(false);
   const hideTimeout = useRef<NodeJS.Timeout | null>(null);
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  // Picker is portaled to <body> so the scroll container can't clip it. Position is
+  // computed from the bubble's rect; flip below the bubble when near the viewport top.
+  const [pickerPos, setPickerPos] = useState<{ top: number; left: number; flip: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!showReactions || !bubbleRef.current) {
+      setPickerPos(null);
+      return;
+    }
+    const rect = bubbleRef.current.getBoundingClientRect();
+    const flip = rect.top < 120;
+    setPickerPos({
+      top: flip ? rect.bottom + 6 : rect.top - 6,
+      left: rect.left + rect.width / 2,
+      flip,
+    });
+  }, [showReactions]);
 
   const time = new Date(message.createdAt).toLocaleTimeString('en-US', {
     hour: '2-digit',
@@ -171,7 +195,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn, hi
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className={`message-bubble ${isOwn ? 'own' : 'other'}`}>
+      <div ref={bubbleRef} className={`message-bubble ${isOwn ? 'own' : 'other'}`}>
         {/* Media content */}
         {hasMedia && (
           <div className="message-media">
@@ -254,26 +278,35 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn, hi
           </div>
         )}
 
-        {/* Reaction Picker */}
-        {showReactions && (
-          <div 
-            className={`reaction-picker ${isOwn ? 'own' : 'other'}`}
-            onMouseEnter={handleReactionPickerMouseEnter}
-            onMouseLeave={handleReactionPickerMouseLeave}
-          >
-            {REACTION_EMOJIS.map(emoji => (
-              <button
-                key={emoji}
-                className={`reaction-btn ${selectedReaction === emoji ? 'selected' : ''}`}
-                onClick={() => handleReaction(emoji)}
-                title={`React with ${emoji}`}
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
+
+      {/* Reaction Picker — portaled to <body> so the messages scroll container can't clip it */}
+      {showReactions && pickerPos && ReactDOM.createPortal(
+        <div
+          className={`reaction-picker ${isOwn ? 'own' : 'other'}`}
+          style={{
+            position: 'fixed',
+            top: pickerPos.top,
+            left: pickerPos.left,
+            transform: `translate(-50%, ${pickerPos.flip ? '0' : '-100%'})`,
+            zIndex: 2000,
+          }}
+          onMouseEnter={handleReactionPickerMouseEnter}
+          onMouseLeave={handleReactionPickerMouseLeave}
+        >
+          {REACTION_EMOJIS.map(emoji => (
+            <button
+              key={emoji}
+              className={`reaction-btn ${selectedReaction === emoji ? 'selected' : ''}`}
+              onClick={() => handleReaction(emoji)}
+              title={`React with ${emoji}`}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>,
+        document.body
+      )}
 
       {/* Image lightbox — rendered via Portal to escape stacking context */}
       {showImagePreview && mediaSrc && ReactDOM.createPortal(

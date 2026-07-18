@@ -857,7 +857,7 @@
                             </div>
 
                             <!-- Dates -->
-                            <div class="grid grid-cols-2 gap-4 bg-gray-50 rounded-xl p-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50 rounded-xl p-4">
                                 <div>
                                     <span class="text-sm text-gray-500">Invoice Date</span>
                                     <p class="font-semibold text-gray-800">${formatDate(inv.invoiceDate || inv.date || inv.createdAt)}</p>
@@ -871,7 +871,8 @@
                             <!-- Line Items -->
                             <div>
                                 <h4 class="font-semibold text-gray-800 mb-3"><i class="fas fa-list mr-2"></i>Line Items</h4>
-                                <table class="w-full text-sm">
+                                <div class="overflow-x-auto">
+                                <table class="w-full text-sm min-w-[560px]">
                                     <thead>
                                         <tr class="border-b">
                                             <th class="text-left py-2 text-gray-500 font-medium">Description</th>
@@ -900,6 +901,7 @@
                                         }).join('')}
                                     </tbody>
                                 </table>
+                                </div>
                             </div>
 
                             <!-- Totals -->

@@ -58,6 +58,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
   const hasLoaded = useRef(false);
   const selectedContactIdRef = useRef(selectedContactId);
+  const reloadTimer = useRef<ReturnType<typeof setTimeout>>();
 
   // Sync search when navbar searchQuery prop changes
   useEffect(() => {
@@ -165,6 +166,11 @@ export const ConversationList: React.FC<ConversationListProps> = ({
     }
   };
 
+  // Always-current ref so the socket handler (mounted once) can call the latest loader
+  // without a stale closure over debouncedSearch.
+  const loadConversationsRef = useRef(loadConversations);
+  loadConversationsRef.current = loadConversations;
+
   useEffect(() => {
     loadConversations();
   }, [debouncedSearch]);
@@ -182,7 +188,13 @@ export const ConversationList: React.FC<ConversationListProps> = ({
     const unsubscribe = subscribeToMessage((msg: IMessageReceivedEvent) => {
       setConversations(prev => {
         const idx = prev.findIndex(c => c.contact.id === msg.contactId);
-        if (idx === -1) return prev;
+        if (idx === -1) {
+          // First-ever message from a contact not yet in the list — reload (debounced)
+          // so the new conversation appears without a manual refresh.
+          if (reloadTimer.current) clearTimeout(reloadTimer.current);
+          reloadTimer.current = setTimeout(() => { loadConversationsRef.current(); }, 600);
+          return prev;
+        }
 
         // Build message preview
         let preview = msg.content || '';

@@ -100,7 +100,7 @@
             <div class="p-6 max-h-[60vh] overflow-y-auto">
                 <input type="hidden" id="segmentId">
                 
-                <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                     <div>
                         <label class="block text-gray-700 mb-2 font-medium">Segment Name *</label>
                         <input type="text" id="segmentName" required
@@ -116,7 +116,7 @@
                 </div>
 
                 <!-- Logic Selector -->
-                <div class="mb-4 flex items-center space-x-4">
+                <div class="mb-4 flex flex-wrap items-center gap-2">
                     <span class="text-gray-700 font-medium">Match:</span>
                     <label class="flex items-center cursor-pointer">
                         <input type="radio" name="logic" value="AND" checked class="mr-2">

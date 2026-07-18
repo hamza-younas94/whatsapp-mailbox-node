@@ -1,0 +1,192 @@
+/* =====================================================================
+   WA Mailbox — App Theme (modern visual refresh)
+   ---------------------------------------------------------------------
+   A conservative design layer that enhances the existing Tailwind (CDN)
+   markup WITHOUT requiring per-page HTML changes and WITHOUT altering any
+   layout / responsive utilities. It only refines typography, color,
+   shadows, radius, inputs, buttons, tables, and scrollbars.
+
+   Specificity is kept intentionally low for form/table baselines so it
+   fills gaps rather than fighting existing utility classes; card and
+   button selectors are compound so they can gently upgrade existing look.
+   ===================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+    /* Brand accent — anchored on WhatsApp green */
+    --wa-green:        #16a34a; /* green-600 */
+    --wa-green-strong: #15803d; /* green-700 */
+    --wa-green-light:  #22c55e; /* green-500 */
+    --wa-green-bright: #25D366; /* WhatsApp brand */
+
+    /* Neutral surfaces */
+    --wa-bg:           #f8fafc; /* soft page background */
+    --wa-surface:      #ffffff;
+    --wa-border:       #e5e7eb;
+    --wa-border-soft:  #eef1f5;
+
+    /* Text */
+    --wa-text:         #1f2937;
+    --wa-text-muted:   #6b7280;
+
+    /* Elevation */
+    --wa-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+    --wa-shadow-md: 0 2px 6px rgba(16, 24, 40, 0.05), 0 8px 24px rgba(16, 24, 40, 0.06);
+    --wa-shadow-lg: 0 6px 18px rgba(16, 24, 40, 0.08), 0 18px 48px rgba(16, 24, 40, 0.10);
+
+    /* Focus ring */
+    --wa-ring: 0 0 0 3px rgba(37, 211, 102, 0.28);
+
+    --wa-radius: 14px;
+}
+
+/* ---------------------------------------------------------------------
+   Base typography + rendering
+   ------------------------------------------------------------------ */
+body {
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system,
+                 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.006em;
+    color: var(--wa-text);
+}
+
+/* Soft page background — only applies where a page/body doesn't already
+   declare its own Tailwind bg utility (utility classes out-specify this,
+   so gradient login pages and bg-gray-50 pages keep their background). */
+body {
+    background-color: var(--wa-bg);
+}
+
+/* Slightly tighter, cleaner headings */
+h1, h2, h3, h4 {
+    letter-spacing: -0.02em;
+}
+
+/* ---------------------------------------------------------------------
+   Cards — softer shadow + larger radius.
+   Compound selectors (0,2,0) gently upgrade the common card patterns.
+   ------------------------------------------------------------------ */
+.bg-white.rounded-lg,
+.bg-white.rounded-xl,
+.bg-white.rounded-2xl,
+.bg-white.rounded-md {
+    border-radius: var(--wa-radius);
+    box-shadow: var(--wa-shadow-md);
+    border: 1px solid var(--wa-border-soft);
+}
+
+/* Elements that opt into a stronger shadow keep an even softer, deeper one */
+.bg-white.shadow-lg,
+.bg-white.shadow-xl,
+.bg-white.shadow-2xl {
+    box-shadow: var(--wa-shadow-lg);
+}
+
+/* ---------------------------------------------------------------------
+   Buttons — scoped to actual button/link/input elements so status dots,
+   badges, and the logo (spans/divs using green) are untouched.
+   ------------------------------------------------------------------ */
+button.bg-green-600, a.bg-green-600, input.bg-green-600,
+button.bg-green-500, a.bg-green-500, input.bg-green-500 {
+    background-image: linear-gradient(135deg, var(--wa-green-light) 0%, var(--wa-green) 100%);
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.10);
+    transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+}
+
+button.bg-green-600:hover, a.bg-green-600:hover, input.bg-green-600:hover,
+button.bg-green-500:hover, a.bg-green-500:hover, input.bg-green-500:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.30);
+    filter: saturate(1.05);
+}
+
+button.bg-green-600:active, a.bg-green-600:active, input.bg-green-600:active,
+button.bg-green-500:active, a.bg-green-500:active, input.bg-green-500:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.12);
+}
+
+button.bg-green-600:focus-visible, a.bg-green-600:focus-visible,
+button.bg-green-500:focus-visible, a.bg-green-500:focus-visible,
+input.bg-green-600:focus-visible, input.bg-green-500:focus-visible {
+    outline: none;
+    box-shadow: var(--wa-ring);
+}
+
+/* Generic interactive smoothing (low specificity — never overrides layout) */
+button, a, .transition, .transition-all {
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ---------------------------------------------------------------------
+   Inputs / selects / textareas — consistent baseline border, radius,
+   focus ring. Low specificity: existing Tailwind field classes win, so
+   this only upgrades fields that weren't explicitly styled.
+   ------------------------------------------------------------------ */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="submit"]):not([type="button"]),
+select,
+textarea {
+    border: 1px solid var(--wa-border);
+    border-radius: 10px;
+    background-color: var(--wa-surface);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="submit"]):not([type="button"]):focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--wa-green-light);
+    box-shadow: var(--wa-ring);
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: #9ca3af;
+}
+
+/* ---------------------------------------------------------------------
+   Tables — cleaner header treatment (low specificity baseline).
+   ------------------------------------------------------------------ */
+thead th {
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--wa-text-muted);
+}
+
+tbody tr {
+    transition: background-color 0.12s ease;
+}
+
+/* ---------------------------------------------------------------------
+   Scrollbars — subtle, modern. (Does not affect scroll behaviour, so
+   overflow-x-auto tables keep working exactly as before.)
+   ------------------------------------------------------------------ */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8;
+    background-clip: content-box;
+}

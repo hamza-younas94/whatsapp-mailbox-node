@@ -64,7 +64,7 @@
             </div>
 
             <!-- Stats -->
-            <div class="p-4 border-b grid grid-cols-4 gap-4 bg-gray-50">
+            <div class="p-4 border-b grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-gray-50">
                 <div class="text-center">
                     <div class="text-2xl font-bold text-gray-800" id="totalContactCount">0</div>
                     <div class="text-sm text-gray-600">Total Contacts</div>
@@ -478,7 +478,7 @@
 
                 document.getElementById('importPreview').innerHTML = `
                     <p class="text-green-600 font-semibold mb-2">${importedRows.length} contacts found</p>
-                    <div class="max-h-48 overflow-y-auto border rounded-lg">
+                    <div class="max-h-48 overflow-y-auto overflow-x-auto border rounded-lg">
                         <table class="w-full text-sm">
                             <thead class="bg-gray-50 sticky top-0"><tr>
                                 <th class="px-3 py-2 text-left">Phone</th><th class="px-3 py-2 text-left">Name</th><th class="px-3 py-2 text-left">Tags</th>

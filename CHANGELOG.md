@@ -3,6 +3,38 @@
 All notable changes to this project are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/); versioning is [SemVer](https://semver.org/).
 
+## [2.2.0] - 2026-07-18
+
+### Fixed
+- **Reactions did not work end-to-end.** Three defects: (1) the backend `message_reaction`
+  handler emitted the reaction event's *own* id instead of `reaction.msgId` (the reacted-to
+  message), so incoming reactions never matched a stored message and were dropped; (2) the
+  React `MessageBubble` seeded its reaction from props only at mount and never re-synced, so
+  live `reaction:updated` socket events never rendered; (3) the reaction picker was clipped by
+  the messages scroll container. Fixed the id, added a props→state re-sync effect, and portaled
+  the picker to `<body>` with computed positioning (flips below when near the viewport top).
+  (`src/services/whatsapp-web.service.ts`, `frontend/src/components/MessageBubble.tsx`)
+- **New conversations didn't appear in the sidebar.** A first-ever message from a contact not
+  already in the list was dropped by the socket handler; it now triggers a debounced reload.
+  (`frontend/src/components/ConversationList.tsx`)
+
+### Changed
+- **Mobile responsiveness across all standalone pages.** Non-responsive `grid-cols-N` stat/filter
+  rows now use responsive breakpoints, unwrapped data tables get horizontal scroll containers, and
+  wide filter bars wrap on small screens. (24 grid + 3 table + 3 flex fixes across `public/*.html`)
+- **Modernized UI.** Added a shared `public/css/app-theme.css` (Inter font, refined green-anchored
+  palette, softer cards/shadows, modern buttons/inputs, smooth transitions), injected on every page
+  via `public/js/navbar.js` plus direct links on the auth pages. Purely additive — no markup/logic
+  changes, no responsive classes altered.
+
+### Removed
+- Dead Shop System route backups (`src/routes/shop-system.ts.bak`, `src/routes/shops.ts.bak`) —
+  never mounted; feature is shelved.
+
+### Docs
+- Consolidated 53 chaotic root markdown files down to 4 (`README`, `CHANGELOG`, `CLAUDE`, `AGENTS`)
+  plus `docs/{DEPLOYMENT,FEATURES,ARCHITECTURE}.md`; the 50 stale files were moved to `docs/archive/`.
+
 ## [2.1.0] - 2026-07-18
 
 ### Fixed

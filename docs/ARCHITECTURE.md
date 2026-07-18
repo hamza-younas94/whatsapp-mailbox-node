@@ -1,470 +1,82 @@
-# Architecture & Design Patterns
+# Architecture
 
-## System Architecture
+Brief map of how the system fits together. For deploy specifics see `docs/DEPLOYMENT.md`;
+for agent-oriented gotchas see `AGENTS.md`.
 
-```
-┌─────────────────┐
-│   Client        │
-│   (Browser)     │
-└────────┬────────┘
-         │ HTTP/REST
-         ▼
-┌─────────────────────────────┐
-│    Express.js Server        │
-├─────────────────────────────┤
-│  Routes / Controllers       │ ◄── Request Handling
-│  Middleware (Auth, Validation)
-└──────────┬──────────────────┘
-           │
-           ├──────────────────┬──────────────┐
-           │                  │              │
-           ▼                  ▼              ▼
-    ┌─────────────┐  ┌──────────────┐  ┌─────────┐
-    │   Service   │  │ Cache/Queue  │  │ Logger  │
-    │   Layer     │  │ (Redis)      │  │ (Pino)  │
-    └──────┬──────┘  └──────────────┘  └─────────┘
-           │
-           ▼
-    ┌─────────────────────┐
-    │  Repository Pattern │ ◄── Data Abstraction
-    │  (Data Access)      │
-    └──────────┬──────────┘
-               │
-        ┌──────┴──────┐
-        ▼             ▼
-    ┌────────┐  ┌────────────┐
-    │ MySQL  │  │ WhatsApp   │
-    │Database│  │    API     │
-    └────────┘  └────────────┘
-```
-
-## SOLID Principles Implementation
-
-### 1. Single Responsibility Principle (SRP)
-
-Each class has ONE reason to change:
-
-```typescript
-// ✅ Good: Each class has single responsibility
-class MessageRepository {
-  // Only handles data access for messages
-}
-
-class MessageService {
-  // Only handles business logic for messages
-}
-
-class MessageController {
-  // Only handles HTTP request/response
-}
-
-// ❌ Bad: Mixed responsibilities
-class MessageManager {
-  // Database operations
-  // Business logic
-  // HTTP handling
-}
-```
-
-### 2. Open/Closed Principle (OCP)
-
-Open for extension, closed for modification:
-
-```typescript
-// ✅ Good: Easy to extend without modifying
-abstract class BaseRepository<T> {
-  abstract modelName: keyof PrismaClient;
-  // Common CRUD operations
-}
-
-class MessageRepository extends BaseRepository<Message> {
-  // Extend with message-specific logic
-}
-
-// ❌ Bad: Must modify class to add new features
-class Repository {
-  if (type === 'message') { ... }
-  if (type === 'contact') { ... }
-  // Must add more if statements
-}
-```
-
-### 3. Liskov Substitution Principle (LSP)
-
-Subtypes must be substitutable for their base types:
-
-```typescript
-// ✅ Good: Repository interfaces are interchangeable
-interface IRepository<T> {
-  findById(id: string): Promise<T | null>;
-  create(data: unknown): Promise<T>;
-}
-
-class MessageRepository implements IRepository<Message> { }
-class ContactRepository implements IRepository<Contact> { }
-
-// Usage: Works with any IRepository implementation
-function useRepository<T>(repo: IRepository<T>) { }
-```
-
-### 4. Interface Segregation Principle (ISP)
-
-Clients should depend on specific interfaces:
-
-```typescript
-// ✅ Good: Specific interfaces
-interface IMessageRepository {
-  findByConversation(conversationId: string): Promise<Message[]>;
-  findByWaMessageId(waMessageId: string): Promise<Message | null>;
-}
-
-interface IContactRepository {
-  findByPhoneNumber(phoneNumber: string): Promise<Contact | null>;
-  search(filters: ContactFilters): Promise<Contact[]>;
-}
-
-// ❌ Bad: Fat interface
-interface IRepository {
-  // All possible operations for all entities
-  findByConversation()
-  findByPhoneNumber()
-  findByWaMessageId()
-  search()
-  // ...100 more methods
-}
-```
-
-### 5. Dependency Inversion Principle (DIP)
-
-Depend on abstractions, not concrete implementations:
-
-```typescript
-// ✅ Good: Depends on abstract repository
-class MessageService {
-  constructor(private messageRepository: IMessageRepository) {}
-  
-  async sendMessage(input: CreateMessageInput): Promise<Message> {
-    // Use repository interface
-  }
-}
-
-// Easy to test with mock
-const mockRepository = {
-  create: jest.fn(),
-  findById: jest.fn(),
-};
-
-const service = new MessageService(mockRepository);
-
-// ❌ Bad: Tightly coupled to concrete class
-class MessageService {
-  private repo = new MessageRepository(); // Hard to test!
-}
-```
-
-## Design Patterns
-
-### 1. Repository Pattern
-
-**Purpose**: Abstract database operations
-
-```typescript
-// Interface defines contract
-interface IRepository<T> {
-  findById(id: string): Promise<T | null>;
-  create(data: unknown): Promise<T>;
-  update(id: string, data: unknown): Promise<T>;
-  delete(id: string): Promise<T>;
-}
-
-// Base implementation
-abstract class BaseRepository<T> implements IRepository<T> {
-  // Common CRUD logic
-}
-
-// Specialized implementations
-class MessageRepository extends BaseRepository<Message> {
-  // Message-specific queries
-  async findByWaMessageId(waMessageId: string): Promise<Message | null> {
-    return this.prisma.message.findUnique({ where: { waMessageId } });
-  }
-}
-```
-
-**Benefits**:
-- ✅ Decouple business logic from data access
-- ✅ Easy to mock for testing
-- ✅ Swap database without changing service logic
-- ✅ Consistent data access patterns
-
-### 2. Service Layer Pattern
-
-**Purpose**: Encapsulate business logic
-
-```typescript
-// Service handles all business rules
-class MessageService {
-  constructor(
-    private messageRepository: IMessageRepository,
-    private whatsAppService: IWhatsAppService,
-  ) {}
-
-  async sendMessage(userId: string, input: CreateMessageInput): Promise<Message> {
-    // 1. Validate input
-    // 2. Check authorization
-    // 3. Create message in DB
-    // 4. Send via WhatsApp API
-    // 5. Update status
-    // 6. Log activity
-  }
-}
-
-// Controller delegates to service
-class MessageController {
-  constructor(private messageService: MessageService) {}
-
-  sendMessage = async (req: Request, res: Response) => {
-    const message = await this.messageService.sendMessage(
-      req.user.id,
-      req.body,
-    );
-    res.json(message);
-  };
-}
-```
-
-**Benefits**:
-- ✅ Single place for business logic
-- ✅ Reusable across controllers
-- ✅ Easy to test in isolation
-- ✅ Clear separation of concerns
-
-### 3. Dependency Injection
-
-**Purpose**: Loosely couple components
-
-```typescript
-// Constructor injection
-class MessageService {
-  constructor(
-    private messageRepository: IMessageRepository,
-    private whatsAppService: IWhatsAppService,
-  ) {}
-}
-
-// Factory pattern to create instances
-function createMessageService(): MessageService {
-  const prisma = getPrismaClient();
-  const repository = new MessageRepository(prisma);
-  const whatsAppService = new WhatsAppService();
-  return new MessageService(repository, whatsAppService);
-}
-
-// Route setup with DI
-const messageService = createMessageService();
-const messageController = new MessageController(messageService);
-
-router.post('/messages', messageController.sendMessage);
-```
-
-**Benefits**:
-- ✅ Easy to test (inject mocks)
-- ✅ Flexible configurations
-- ✅ Swap implementations
-- ✅ Better code reusability
-
-### 4. Factory Pattern
-
-**Purpose**: Create objects without specifying exact classes
-
-```typescript
-interface IRepository<T> {
-  // ...
-}
-
-class RepositoryFactory {
-  static create<T>(model: string, prisma: PrismaClient): IRepository<T> {
-    switch (model) {
-      case 'message':
-        return new MessageRepository(prisma) as any;
-      case 'contact':
-        return new ContactRepository(prisma) as any;
-      default:
-        throw new Error(`Unknown model: ${model}`);
-    }
-  }
-}
-
-// Usage
-const messageRepo = RepositoryFactory.create('message', prisma);
-```
-
-### 5. Adapter Pattern
-
-**Purpose**: Integrate external services
-
-```typescript
-// External WhatsApp API
-class WhatsAppService {
-  async sendMessage(to: string, text: string): Promise<Response> {
-    // Call WhatsApp HTTP API
-    return axios.post('https://api.whatsapp.com/...');
-  }
-
-  async getMediaUrl(mediaId: string): Promise<string> {
-    // Download media from WhatsApp
-  }
-}
-
-// Service adapts WhatsApp to our domain
-class MessageService {
-  async sendMessage(userId: string, input: CreateMessageInput) {
-    // Business logic
-    await this.whatsAppService.sendMessage(
-      input.contactId,
-      input.content,
-    );
-  }
-}
-```
-
-## Data Flow
-
-### Sending a Message
+## Request flow
 
 ```
-HTTP Request
-     │
-     ▼
-┌─────────────────────────────────┐
-│ Express Route Handler           │
-│ POST /api/v1/messages           │
-└────────────┬────────────────────┘
-             │
-             ▼
-┌──────────────────────────────────────┐
-│ Middleware Pipeline                  │
-│ 1. Auth Middleware (verify JWT)     │
-│ 2. Validation (Zod schema)          │
-│ 3. Error handling                    │
-└────────────┬─────────────────────────┘
-             │
-             ▼
-┌──────────────────────────────────────┐
-│ MessageController                    │
-│ - Extract request data              │
-│ - Call service                      │
-└────────────┬─────────────────────────┘
-             │
-             ▼
-┌──────────────────────────────────────┐
-│ MessageService (Business Logic)      │
-│ 1. Validate message length          │
-│ 2. Create message in DB (PENDING)   │
-│ 3. Send via WhatsApp API            │
-│ 4. Update status (SENT/FAILED)      │
-│ 5. Log activity                     │
-└────────────┬─────────────────────────┘
-             │
-             ├──────────────┬─────────────────┐
-             ▼              ▼                 ▼
-      ┌──────────────┐ ┌──────────────┐ ┌────────────┐
-      │ Message Repo │ │ WhatsApp API │ │ Logger     │
-      │ (Database)   │ │              │ │            │
-      └──────────────┘ └──────────────┘ └────────────┘
-             │
-             ▼
-      ┌──────────────┐
-      │ MySQL        │
-      │ (Prisma ORM) │
-      └──────────────┘
+Browser ──HTTP──▶ Express (src/server.ts)
+                    │
+                    ├─ Middleware:  auth (JWT) → Zod validation → rate limit → activity log
+                    ▼
+                 Route  (src/routes/*.ts, all under /api/v1)
+                    ▼
+                 Controller        (HTTP in/out)
+                    ▼
+                 Service           (business logic, throws AppError)
+                    ▼
+                 Repository        (extends BaseRepository)
+                    ▼
+                 Prisma Client ──▶ MySQL 8
 ```
 
-## Testing Strategy
+- Layering is strict: `Route → Controller → Service → Repository → Prisma`. Services own
+  business rules and throw typed errors (`NotFoundError`, `ConflictError`, `ValidationError`);
+  controllers/middleware translate those to HTTP. Dependencies are passed via constructors
+  (DI), not global singletons.
+- Responses use `{ success, data?, error? }`. Path aliases (`@services`, `@repositories`, …)
+  are resolved at build time by `tsc-alias`.
+- Env is validated once at boot by Zod (`src/config/env.ts`); missing required vars crash the
+  process.
 
-### Unit Tests (Services)
+## Hybrid frontend split
 
-```typescript
-describe('MessageService', () => {
-  it('should send message and update status', async () => {
-    // Mock dependencies
-    const mockRepository = {
-      create: jest.fn().mockResolvedValue(message),
-      update: jest.fn().mockResolvedValue(updatedMessage),
-    };
+Two independent UIs are served by the same Express app out of `public/`:
 
-    const mockWhatsAppService = {
-      sendMessage: jest.fn().mockResolvedValue({ messageId: 'wa123' }),
-    };
+1. **Static HTML admin (primary CRM dashboard)** — one standalone page per module in
+   `public/` (`contacts.html`, `invoices.html`, `broadcasts.html`, `dashboard.html`,
+   `qr-connect.html`, …), built with Tailwind CDN + Font Awesome + vanilla JS. Each page calls
+   the REST API directly with a JWT.
+2. **React SPA (chat/mailbox view)** — `frontend/` (React 18 + Vite + TypeScript, custom CSS,
+   no Tailwind). `vite build` emits into `../public/`, so the SPA's bundle sits alongside the
+   HTML pages and shares the same backend API + Socket.IO server.
 
-    const service = new MessageService(mockRepository, mockWhatsAppService);
+They are separate apps over one backend, not a single router. Real-time updates flow over
+Socket.IO (`message:received`, `message:sent`, `message:status`, `reaction:updated`,
+`session:status`).
 
-    // Test
-    const result = await service.sendMessage('user1', input);
+## WhatsApp session lifecycle
 
-    // Assert
-    expect(mockRepository.create).toHaveBeenCalled();
-    expect(mockWhatsAppService.sendMessage).toHaveBeenCalled();
-    expect(result.status).toBe('SENT');
-  });
-});
-```
+WhatsApp connectivity is `whatsapp-web.js` (Puppeteer driving headless Chromium), managed by
+`src/services/whatsapp-web.service.ts`:
 
-### Integration Tests (API)
+1. **Init** — `initializeSession(userId, sessionId)` creates a `Client` with `LocalAuth`
+   (`dataPath = WWEBJS_AUTH_DIR`, prod `/data/wwebjs_auth`) and a **pinned `webVersion`** whose
+   HTML is fetched from the `wppconnect-team/wa-version` repo.
+2. **Link** — client emits a QR; user scans it at `/qr-connect.html`. On `ready` the session
+   goes live and existing chats are synced into the DB (`syncAllChats`).
+3. **Run** — inbound messages are persisted via repositories and pushed to clients over
+   Socket.IO; auto-reply and automations may fire.
+4. **Drop / heal** — auth persists on disk and auto-restores on restart. If a session drops,
+   auto-reconnect retries indefinitely (every 15 min) and fires an `ALERT_WEBHOOK_URL` alert.
+   `disconnectSession()` preserves auth files; `destroySession()` wipes them (forces re-scan).
 
-```typescript
-describe('POST /api/v1/messages', () => {
-  it('should send message and return 201', async () => {
-    const response = await request(app)
-      .post('/api/v1/messages')
-      .set('Authorization', `Bearer ${token}`)
-      .send({
-        contactId: 'contact1',
-        content: 'Hello',
-      });
+Failure mode to know: if the pinned WhatsApp Web build is removed upstream, its HTML 404s and
+device linking fails ("could not link device"). Hotfix via `WWEBJS_WEB_VERSION` env, then bump
+the code default. (See CHANGELOG 2.1.0.)
 
-    expect(response.status).toBe(201);
-    expect(response.body.data.id).toBeDefined();
-  });
-});
-```
+## Data layer (Prisma)
 
-## Error Handling
+- Single MySQL 8 database `whatsapp_mailbox`; schema in `prisma/schema.prisma`, migrations in
+  `prisma/migrations/`.
+- Data access goes through repositories extending a shared `BaseRepository` (common CRUD),
+  with model-specific queries added per repository. No raw SQL in services.
+- Redis (Bull) backs queues/scheduling for broadcasts, drip campaigns, and scheduled messages.
 
-```typescript
-// Custom error hierarchy
-class AppError extends Error {
-  constructor(
-    public statusCode: number,
-    message: string,
-  ) { }
-}
+## Background work
 
-class ValidationError extends AppError {
-  constructor(message: string) {
-    super(400, message);
-  }
-}
-
-// Middleware handles all errors
-app.use((error: Error, req, res, next) => {
-  if (error instanceof AppError) {
-    res.status(error.statusCode).json({
-      error: error.message,
-    });
-  } else {
-    res.status(500).json({
-      error: 'Internal Server Error',
-    });
-  }
-});
-```
-
----
-
-**This architecture ensures**:
-- ✅ Maintainability
-- ✅ Testability
-- ✅ Scalability
-- ✅ Type safety
-- ✅ Clear separation of concerns
+Broadcasts, drip-campaign steps, and scheduled messages are time-driven jobs (Redis/Bull +
+schedulers) rather than request-synchronous. The auto-reply and automation engines run
+inline off inbound-message events.
+</content>
