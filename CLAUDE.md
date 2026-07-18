@@ -136,3 +136,13 @@ npm run lint          # ESLint
 - **Never** add `Co-Authored-By` lines to commits
 - Node.js repo: `git@github.com:hamza-younas94/whatsapp-mailbox-node.git`
 - PHP repo: `git@github.com:hamza-younas94/whatsapp-mailbox-php.git`
+
+## AI Context (`.claude/`)
+
+| Path | Purpose |
+|---|---|
+| `.claude/memory/whatshub.md` | Operational memory -- server details, infra changes, known issues, UI/responsive work log |
+| `.claude/agents/whatshub.md` | Specialist agent definition -- baked-in context for WhatsApp CRM tasks (stack, deploy, session gotchas) |
+
+Read `.claude/memory/whatshub.md` at session start for infra state and recent change history.
+Use the `whatshub` agent (`subagent_type: "whatshub"`) for domain-specific tasks.
