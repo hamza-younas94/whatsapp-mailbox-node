@@ -341,10 +341,10 @@ function setupChatSyncListener(): void {
         .filter(id => id !== 'status@broadcast');
       whatsappWebService.fetchAvatarsSlowly(sessionId, chatIdsForAvatars)
         .then(() => logger.info({ sessionId }, 'Background avatar fetch done'))
-        .catch(err => logger.error({ err, sessionId }, 'Background avatar fetch error'));
+        .catch((err: any) => logger.error({ err, sessionId }, 'Background avatar fetch error'));
 
       // Listen for downloaded avatars and update DB
-      whatsappWebService.on('avatar:downloaded', async ({ chatId: avatarChatId, localUrl }) => {
+      whatsappWebService.on('avatar:downloaded', async ({ chatId: avatarChatId, localUrl }: { chatId: string; localUrl: string }) => {
         try {
           await db.contact.updateMany({
             where: { userId, chatId: avatarChatId },
@@ -945,7 +945,7 @@ export async function startServer(): Promise<void> {
 
           // Get first active session for the user
           const session = whatsappWebService.getActiveSessions()
-            .find(s => s.userId === apt.userId && s.status === 'READY');
+            .find((s: any) => s.userId === apt.userId && s.status === 'READY');
           if (!session) continue;
 
           const timeUntil = apt.appointmentDate.getTime() - now.getTime();
@@ -982,7 +982,7 @@ export async function startServer(): Promise<void> {
           }
 
           const session = whatsappWebService.getActiveSessions()
-            .find(s => s.userId === inv.userId && s.status === 'READY');
+            .find((s: any) => s.userId === inv.userId && s.status === 'READY');
           if (!session) continue;
 
           const daysOverdue = Math.ceil((now.getTime() - inv.dueDate!.getTime()) / (24 * 60 * 60 * 1000));
@@ -1045,7 +1045,7 @@ export async function startServer(): Promise<void> {
 
             // Get active session for the user
             const session = whatsappWebService.getActiveSessions()
-              .find(s => s.userId === msg.userId && s.status === 'READY');
+              .find((s: any) => s.userId === msg.userId && s.status === 'READY');
 
             if (!session) {
               // Don't mark as failed — retry on next cycle when session may be ready
