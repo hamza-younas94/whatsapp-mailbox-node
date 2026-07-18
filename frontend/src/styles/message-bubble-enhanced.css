@@ -1,10 +1,10 @@
-/* Enhanced Message Bubble Styles - Modern WhatsApp-like UI */
+/* Message Bubbles — Modern SaaS (clean, 1px borders, restrained accent tint) */
 
 .message-bubble-wrapper {
   display: flex;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   position: relative;
-  animation: slideIn 0.2s ease-out;
+  animation: slideIn 0.18s ease-out;
 }
 
 .message-bubble-wrapper.own {
@@ -18,7 +18,7 @@
 @keyframes slideIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -27,96 +27,72 @@
 }
 
 .message-bubble {
-  max-width: 65%;
-  min-width: 76px;
-  padding: 6px 9px 8px 9px;
-  border-radius: 8px;
+  max-width: 68%;
+  min-width: 72px;
+  padding: 8px 12px 9px 12px;
+  border-radius: var(--radius);
   position: relative;
   word-wrap: break-word;
-  box-shadow: var(--shadow-bubble, 0 1px 1px rgba(11, 20, 26, 0.13));
+  box-shadow: var(--shadow-sm);
   transition: box-shadow 0.15s ease;
 }
 
-.message-bubble:hover {
-  box-shadow: 0 1px 3px rgba(11, 20, 26, 0.2);
-}
-
 .message-bubble.own {
-  background: var(--wa-bubble-out, #d9fdd3);
-  color: #111b21;
-  border-top-right-radius: 0;
+  background: var(--accent-soft);
+  color: var(--text);
+  border: 1px solid rgba(5, 150, 105, 0.18);
+  border-bottom-right-radius: var(--radius-sm);
 }
 
 .message-bubble.other {
-  background: var(--wa-bubble-in, #ffffff);
-  color: #111b21;
-  border-top-left-radius: 0;
-}
-
-/* Bubble tails */
-.message-bubble.own::before,
-.message-bubble.other::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  width: 8px;
-  height: 13px;
-}
-
-.message-bubble.own::before {
-  right: -8px;
-  border-top: 6px solid var(--wa-bubble-out, #d9fdd3);
-  border-right: 8px solid transparent;
-}
-
-.message-bubble.other::before {
-  left: -8px;
-  border-top: 6px solid var(--wa-bubble-in, #ffffff);
-  border-left: 8px solid transparent;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: var(--radius-sm);
 }
 
 /* Message Text */
 .message-text {
   margin: 0;
-  font-size: 14.2px;
-  line-height: 1.4;
+  font-size: 14px;
+  line-height: 1.45;
   white-space: pre-wrap;
   word-break: break-word;
-  color: #111b21;
+  color: var(--text);
 }
 
 .mention-tag {
-  color: #075e54;
+  color: var(--accent-text);
   font-weight: 600;
-  background: rgba(18, 140, 126, 0.1);
+  background: var(--accent-soft);
   padding: 1px 4px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 /* Media Content */
 .message-media {
   margin-bottom: 6px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .media-image {
   max-width: 100%;
   max-height: 400px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: transform 0.2s;
   display: block;
 }
 
 .media-image:hover {
-  transform: scale(1.02);
+  transform: scale(1.01);
 }
 
 .media-video {
   max-width: 100%;
   max-height: 400px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   display: block;
 }
 
@@ -125,13 +101,13 @@
   align-items: center;
   gap: 8px;
   padding: 8px;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 20px;
+  background: rgba(15, 23, 42, 0.04);
+  border-radius: var(--radius-full);
   min-width: 250px;
 }
 
 .message-bubble.other .media-audio-wrapper {
-  background: #f0f0f0;
+  background: var(--surface-2);
 }
 
 .audio-icon {
@@ -149,8 +125,8 @@
   align-items: center;
   gap: 10px;
   padding: 12px;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.04);
+  border-radius: var(--radius-sm);
   text-decoration: none;
   color: inherit;
   transition: all 0.2s;
@@ -158,17 +134,16 @@
 }
 
 .message-bubble.other .document-link {
-  background: #f0f2f5;
-  color: var(--wa-green-dark, #008069);
+  background: var(--surface-2);
+  color: var(--accent-text);
 }
 
 .document-link:hover {
-  background: rgba(0, 0, 0, 0.09);
-  transform: translateX(2px);
+  background: rgba(15, 23, 42, 0.07);
 }
 
 .message-bubble.other .document-link:hover {
-  background: #e5e5e5;
+  background: #e9eef5;
 }
 
 .doc-icon {
@@ -198,15 +173,15 @@
 /* Media fallback when URL is missing */
 .media-fallback {
   padding: 10px 14px;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.04);
+  border-radius: var(--radius-sm);
   font-size: 13px;
   opacity: 0.85;
   margin-bottom: 4px;
 }
 
 .message-bubble.own .media-fallback {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(15, 23, 42, 0.04);
 }
 
 /* Message Meta */
@@ -215,14 +190,14 @@
   align-items: center;
   justify-content: flex-end;
   gap: 4px;
-  margin-top: 2px;
+  margin-top: 3px;
   font-size: 11px;
   line-height: 15px;
 }
 
 .time {
   font-weight: 400;
-  color: var(--color-text-secondary, #667781);
+  color: var(--text-subtle);
   font-size: 11px;
 }
 
@@ -234,7 +209,7 @@
 }
 
 .status-pending {
-  color: #8696a0;
+  color: var(--text-subtle);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
@@ -244,20 +219,20 @@
 }
 
 .status-sent {
-  color: #8696a0;
+  color: var(--text-subtle);
 }
 
 .status-delivered {
-  color: #8696a0;
+  color: var(--text-subtle);
 }
 
 .status-read {
-  color: #53bdeb;
+  color: #2563eb;
   font-weight: bold;
 }
 
 .status-failed {
-  color: #ff5252;
+  color: var(--color-error);
   font-size: 13px;
 }
 
@@ -266,11 +241,12 @@
   position: absolute;
   bottom: -10px;
   right: 8px;
-  background: white;
-  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
   padding: 2px 6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-  font-size: 16px;
+  box-shadow: var(--shadow-sm);
+  font-size: 15px;
   line-height: 1;
   z-index: 100;
   animation: reactionPop 0.3s ease;
@@ -303,10 +279,11 @@
   margin-bottom: 4px;
   display: flex;
   gap: 4px;
-  background: white;
-  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
   padding: 6px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-lg);
   z-index: 1000;
   animation: reactionPickerSlide 0.2s ease;
   pointer-events: all;
@@ -358,28 +335,28 @@
 .reaction-btn {
   background: none;
   border: none;
-  font-size: 24px;
+  font-size: 22px;
   cursor: pointer;
   padding: 6px;
   border-radius: 50%;
-  transition: all 0.2s;
+  transition: all 0.15s;
   line-height: 1;
 }
 
 .reaction-btn:hover {
-  background: #f0f0f0;
-  transform: scale(1.2);
+  background: var(--surface-2);
+  transform: scale(1.15);
 }
 
 .reaction-btn.selected {
-  background: #e8f5e9;
+  background: var(--accent-soft);
   transform: scale(1.1);
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
   .message-bubble {
-    max-width: 80%;
+    max-width: 82%;
     font-size: 13px;
   }
 
@@ -403,7 +380,7 @@
   bottom: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.9);
+  background: rgba(15, 23, 42, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -425,14 +402,14 @@
   max-width: 100%;
   max-height: 90vh;
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: var(--radius);
 }
 
 .image-preview-close {
   position: absolute;
   top: -40px;
   right: 0;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.95);
   border: none;
   width: 36px;
   height: 36px;
@@ -444,7 +421,7 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
-  color: #333;
+  color: var(--text);
 }
 
 .image-preview-close:hover {
@@ -461,11 +438,11 @@
   }
 }
 
-/* Group/channel sender name — WhatsApp-style small colored label above incoming bubbles */
+/* Group/channel sender name — small colored label above incoming bubbles */
 .message-sender-name {
   font-size: 12.5px;
   font-weight: 600;
-  color: #06a5a0;
+  color: var(--accent);
   margin-bottom: 2px;
   line-height: 1.2;
   max-width: 100%;

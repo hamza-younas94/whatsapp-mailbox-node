@@ -1,4 +1,4 @@
-/* WhatsApp Mailbox UI Theme */
+/* WhatsApp Mailbox UI — Modern SaaS theme (Linear / Stripe / Notion vibe) */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 /* Urdu (Nastaliq) + Arabic (Naskh) fonts for proper RTL script rendering */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap');
@@ -18,43 +18,62 @@
 }
 
 :root {
-  /* Primary colors (WhatsApp green) */
-  --color-primary: #00a884;
-  --color-primary-dark: #008069;
-  --color-primary-light: #d9fdd3;
+  /* ===== Shared Modern SaaS design tokens (match business pages) ===== */
+  --font: 'Inter', system-ui, -apple-system, sans-serif;
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --text-subtle: #94a3b8;
+  --accent: #059669;
+  --accent-hover: #047857;
+  --accent-soft: #ecfdf5;
+  --accent-text: #065f46;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, .04), 0 1px 3px rgba(15, 23, 42, .06);
 
-  /* Secondary colors */
-  --color-secondary: #008069;
-  --color-accent: #53bdeb;
+  /* Focus ring */
+  --ring: 0 0 0 3px rgba(5, 150, 105, .16);
 
-  /* WhatsApp brand surface palette */
-  --wa-green: #00a884;
-  --wa-green-dark: #008069;
-  --wa-teal: #128c7e;
-  --wa-header-bg: #f0f2f5;
-  --wa-panel-bg: #ffffff;
-  --wa-chat-bg: #efeae2;
-  --wa-bubble-out: #d9fdd3;
-  --wa-bubble-in: #ffffff;
-  --wa-badge: #25d366;
-  --wa-hover: #f5f6f6;
-  --wa-active: #f0f2f5;
+  /* ===== Legacy aliases remapped onto the SaaS palette =====
+     Existing component CSS references these names; remapping keeps the
+     whole app consistent without touching every rule. */
+  --color-primary: var(--accent);
+  --color-primary-dark: var(--accent-hover);
+  --color-primary-light: var(--accent-soft);
+  --color-secondary: var(--accent-hover);
+  --color-accent: var(--accent);
 
-  /* Neutrals */
-  --color-bg: #ffffff;
-  --color-bg-alt: #f0f2f5;
-  --color-border: #e9edef;
-  --color-text: #111b21;
-  --color-text-secondary: #667781;
-  --color-text-light: #8696a0;
+  --wa-green: var(--accent);
+  --wa-green-dark: var(--accent-hover);
+  --wa-teal: var(--accent);
+  --wa-header-bg: var(--surface);
+  --wa-panel-bg: var(--surface);
+  --wa-chat-bg: var(--surface-2);
+  --wa-bubble-out: var(--accent-soft);
+  --wa-bubble-in: var(--surface);
+  --wa-badge: var(--accent);
+  --wa-hover: var(--surface-2);
+  --wa-active: var(--accent-soft);
+
+  --color-bg: var(--surface);
+  --color-bg-alt: var(--surface-2);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-text-secondary: var(--text-muted);
+  --color-text-light: var(--text-subtle);
 
   /* Status colors */
   --color-sent: #0084ff;
-  --color-delivered: #128c7e;
-  --color-read: #128c7e;
-  --color-failed: #ff4458;
-  --color-pending: #f0ad4e;
-  --color-success: #10b981;
+  --color-delivered: var(--accent);
+  --color-read: #2563eb;
+  --color-failed: #ef4444;
+  --color-pending: #f59e0b;
+  --color-success: #059669;
   --color-warning: #f59e0b;
   --color-error: #ef4444;
   --color-info: #3b82f6;
@@ -68,26 +87,25 @@
   --spacing-2xl: 32px;
 
   /* Typography */
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+  --font-family: var(--font);
   --font-size-xs: 12px;
   --font-size-sm: 13px;
   --font-size-base: 14px;
+  --font-size-md: 15px;
   --font-size-lg: 16px;
   --font-size-xl: 18px;
   --font-size-2xl: 20px;
 
   /* Border radius */
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  --radius-xs: 4px;
+  --radius-md: var(--radius-sm);
+  --radius-lg: var(--radius);
   --radius-full: 9999px;
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(11, 20, 26, 0.08);
-  --shadow-md: 0 2px 8px rgba(11, 20, 26, 0.12);
-  --shadow-lg: 0 8px 24px rgba(11, 20, 26, 0.14);
-  --shadow-bubble: 0 1px 1px rgba(11, 20, 26, 0.13);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, .06), 0 1px 2px rgba(15, 23, 42, .04);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 42, .10);
+  --shadow-bubble: 0 1px 2px rgba(15, 23, 42, .05);
 
   /* Z-index */
   --z-dropdown: 1000;
@@ -107,17 +125,22 @@
 
 html, body {
   height: 100%;
-  font-family: var(--font-family);
+  font-family: var(--font);
+  color: var(--text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
+body {
+  background: var(--bg);
+}
+
 #root {
   display: flex;
-  height: calc(100vh - 64px);
-  background: var(--color-bg);
-  color: var(--color-text);
+  height: calc(100vh - 60px);
+  background: var(--bg);
+  color: var(--text);
 }
 
 /* Utility classes */
@@ -128,8 +151,8 @@ html, body {
 .text-xl { font-size: var(--font-size-xl); }
 .text-2xl { font-size: var(--font-size-2xl); }
 
-.text-secondary { color: var(--color-text-secondary); }
-.text-light { color: var(--color-text-light); }
+.text-secondary { color: var(--text-muted); }
+.text-light { color: var(--text-subtle); }
 
 .gap-xs { gap: var(--spacing-xs); }
 .gap-sm { gap: var(--spacing-sm); }
@@ -144,8 +167,8 @@ html, body {
 .p-xl { padding: var(--spacing-xl); }
 
 .rounded-sm { border-radius: var(--radius-sm); }
-.rounded-md { border-radius: var(--radius-md); }
-.rounded-lg { border-radius: var(--radius-lg); }
+.rounded-md { border-radius: var(--radius-sm); }
+.rounded-lg { border-radius: var(--radius); }
 .rounded-full { border-radius: var(--radius-full); }
 
 .flex { display: flex; }
@@ -154,9 +177,9 @@ html, body {
 .justify-between { justify-content: space-between; }
 .justify-center { justify-content: center; }
 
-.border { border: 1px solid var(--color-border); }
-.border-b { border-bottom: 1px solid var(--color-border); }
-.border-r { border-right: 1px solid var(--color-border); }
+.border { border: 1px solid var(--border); }
+.border-b { border-bottom: 1px solid var(--border); }
+.border-r { border-right: 1px solid var(--border); }
 
 .shadow-sm { box-shadow: var(--shadow-sm); }
 .shadow-md { box-shadow: var(--shadow-md); }
@@ -167,15 +190,23 @@ html, body {
 
 .cursor-pointer { cursor: pointer; }
 
+/* Shared focus ring for interactive fields */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: none;
+}
+
 /* Scrollbar styling — thin & modern */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(11, 20, 26, 0.2) transparent;
+  scrollbar-color: var(--border-strong) transparent;
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -183,10 +214,14 @@ html, body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(11, 20, 26, 0.18);
+  background: var(--border-strong);
   border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(11, 20, 26, 0.32);
+  background: #94a3b8;
+  background-clip: padding-box;
+  border: 2px solid transparent;
 }

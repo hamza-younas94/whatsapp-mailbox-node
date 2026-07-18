@@ -1,49 +1,51 @@
-/* Enhanced Conversation List Styles - Modern WhatsApp-like UI */
+/* Conversation List — Modern SaaS (clean rows, 1px borders, restrained color) */
 
 .conversation-list-container {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--wa-panel-bg, #fff);
-  font-family: var(--font-family);
+  background: var(--surface);
+  font-family: var(--font);
+  border-right: 1px solid var(--border);
 }
 
 /* Header with Search */
 .list-header {
-  padding: 8px 12px;
-  background: var(--wa-header-bg, #f0f2f5);
-  border-bottom: 1px solid var(--color-border, #e9edef);
+  padding: 12px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
 
 .search-input {
   width: 100%;
-  padding: 9px 16px;
-  border: 1px solid transparent;
-  border-radius: 8px;
+  padding: 9px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   font-size: 14px;
+  font-family: var(--font);
   outline: none;
-  transition: all 0.2s ease;
-  background: #ffffff;
-  color: var(--color-text, #111b21);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  background: var(--surface);
+  color: var(--text);
 }
 
 .search-input:focus {
-  background: white;
-  border-color: var(--wa-green, #00a884);
-  box-shadow: 0 0 0 3px rgba(0, 168, 132, 0.12);
+  background: var(--surface);
+  border-color: var(--accent);
+  box-shadow: var(--ring);
 }
 
 .search-input::placeholder {
-  color: #999;
+  color: var(--text-subtle);
 }
 
-/* Filter Tabs */
+/* Filter Tabs — clean segmented control */
 .conv-tabs {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   padding: 8px 12px;
-  background: var(--wa-panel-bg, #fff);
-  border-bottom: 1px solid var(--color-border, #e9edef);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
@@ -57,43 +59,44 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 6px 14px;
-  border: none;
-  border-radius: 20px;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.18s ease;
-  background: var(--wa-header-bg, #f0f2f5);
-  color: var(--color-text-secondary, #667781);
+  transition: all 0.15s ease;
+  background: transparent;
+  color: var(--text-muted);
   font-family: inherit;
 }
 
 .conv-tab:hover {
-  background: #e4e7e9;
-  color: var(--color-text, #111b21);
+  background: var(--surface-2);
+  color: var(--text);
 }
 
 .conv-tab.active {
-  background: var(--color-primary-light, #d9fdd3);
-  color: var(--wa-green-dark, #008069);
+  background: var(--accent-soft);
+  color: var(--accent-text);
   font-weight: 600;
 }
 
 .conv-tab-count {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   padding: 1px 6px;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-full);
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--text-muted);
   min-width: 18px;
   text-align: center;
 }
 
 .conv-tab.active .conv-tab-count {
-  background: rgba(0, 128, 105, 0.18);
-  color: var(--wa-green-dark, #008069);
+  background: rgba(5, 150, 105, 0.14);
+  color: var(--accent-text);
 }
 
 /* Contact type badges in conversation list */
@@ -111,7 +114,7 @@
   white-space: nowrap;
 }
 
-/* Type pill next to the name (group / channel / broadcast) */
+/* Type pill next to the name (group / channel / broadcast) — subtle tinted chips */
 .conv-type-pill {
   display: inline-flex;
   align-items: center;
@@ -121,7 +124,7 @@
   font-weight: 600;
   line-height: 1;
   padding: 2px 7px 2px 5px;
-  border-radius: 10px;
+  border-radius: var(--radius-full);
   text-transform: uppercase;
   letter-spacing: 0.3px;
   white-space: nowrap;
@@ -133,17 +136,17 @@
 }
 
 .conv-type-pill.conv-type-group {
-  background: rgba(16, 185, 129, 0.14);
-  color: #047857;
+  background: var(--accent-soft);
+  color: var(--accent-text);
 }
 
 .conv-type-pill.conv-type-channel {
-  background: rgba(245, 158, 11, 0.16);
+  background: #fffbeb;
   color: #b45309;
 }
 
 .conv-type-pill.conv-type-broadcast {
-  background: rgba(139, 92, 246, 0.16);
+  background: #f5f3ff;
   color: #6d28d9;
 }
 
@@ -154,15 +157,15 @@
 }
 
 .conv-type-group {
-  color: #10b981;
+  color: var(--accent);
 }
 
 .conv-type-channel {
-  color: #f59e0b;
+  color: #d97706;
 }
 
 .conv-type-broadcast {
-  color: #8b5cf6;
+  color: #7c3aed;
 }
 
 /* Conversations Scroll Area */
@@ -170,30 +173,14 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-}
-
-.conversations-scroll::-webkit-scrollbar {
-  width: 6px;
-}
-
-.conversations-scroll::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-.conversations-scroll::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
-}
-
-.conversations-scroll::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: var(--surface);
 }
 
 /* Loading and Empty States */
 .empty-state {
-  padding: 40px 20px;
+  padding: 48px 24px;
   text-align: center;
-  color: #666;
+  color: var(--text-subtle);
   font-size: 14px;
 }
 
@@ -206,15 +193,15 @@
   display: flex;
   gap: 12px;
   padding: 12px 16px;
-  border-bottom: 1px solid #f0f0f0;
-  background: white;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
 
 .skeleton-avatar {
-  width: 50px;
-  height: 50px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+  background: linear-gradient(90deg, var(--surface-2) 25%, #e9eef5 50%, var(--surface-2) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
   flex-shrink: 0;
@@ -229,16 +216,16 @@
 }
 
 .skeleton-line {
-  height: 12px;
+  height: 11px;
   border-radius: 6px;
-  background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+  background: linear-gradient(90deg, var(--surface-2) 25%, #e9eef5 50%, var(--surface-2) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
 .skeleton-name {
   width: 55%;
-  height: 14px;
+  height: 13px;
 }
 
 .skeleton-preview {
@@ -260,26 +247,23 @@
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: #f0f0f0;
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 5;
 }
 
 .conv-section-header.section-contacts {
-  background: linear-gradient(90deg, #ede9fe, #f0f0f0);
-  border-left: 3px solid #667eea;
+  border-left: 2px solid var(--accent);
 }
 
 .conv-section-header.section-groups {
-  background: linear-gradient(90deg, #d1fae5, #f0f0f0);
-  border-left: 3px solid #10b981;
+  border-left: 2px solid var(--accent);
 }
 
 .conv-section-header.section-channels {
-  background: linear-gradient(90deg, #fef3c7, #f0f0f0);
-  border-left: 3px solid #f59e0b;
+  border-left: 2px solid #d97706;
 }
 
 .section-icon {
@@ -287,41 +271,41 @@
 }
 
 .section-label {
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #555;
+  color: var(--text-muted);
   flex: 1;
 }
 
 .section-count {
   font-size: 11px;
   font-weight: 600;
-  color: #888;
-  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-muted);
+  background: rgba(15, 23, 42, 0.06);
   padding: 1px 8px;
-  border-radius: 10px;
+  border-radius: var(--radius-full);
 }
 
 /* Conversation Item */
 .conversation-item {
   display: flex;
-  gap: 13px;
-  padding: 10px 14px;
+  gap: 12px;
+  padding: 11px 14px;
   cursor: pointer;
-  transition: background-color 0.15s ease;
-  border-bottom: 1px solid var(--color-border, #e9edef);
-  background: var(--wa-panel-bg, #fff);
+  transition: background-color 0.12s ease;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
   position: relative;
 }
 
 .conversation-item:hover {
-  background: var(--wa-hover, #f5f6f6);
+  background: var(--surface-2);
 }
 
 .conversation-item.selected {
-  background: var(--wa-active, #f0f2f5);
+  background: var(--accent-soft);
 }
 
 .conversation-item.selected::before {
@@ -331,33 +315,32 @@
   top: 0;
   bottom: 0;
   width: 3px;
-  background: var(--wa-green, #00a884);
+  background: var(--accent);
 }
 
 .conversation-item.has-unread {
-  background: var(--wa-panel-bg, #fff);
+  background: var(--surface);
 }
 
 .conversation-item.has-unread:hover {
-  background: var(--wa-hover, #f5f6f6);
+  background: var(--surface-2);
 }
 
-/* Avatar */
+/* Avatar — consistent circle, restrained tint */
 .conv-avatar {
   position: relative;
-  width: 49px;
-  height: 49px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--accent-soft);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   font-weight: 600;
-  font-size: 20px;
-  color: white;
-  box-shadow: 0 1px 2px rgba(11, 20, 26, 0.12);
-  transition: transform 0.2s;
+  font-size: 17px;
+  color: var(--accent-text);
+  transition: transform 0.15s;
   overflow: hidden;
 }
 
@@ -366,10 +349,6 @@
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
-}
-
-.conversation-item:hover .conv-avatar {
-  transform: scale(1.05);
 }
 
 .avatar-text {
@@ -383,25 +362,13 @@
 
 .online-indicator {
   position: absolute;
-  bottom: 2px;
-  right: 2px;
-  width: 12px;
-  height: 12px;
-  background: #4caf50;
-  border: 2px solid white;
+  bottom: 1px;
+  right: 1px;
+  width: 11px;
+  height: 11px;
+  background: var(--accent);
+  border: 2px solid var(--surface);
   border-radius: 50%;
-  animation: pulse 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.8;
-    transform: scale(0.95);
-  }
 }
 
 /* Content Area */
@@ -410,7 +377,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   justify-content: center;
 }
 
@@ -423,9 +390,9 @@
 }
 
 .conv-name {
-  font-weight: 500;
-  font-size: 16px;
-  color: var(--color-text, #111b21);
+  font-weight: 600;
+  font-size: 14.5px;
+  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -434,19 +401,19 @@
 }
 
 .conversation-item.has-unread .conv-name {
-  color: var(--color-text, #111b21);
+  color: var(--text);
   font-weight: 600;
 }
 
 .conv-time {
   font-size: 12px;
-  color: var(--color-text-secondary, #667781);
+  color: var(--text-subtle);
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .conversation-item.has-unread .conv-time {
-  color: var(--wa-green, #00a884);
+  color: var(--accent);
   font-weight: 600;
 }
 
@@ -460,7 +427,7 @@
 
 .conv-preview {
   font-size: 13px;
-  color: var(--color-text-secondary, #667781);
+  color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -469,52 +436,37 @@
 }
 
 .conversation-item.has-unread .conv-preview {
-  color: var(--color-text, #111b21);
+  color: var(--text);
   font-weight: 500;
 }
 
-/* Unread Badge — WhatsApp green pill */
+/* Unread Badge — small accent pill */
 .unread-badge {
-  min-width: 20px;
-  height: 20px;
+  min-width: 18px;
+  height: 18px;
   padding: 0 6px;
-  background: var(--wa-badge, #25d366);
-  color: white;
-  border-radius: 10px;
-  font-size: 12px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius-full);
+  font-size: 11px;
   font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   line-height: 1;
-  animation: badgePop 0.3s ease;
-}
-
-@keyframes badgePop {
-  0% {
-    transform: scale(0);
-    opacity: 0;
-  }
-  50% {
-    transform: scale(1.2);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
   .conversation-item {
-    padding: 10px 12px;
+    padding: 11px 12px;
   }
 
   .conv-avatar {
-    width: 45px;
-    height: 45px;
-    font-size: 18px;
+    width: 42px;
+    height: 42px;
+    font-size: 16px;
   }
 
   .conv-name {
@@ -522,22 +474,6 @@
   }
 
   .conv-preview {
-    font-size: 12px;
-  }
-}
-
-/* Smooth Animations */
-.conversation-item {
-  animation: fadeIn 0.3s ease-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateX(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
+    font-size: 12.5px;
   }
 }

@@ -44,7 +44,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(135deg, #075E54 0%, #128C7E 50%, #25D366 100%);
+  background: var(--accent);
   color: white;
   position: relative;
 }
@@ -56,7 +56,7 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, #25D366, #128C7E, #075E54);
+  background: var(--accent);
 }
 
 .modal-header-content {
@@ -175,13 +175,13 @@
 }
 
 .modal-tab:hover {
-  color: #128C7E;
-  background: rgba(18, 140, 126, 0.04);
+  color: var(--accent);
+  background: rgba(5, 150, 105, 0.04);
 }
 
 .modal-tab.active {
-  color: #128C7E;
-  border-bottom-color: #128C7E;
+  color: var(--accent);
+  border-bottom-color: var(--accent);
 }
 
 .modal-tab .tab-icon {
@@ -231,7 +231,7 @@
 }
 
 .badge-count {
-  background: #128C7E;
+  background: var(--accent);
   color: white;
   padding: 2px 8px;
   border-radius: 10px;
@@ -255,7 +255,7 @@
   align-items: center;
   gap: 5px;
   padding: 5px 12px;
-  background: linear-gradient(135deg, #128C7E 0%, #075E54 100%);
+  background: var(--accent);
   color: white;
   border-radius: 20px;
   font-size: 12px;
@@ -265,7 +265,7 @@
 
 .tag-chip:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(18, 140, 126, 0.3);
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
 }
 
 .tag-chip button {
@@ -335,8 +335,8 @@
 }
 
 .tag-suggestion-item:hover {
-  background: #e8f5e9;
-  color: #128C7E;
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .tag-suggestion-item:not(:last-child) {
@@ -362,13 +362,13 @@
 
 .add-input-group input:focus {
   outline: none;
-  border-color: #128C7E;
-  box-shadow: 0 0 0 3px rgba(18, 140, 126, 0.1);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
 }
 
 .add-input-group button {
   padding: 9px 18px;
-  background: #128C7E;
+  background: var(--accent);
   color: white;
   border: none;
   border-radius: 8px;
@@ -380,7 +380,7 @@
 }
 
 .add-input-group button:hover:not(:disabled) {
-  background: #0d6b5f;
+  background: var(--accent-hover);
 }
 
 .add-input-group button:disabled {

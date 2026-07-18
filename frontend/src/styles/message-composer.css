@@ -3,14 +3,13 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
-  padding: 8px 16px;
-  border-top: 1px solid var(--color-border);
-  background-color: var(--wa-header-bg, #f0f2f5);
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background-color: var(--surface);
 }
 
 .message-composer.dragging {
-  background-color: #f0f9ff;
-  border-color: #3b82f6;
+  background-color: var(--accent-soft);
 }
 
 .drag-overlay {
@@ -283,26 +282,27 @@
   flex-shrink: 0;
 }
 
-/* Attach = subtle gray icon button */
-.attach-btn {
+/* Attach + Voice = subtle ghost icon buttons */
+.attach-btn,
+.voice-btn {
   background-color: transparent;
-  color: var(--color-text-secondary, #54656f);
+  color: var(--text-muted);
 }
 
-.attach-btn:hover:not(:disabled) {
-  background-color: rgba(11, 20, 26, 0.06);
+.attach-btn:hover:not(:disabled),
+.voice-btn:hover:not(:disabled) {
+  background-color: var(--surface-2);
+  color: var(--text);
 }
 
-/* Voice + Send = WhatsApp green circles */
-.voice-btn,
+/* Send = circular accent button */
 .send-btn {
-  background-color: var(--wa-green, #00a884);
+  background-color: var(--accent);
   color: white;
 }
 
-.send-btn:hover:not(:disabled),
-.voice-btn:hover:not(:disabled) {
-  background-color: var(--wa-green-dark, #008069);
+.send-btn:hover:not(:disabled) {
+  background-color: var(--accent-hover);
 }
 
 .send-btn:active:not(:disabled),
@@ -329,30 +329,30 @@
 .input-field {
   flex: 1;
   padding: 10px 16px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  font-family: var(--font-family);
-  font-size: 15px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: 14.5px;
   line-height: 20px;
   resize: none;
   max-height: 120px;
   outline: none;
-  background: #ffffff;
-  color: var(--color-text, #111b21);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  background: var(--surface);
+  color: var(--text);
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .input-field::placeholder {
-  color: var(--color-text-light, #8696a0);
+  color: var(--text-subtle);
 }
 
 .input-field:focus {
-  border-color: transparent;
-  box-shadow: 0 1px 2px rgba(11, 20, 26, 0.1);
+  border-color: var(--accent);
+  box-shadow: var(--ring);
 }
 
 .input-field:disabled {
-  background-color: #f0f2f5;
+  background-color: var(--surface-2);
   cursor: not-allowed;
 }
 
@@ -377,7 +377,7 @@
 }
 
 .qr-panel-btn:hover {
-  background: rgba(11, 20, 26, 0.06);
+  background: var(--surface-2);
 }
 
 .qr-panel {
@@ -417,7 +417,7 @@
 }
 
 .qr-panel-search:focus {
-  border-color: #128C7E;
+  border-color: var(--accent);
 }
 
 .qr-panel-list {
@@ -459,8 +459,8 @@
 
 .qr-panel-item-shortcut {
   font-size: 11px;
-  color: #128C7E;
-  background: rgba(18, 140, 126, 0.08);
+  color: var(--accent);
+  background: var(--accent-soft);
   padding: 1px 6px;
   border-radius: 4px;
   font-family: monospace;
@@ -492,7 +492,7 @@
 }
 
 .emoji-btn:hover {
-  background: rgba(11, 20, 26, 0.06);
+  background: var(--surface-2);
 }
 
 .emoji-btn:disabled {
@@ -540,7 +540,7 @@
 }
 
 .emoji-tab.active {
-  background: #e8f5e9;
+  background: var(--accent-soft);
 }
 
 .emoji-grid {

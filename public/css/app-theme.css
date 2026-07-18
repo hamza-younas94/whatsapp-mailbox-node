@@ -1,192 +1,308 @@
 /* =====================================================================
-   WA Mailbox — App Theme (modern visual refresh)
+   WA Mailbox — App Theme  ·  Modern SaaS design system
    ---------------------------------------------------------------------
-   A conservative design layer that enhances the existing Tailwind (CDN)
-   markup WITHOUT requiring per-page HTML changes and WITHOUT altering any
-   layout / responsive utilities. It only refines typography, color,
-   shadows, radius, inputs, buttons, tables, and scrollbars.
+   A cohesive visual layer applied OVER the existing Tailwind (CDN) markup.
+   It changes no HTML structure, no responsive utilities, and no JS — it
+   only refines typography, color, borders, radius, elevation, inputs,
+   buttons, tables, badges and scrollbars into a clean Linear/Stripe/
+   Notion-style aesthetic (generous whitespace, subtle 1px borders over
+   heavy shadows, restrained color, consistent radius).
 
-   Specificity is kept intentionally low for form/table baselines so it
-   fills gaps rather than fighting existing utility classes; card and
-   button selectors are compound so they can gently upgrade existing look.
+   Specificity notes:
+   - Card/field baselines stay low so they fill gaps, not fight utilities.
+   - Color remaps are prefixed with `html ` (0,1,1) so they beat a base
+     Tailwind class (0,1,0) but still lose to `hover:`/`focus:` variants —
+     interactive state feedback is preserved.
+   - Button color rules are element-scoped (button/a/input) and guarded
+     with :not(.rounded-full) so circular icon-buttons and color-swatch
+     pickers are never restyled.
    ===================================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-    /* Brand accent — anchored on WhatsApp green */
-    --wa-green:        #16a34a; /* green-600 */
-    --wa-green-strong: #15803d; /* green-700 */
-    --wa-green-light:  #22c55e; /* green-500 */
-    --wa-green-bright: #25D366; /* WhatsApp brand */
+    /* Typography */
+    --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
-    /* Neutral surfaces */
-    --wa-bg:           #f8fafc; /* soft page background */
-    --wa-surface:      #ffffff;
-    --wa-border:       #e5e7eb;
-    --wa-border-soft:  #eef1f5;
+    /* Surfaces */
+    --bg:            #f8fafc;
+    --surface:       #ffffff;
+    --surface-2:     #f1f5f9;
+
+    /* Borders */
+    --border:        #e2e8f0;
+    --border-strong: #cbd5e1;
 
     /* Text */
-    --wa-text:         #1f2937;
-    --wa-text-muted:   #6b7280;
+    --text:          #0f172a;
+    --text-muted:    #64748b;
+    --text-subtle:   #94a3b8;
 
-    /* Elevation */
-    --wa-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
-    --wa-shadow-md: 0 2px 6px rgba(16, 24, 40, 0.05), 0 8px 24px rgba(16, 24, 40, 0.06);
-    --wa-shadow-lg: 0 6px 18px rgba(16, 24, 40, 0.08), 0 18px 48px rgba(16, 24, 40, 0.10);
+    /* Accent (emerald) */
+    --accent:        #059669;
+    --accent-hover:  #047857;
+    --accent-soft:   #ecfdf5;
+    --accent-text:   #065f46;
 
-    /* Focus ring */
-    --wa-ring: 0 0 0 3px rgba(37, 211, 102, 0.28);
+    /* Radius */
+    --radius:        12px;
+    --radius-sm:     8px;
 
-    --wa-radius: 14px;
+    /* Elevation — lean on borders, keep shadows subtle */
+    --shadow-sm: 0 1px 2px rgba(15,23,42,.04), 0 1px 3px rgba(15,23,42,.06);
+    --shadow:    0 4px 12px rgba(15,23,42,.06);
+
+    /* Focus ring — soft accent, still visible on white */
+    --ring: 0 0 0 3px rgba(5,150,105,.16);
 }
 
 /* ---------------------------------------------------------------------
    Base typography + rendering
    ------------------------------------------------------------------ */
 body {
-    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system,
-                 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text);
+    background-color: var(--bg);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: -0.006em;
-    color: var(--wa-text);
 }
 
-/* Soft page background — only applies where a page/body doesn't already
-   declare its own Tailwind bg utility (utility classes out-specify this,
-   so gradient login pages and bg-gray-50 pages keep their background). */
-body {
-    background-color: var(--wa-bg);
-}
-
-/* Slightly tighter, cleaner headings */
-h1, h2, h3, h4 {
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
     letter-spacing: -0.02em;
+    color: var(--text);
 }
 
 /* ---------------------------------------------------------------------
-   Cards — softer shadow + larger radius.
-   Compound selectors (0,2,0) gently upgrade the common card patterns.
+   Cards — white surface, 1px border, gentle radius, subtle shadow.
+   Compound selectors (0,2,0) upgrade the common card patterns without
+   touching layout utilities.
    ------------------------------------------------------------------ */
 .bg-white.rounded-lg,
 .bg-white.rounded-xl,
 .bg-white.rounded-2xl,
-.bg-white.rounded-md {
-    border-radius: var(--wa-radius);
-    box-shadow: var(--wa-shadow-md);
-    border: 1px solid var(--wa-border-soft);
+.bg-white.rounded-md,
+.bg-white.shadow,
+.bg-white.shadow-sm,
+.bg-white.shadow-md {
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
 }
 
-/* Elements that opt into a stronger shadow keep an even softer, deeper one */
+/* Elements opting into a heavier shadow get one refined, softer elevation
+   (dropdowns, modals, auth cards) — still restrained. */
 .bg-white.shadow-lg,
 .bg-white.shadow-xl,
 .bg-white.shadow-2xl {
-    box-shadow: var(--wa-shadow-lg);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
 }
 
 /* ---------------------------------------------------------------------
-   Buttons — scoped to actual button/link/input elements so status dots,
-   badges, and the logo (spans/divs using green) are untouched.
+   Buttons — Primary (accent). Green/blue action buttons + submit.
+   Element-scoped + :not(.rounded-full) so swatches / FAB icons are safe.
    ------------------------------------------------------------------ */
-button.bg-green-600, a.bg-green-600, input.bg-green-600,
-button.bg-green-500, a.bg-green-500, input.bg-green-500 {
-    background-image: linear-gradient(135deg, var(--wa-green-light) 0%, var(--wa-green) 100%);
-    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.10);
-    transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+button.bg-green-600:not(.rounded-full), a.bg-green-600:not(.rounded-full), input.bg-green-600,
+button.bg-green-500:not(.rounded-full), a.bg-green-500:not(.rounded-full), input.bg-green-500,
+button.bg-blue-600:not(.rounded-full),  a.bg-blue-600:not(.rounded-full),  input.bg-blue-600,
+button.bg-blue-500:not(.rounded-full),  a.bg-blue-500:not(.rounded-full),
+button[type="submit"], input[type="submit"] {
+    background-color: var(--accent);
+    background-image: none;
+    color: #ffffff;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    box-shadow: var(--shadow-sm);
+    transition: background-color .16s ease, box-shadow .16s ease, transform .12s ease;
 }
 
-button.bg-green-600:hover, a.bg-green-600:hover, input.bg-green-600:hover,
-button.bg-green-500:hover, a.bg-green-500:hover, input.bg-green-500:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.30);
-    filter: saturate(1.05);
+button.bg-green-600:not(.rounded-full):hover, a.bg-green-600:not(.rounded-full):hover, input.bg-green-600:hover,
+button.bg-green-500:not(.rounded-full):hover, a.bg-green-500:not(.rounded-full):hover, input.bg-green-500:hover,
+button.bg-blue-600:not(.rounded-full):hover,  a.bg-blue-600:not(.rounded-full):hover,  input.bg-blue-600:hover,
+button.bg-blue-500:not(.rounded-full):hover,  a.bg-blue-500:not(.rounded-full):hover,
+button[type="submit"]:hover, input[type="submit"]:hover {
+    background-color: var(--accent-hover);
+    color: #ffffff;
 }
 
-button.bg-green-600:active, a.bg-green-600:active, input.bg-green-600:active,
-button.bg-green-500:active, a.bg-green-500:active, input.bg-green-500:active {
-    transform: translateY(0);
-    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.12);
+button.bg-green-600:not(.rounded-full):active, a.bg-green-600:not(.rounded-full):active,
+button.bg-green-500:not(.rounded-full):active, a.bg-green-500:not(.rounded-full):active,
+button.bg-blue-600:not(.rounded-full):active,  a.bg-blue-600:not(.rounded-full):active,
+button.bg-blue-500:not(.rounded-full):active,  a.bg-blue-500:not(.rounded-full):active,
+button[type="submit"]:active, input[type="submit"]:active {
+    transform: translateY(0.5px);
+    box-shadow: none;
 }
 
-button.bg-green-600:focus-visible, a.bg-green-600:focus-visible,
-button.bg-green-500:focus-visible, a.bg-green-500:focus-visible,
-input.bg-green-600:focus-visible, input.bg-green-500:focus-visible {
+button.bg-green-600:not(.rounded-full):focus-visible, a.bg-green-600:not(.rounded-full):focus-visible,
+button.bg-green-500:not(.rounded-full):focus-visible, a.bg-green-500:not(.rounded-full):focus-visible,
+button.bg-blue-600:not(.rounded-full):focus-visible,  a.bg-blue-600:not(.rounded-full):focus-visible,
+button.bg-blue-500:not(.rounded-full):focus-visible,  a.bg-blue-500:not(.rounded-full):focus-visible,
+button[type="submit"]:focus-visible, input[type="submit"]:focus-visible {
     outline: none;
-    box-shadow: var(--wa-ring);
+    box-shadow: var(--ring);
 }
 
-/* Generic interactive smoothing (low specificity — never overrides layout) */
+/* Buttons — Danger (keep red, refine). Ensures readable white text. */
+button.bg-red-600:not(.rounded-full), a.bg-red-600:not(.rounded-full), input.bg-red-600,
+button.bg-red-500:not(.rounded-full), a.bg-red-500:not(.rounded-full) {
+    color: #ffffff;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    box-shadow: var(--shadow-sm);
+    transition: background-color .16s ease, box-shadow .16s ease, transform .12s ease;
+}
+button.bg-red-600:not(.rounded-full):focus-visible, button.bg-red-500:not(.rounded-full):focus-visible,
+a.bg-red-600:not(.rounded-full):focus-visible, a.bg-red-500:not(.rounded-full):focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(239,68,68,.18);
+}
+
+/* Buttons — Secondary / ghost. Gray-filled and bordered buttons become
+   a clean white surface with a 1px border and muted text. */
+button.bg-gray-50:not(.rounded-full),  a.bg-gray-50:not(.rounded-full),
+button.bg-gray-100:not(.rounded-full), a.bg-gray-100:not(.rounded-full),
+button.bg-gray-200:not(.rounded-full), a.bg-gray-200:not(.rounded-full),
+button.border:not(.rounded-full):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-purple"]):not([class*="bg-indigo"]),
+a.border:not(.rounded-full):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-purple"]):not([class*="bg-indigo"]) {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    transition: background-color .16s ease, border-color .16s ease, color .16s ease;
+}
+button.bg-gray-50:not(.rounded-full):hover,  a.bg-gray-50:not(.rounded-full):hover,
+button.bg-gray-100:not(.rounded-full):hover, a.bg-gray-100:not(.rounded-full):hover,
+button.bg-gray-200:not(.rounded-full):hover, a.bg-gray-200:not(.rounded-full):hover,
+button.border:not(.rounded-full):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):hover,
+a.border:not(.rounded-full):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):hover {
+    background-color: var(--surface-2);
+    border-color: var(--border-strong);
+    color: var(--text);
+}
+button:not(.rounded-full):focus-visible {
+    outline: none;
+}
+
+/* Interactive smoothing (low specificity — never overrides layout) */
 button, a, .transition, .transition-all {
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ---------------------------------------------------------------------
-   Inputs / selects / textareas — consistent baseline border, radius,
-   focus ring. Low specificity: existing Tailwind field classes win, so
-   this only upgrades fields that weren't explicitly styled.
+   Inputs / selects / textareas — consistent border, radius, focus.
+   Low specificity baseline fills unstyled fields; the gray-border remap
+   below unifies fields that already carry Tailwind border utilities.
    ------------------------------------------------------------------ */
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="submit"]):not([type="button"]),
 select,
 textarea {
-    border: 1px solid var(--wa-border);
-    border-radius: 10px;
-    background-color: var(--wa-surface);
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background-color: var(--surface);
+    color: var(--text);
+    transition: border-color .15s ease, box-shadow .15s ease;
 }
 
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="submit"]):not([type="button"]):focus,
 select:focus,
 textarea:focus {
     outline: none;
-    border-color: var(--wa-green-light);
-    box-shadow: var(--wa-ring);
+    border-color: var(--accent);
+    box-shadow: var(--ring);
 }
 
 input::placeholder,
 textarea::placeholder {
-    color: #9ca3af;
+    color: var(--text-subtle);
+}
+
+/* Unify existing gray field/element borders onto the token palette. */
+html .border-gray-100,
+html .border-gray-200,
+html .border-gray-300 {
+    border-color: var(--border);
 }
 
 /* ---------------------------------------------------------------------
-   Tables — cleaner header treatment (low specificity baseline).
+   Tables — quiet header, tracked uppercase labels, hover rows.
    ------------------------------------------------------------------ */
 thead th {
+    background-color: var(--surface-2);
+    font-size: 11px;
     font-weight: 600;
-    letter-spacing: 0.02em;
-    color: var(--wa-text-muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+thead, thead tr {
+    border-bottom: 1px solid var(--border);
 }
 
 tbody tr {
-    transition: background-color 0.12s ease;
+    transition: background-color .12s ease;
+}
+tbody tr:hover {
+    background-color: var(--surface-2);
 }
 
 /* ---------------------------------------------------------------------
-   Scrollbars — subtle, modern. (Does not affect scroll behaviour, so
-   overflow-x-auto tables keep working exactly as before.)
+   Badges / pills — refine .rounded-full status chips: medium weight,
+   tighter type. Semantic colors keep their soft tint; green maps to
+   the emerald accent set via the color remaps below.
+   ------------------------------------------------------------------ */
+span.rounded-full,
+.inline-flex.rounded-full {
+    font-weight: 500;
+}
+
+/* ---------------------------------------------------------------------
+   Color remaps — green utilities refined onto the accent palette.
+   `html ` prefix (0,1,1) beats base utilities but yields to hover/focus.
+   ------------------------------------------------------------------ */
+html .text-green-500,
+html .text-green-600 { color: var(--accent); }
+html .text-green-700,
+html .text-green-800 { color: var(--accent-text); }
+
+html .bg-green-50,
+html .bg-green-100 { background-color: var(--accent-soft); }
+
+html .border-green-100,
+html .border-green-200 { border-color: #a7f3d0; }
+
+/* Green icon-circle tints already read as accent-soft; keep their icons
+   on the accent color (covered by the text remap above). */
+
+/* ---------------------------------------------------------------------
+   Scrollbars — thin, modern. No effect on scroll behaviour.
    ------------------------------------------------------------------ */
 * {
     scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
+    scrollbar-color: var(--border-strong) transparent;
 }
-
 ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
 }
-
 ::-webkit-scrollbar-track {
     background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1;
+    background-color: var(--border-strong);
     border-radius: 999px;
     border: 2px solid transparent;
     background-clip: content-box;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-    background-color: #94a3b8;
+    background-color: var(--text-subtle);
     background-clip: content-box;
 }

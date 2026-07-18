@@ -55,10 +55,10 @@ function createNavbar() {
 
     const makeLink = (item) => `
         <a href="${item.href}"
-           class="flex items-center px-2.5 py-1.5 rounded-md text-[13px] font-medium transition-all whitespace-nowrap
+           class="flex items-center px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all whitespace-nowrap
                   ${isActive(item.href)
-                    ? 'bg-green-100 text-green-700'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}">
+                    ? 'bg-green-50 text-green-700'
+                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}">
             <i class="fas ${item.icon} mr-1.5 text-[11px]"></i>
             ${item.label}
         </a>`;
@@ -68,7 +68,7 @@ function createNavbar() {
            class="flex items-center px-4 py-2.5 text-sm transition-all
                   ${isActive(item.href)
                     ? 'bg-green-50 text-green-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'}">
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}">
             <i class="fas ${item.icon} mr-3 text-xs w-4 text-center"></i>
             ${item.label}
         </a>`;
@@ -76,15 +76,15 @@ function createNavbar() {
     const makeDropdown = (id, label, icon, items) => `
         <div class="relative" id="${id}Wrapper">
             <button onclick="toggleDropdown('${id}')"
-                class="flex items-center px-2.5 py-1.5 rounded-md text-[13px] font-medium transition-all whitespace-nowrap
+                class="flex items-center px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all whitespace-nowrap
                        ${isDropdownActive(items)
-                         ? 'bg-green-100 text-green-700'
-                         : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}">
+                         ? 'bg-green-50 text-green-700'
+                         : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}">
                 <i class="fas ${icon} mr-1.5 text-[11px]"></i>
                 ${label}
-                <i class="fas fa-chevron-down ml-1 text-[9px]"></i>
+                <i class="fas fa-chevron-down ml-1 text-[9px] opacity-60"></i>
             </button>
-            <div id="${id}Menu" class="hidden absolute left-0 mt-1 w-48 bg-white rounded-xl shadow-xl border py-1.5 z-50">
+            <div id="${id}Menu" class="hidden absolute left-0 mt-1.5 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-1.5 z-50">
                 ${items.map(makeDropdownLink).join('')}
             </div>
         </div>`;
@@ -99,15 +99,15 @@ function createNavbar() {
     const mobileLinksHtml = allItems.map(makeLink).join('');
 
     const navbarHtml = `
-        <nav class="navbar-main bg-white shadow-sm sticky top-0 z-40">
-            <div class="max-w-full mx-auto px-3">
-                <div class="flex items-center justify-between py-2">
+        <nav class="navbar-main bg-white border-b border-gray-200 sticky top-0 z-40">
+            <div class="max-w-full mx-auto px-4">
+                <div class="flex items-center justify-between py-2.5">
                     <!-- Logo -->
-                    <a href="/dashboard.html" class="flex items-center space-x-2 flex-shrink-0">
-                        <div class="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center shadow">
+                    <a href="/dashboard.html" class="flex items-center space-x-2.5 flex-shrink-0">
+                        <div class="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
                             <i class="fab fa-whatsapp text-white text-lg"></i>
                         </div>
-                        <span class="font-bold text-base text-gray-800 hidden xl:block">WA Mailbox</span>
+                        <span class="font-semibold text-[15px] tracking-tight text-gray-900 hidden xl:block">WA Mailbox</span>
                     </a>
 
                     <!-- Navigation Links (Desktop) -->
@@ -121,43 +121,43 @@ function createNavbar() {
                     <!-- Right Side -->
                     <div class="flex items-center space-x-3">
                         <!-- Status -->
-                        <div id="navSessionStatus" class="hidden md:flex items-center px-3 py-1.5 bg-green-50 rounded-full">
+                        <div id="navSessionStatus" class="hidden md:flex items-center px-3 py-1.5 bg-green-50 border border-green-100 rounded-full">
                             <span id="navStatusDot" class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
                             <span id="navStatusText" class="text-xs text-green-700 font-medium">Connected</span>
                         </div>
 
                         <!-- User Menu -->
                         <div class="relative">
-                            <button onclick="toggleUserMenu()" class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-all">
-                                <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                                    <i class="fas fa-user text-gray-600"></i>
+                            <button onclick="toggleUserMenu()" class="flex items-center space-x-2 p-1.5 rounded-lg hover:bg-gray-50 transition-all">
+                                <div class="w-8 h-8 bg-gray-100 border border-gray-200 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-user text-gray-500 text-sm"></i>
                                 </div>
-                                <i class="fas fa-chevron-down text-xs text-gray-500 hidden sm:block"></i>
+                                <i class="fas fa-chevron-down text-[10px] text-gray-400 hidden sm:block"></i>
                             </button>
-                            <div id="userMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border py-2 z-50">
-                                <a href="/profile.html" class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50">
-                                    <i class="fas fa-user-edit mr-2 text-gray-400"></i>
+                            <div id="userMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
+                                <a href="/profile.html" class="flex items-center px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                                    <i class="fas fa-user-edit mr-2.5 text-gray-400 w-4 text-center"></i>
                                     Profile
                                 </a>
-                                <a href="/settings.html" class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50">
-                                    <i class="fas fa-cog mr-2 text-gray-400"></i>
+                                <a href="/settings.html" class="flex items-center px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                                    <i class="fas fa-cog mr-2.5 text-gray-400 w-4 text-center"></i>
                                     Settings
                                 </a>
-                                <a href="/qr-connect.html" class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50">
-                                    <i class="fas fa-qrcode mr-2 text-gray-400"></i>
+                                <a href="/qr-connect.html" class="flex items-center px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                                    <i class="fas fa-qrcode mr-2.5 text-gray-400 w-4 text-center"></i>
                                     QR Connect
                                 </a>
-                                <hr class="my-2">
-                                <button onclick="handleLogout()" class="w-full flex items-center px-4 py-2 text-red-600 hover:bg-red-50">
-                                    <i class="fas fa-sign-out-alt mr-2"></i>
+                                <hr class="my-2 border-gray-100">
+                                <button onclick="handleLogout()" class="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                                    <i class="fas fa-sign-out-alt mr-2.5 w-4 text-center"></i>
                                     Logout
                                 </button>
                             </div>
                         </div>
 
                         <!-- Mobile Menu Button -->
-                        <button onclick="toggleMobileMenu()" class="lg:hidden p-2 rounded-lg hover:bg-gray-100">
-                            <i class="fas fa-bars text-gray-600"></i>
+                        <button onclick="toggleMobileMenu()" class="lg:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900">
+                            <i class="fas fa-bars"></i>
                         </button>
                     </div>
                 </div>
