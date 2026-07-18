@@ -1,6 +1,6 @@
 {
   "name": "whatsapp-mailbox",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "description": "Professional WhatsApp Business Mailbox - Node.js Edition",
   "main": "dist/server.js",
   "scripts": {

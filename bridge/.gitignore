@@ -1,0 +1,6 @@
+# Compiled binary
+whatsapp-bridge
+# whatsmeow session store (device keys) — never commit
+*.db
+*.db-wal
+*.db-shm
