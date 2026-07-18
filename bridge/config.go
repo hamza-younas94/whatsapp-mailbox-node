@@ -22,7 +22,7 @@ func loadConfig() Config {
 	return Config{
 		Addr:           env("BRIDGE_ADDR", "127.0.0.1:8088"),
 		Token:          env("BRIDGE_TOKEN", ""),
-		StoreDSN:       env("BRIDGE_STORE_DSN", "file:whatsmeow-store.db?_foreign_keys=on&_journal_mode=WAL"),
+		StoreDSN:       env("BRIDGE_STORE_DSN", "file:whatsmeow-store.db?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)"),
 		MediaDir:       env("BRIDGE_MEDIA_DIR", "../uploads/media"),
 		MediaURLPrefix: env("BRIDGE_MEDIA_URL_PREFIX", "/uploads/media/"),
 	}

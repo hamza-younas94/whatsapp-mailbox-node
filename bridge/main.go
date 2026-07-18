@@ -13,7 +13,9 @@ import (
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	waLog "go.mau.fi/whatsmeow/util/log"
 
-	_ "github.com/mattn/go-sqlite3"
+	// Pure-Go SQLite driver (registers as "sqlite") so the bridge cross-compiles to a
+	// static Linux binary with CGO_ENABLED=0 — no C toolchain, no building on the server.
+	_ "modernc.org/sqlite"
 )
 
 // Bridge ties the whatsmeow client, the WebSocket hub, and config together.
@@ -31,7 +33,7 @@ func main() {
 	ctx := context.Background()
 
 	// Persistent device store (WhatsApp session keys) — survives restarts, so no re-scan.
-	container, err := sqlstore.New(ctx, "sqlite3", cfg.StoreDSN, waLog.Stdout("DB", "WARN", true))
+	container, err := sqlstore.New(ctx, "sqlite", cfg.StoreDSN, waLog.Stdout("DB", "WARN", true))
 	if err != nil {
 		logger.Errorf("failed to open store: %v", err)
 		os.Exit(1)
