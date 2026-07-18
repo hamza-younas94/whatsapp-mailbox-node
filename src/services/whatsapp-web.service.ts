@@ -102,6 +102,14 @@ export class WhatsAppWebService extends EventEmitter {
           '--no-zygote',
           '--disable-gpu',
           '--single-process',
+          // Memory-reduction flags — this box is RAM-constrained and Chromium was being
+          // OOM-killed, flapping the session. Trim non-essential browser subsystems and cap V8.
+          '--disable-extensions',
+          '--disable-background-networking',
+          '--disable-background-timer-throttling',
+          '--disable-renderer-backgrounding',
+          '--disable-features=site-per-process,TranslateUI',
+          '--js-flags=--max-old-space-size=350',
         ],
       },
     });

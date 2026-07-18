@@ -3,6 +3,21 @@
 All notable changes to this project are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/); versioning is [SemVer](https://semver.org/).
 
+## [2.2.1] - 2026-07-18
+
+### Fixed
+- **Session flapping / "portal not connected".** The droplet was OOM-killing Chromium (WhatsApp
+  Web holding 800+ chats on a 1.9 GB box), so the session connected then dropped every ~10s.
+  Added memory-reduction Chromium flags (disable extensions/background subsystems, cap V8 heap,
+  `--disable-features=site-per-process`) plus a 4 GB swap file on the server. NOTE: durable fix is
+  a larger droplet — 1.9 GB RAM is undersized for this workload. (`src/services/whatsapp-web.service.ts`)
+- **QR code image broken in the SPA modal** (`ERR_INVALID_URL`). The `data:image/png;base64,`
+  prefix was doubled — the backend already returns a full data URL. Now used as-is.
+  (`frontend/src/components/SessionStatus.tsx`)
+- **Groups & channels displayed as plain chats.** The chat header now shows a Group/Channel/Broadcast
+  type label (icon + colored) under the name and a type icon in the avatar, instead of treating every
+  conversation as an individual contact. (`frontend/src/components/ChatPane.tsx`)
+
 ## [2.2.0] - 2026-07-18
 
 ### Fixed

@@ -282,7 +282,11 @@ const SessionStatus: React.FC<SessionStatusProps> = ({ onQRRequired, onStatusCha
             <h3>Scan QR Code</h3>
             <p>Open WhatsApp on your phone and scan this QR code to connect your account.</p>
             <div className="qr-container">
-              <img src={`data:image/png;base64,${qrData.qr}`} alt="QR Code" className="qr-image" />
+              <img
+                src={qrData.qr.startsWith('data:') ? qrData.qr : `data:image/png;base64,${qrData.qr}`}
+                alt="QR Code"
+                className="qr-image"
+              />
             </div>
             <p className="qr-helper-text">Make sure your phone is connected to the internet</p>
             <button className="close-btn" onClick={() => setShowQR(false)}>

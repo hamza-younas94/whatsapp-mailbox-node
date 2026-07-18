@@ -1008,12 +1008,16 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
                 </div>
               </>
             ) : (
-              <div className="header-avatar-placeholder">{avatarInitial}</div>
+              <div className="header-avatar-placeholder">
+                {contactTypeResolved === 'contact' ? avatarInitial : typeInfo.icon}
+              </div>
             )}
           </div>
           <div className="chat-header-text">
             <h3 className="contact-name">{contactName || 'Unknown'}</h3>
-            {phoneNumber && contactTypeResolved === 'contact' && <p className="contact-phone">{phoneNumber}</p>}
+            {contactTypeResolved === 'contact'
+              ? (phoneNumber && <p className="contact-phone">{phoneNumber}</p>)
+              : <p className="contact-phone" style={{ color: typeInfo.color }}>{typeInfo.icon} {typeInfo.label}</p>}
           </div>
         </div>
         <div className="chat-header-actions">
