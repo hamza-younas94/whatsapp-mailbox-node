@@ -12,7 +12,7 @@ export class WhatsAppWebController {
 
     if (!sessions.length) return undefined;
 
-    const activeSession = sessions.find((s) => s.status !== 'DISCONNECTED');
+    const activeSession = sessions.find((s: any) => s.status !== 'DISCONNECTED');
     return activeSession || sessions[sessions.length - 1];
   }
 
