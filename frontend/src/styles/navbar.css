@@ -45,12 +45,12 @@
 .logo-icon-wrapper {
   width: 36px;
   height: 36px;
-  background: linear-gradient(135deg, #25d366, #128c7e);
+  background: linear-gradient(135deg, #00a884, #008069);
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(37, 211, 102, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 168, 132, 0.3);
 }
 
 .logo-fa-icon {
@@ -177,8 +177,8 @@
 }
 
 .search-container.active {
-  background: #e5e5ea;
-  box-shadow: 0 0 0 1px #25d366;
+  background: #fff;
+  box-shadow: 0 0 0 2px #00a884;
 }
 
 .search-icon {
@@ -230,7 +230,7 @@
 }
 
 .status-dot.active {
-  background: #25d366;
+  background: #00a884;
   animation: pulse 2s infinite;
 }
 

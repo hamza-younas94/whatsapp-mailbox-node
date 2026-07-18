@@ -3,6 +3,21 @@
 All notable changes to this project are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/); versioning is [SemVer](https://semver.org/).
 
+## [2.3.0] - 2026-07-18
+
+### Changed
+- **Modernized the Mailbox (SPA) to a WhatsApp-like look.** Inter font + a WhatsApp design-token
+  palette; green outgoing bubbles with tails, white incoming bubbles, doodle-gray chat background;
+  cleaner conversation rows with green unread pills and active-row accent; modern chat header and a
+  rounded composer with circular green send/mic buttons; thin modern scrollbars. Styling only — no
+  data/socket/API changes. (`frontend/src/styles/*`, built to `public/assets`)
+
+### Fixed
+- **Groups & channels now render distinctly in the SPA.** Conversation rows and the chat header show
+  a type pill (Group / Channel / Broadcast) next to the name, and the avatar uses the type emoji
+  (👥/📢/📻) instead of an initial from a raw number — so a group/channel whose name is just a phone
+  number is still clearly identifiable. (`frontend/src/components/ConversationList.tsx`, `ChatPane.tsx`)
+
 ## [2.2.2] - 2026-07-18
 
 ### Fixed

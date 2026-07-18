@@ -1014,7 +1014,18 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
             )}
           </div>
           <div className="chat-header-text">
-            <h3 className="contact-name">{contactName || 'Unknown'}</h3>
+            <div className="chat-header-name-row">
+              <h3 className="contact-name">{contactName || 'Unknown'}</h3>
+              {contactTypeResolved !== 'contact' && (
+                <span
+                  className={`conv-type-pill conv-type-${contactTypeResolved}`}
+                  title={typeInfo.label}
+                >
+                  <span className="conv-type-pill-icon">{typeInfo.icon}</span>
+                  <span className="conv-type-pill-label">{typeInfo.label}</span>
+                </span>
+              )}
+            </div>
             {contactTypeResolved === 'contact'
               ? (phoneNumber && <p className="contact-phone">{phoneNumber}</p>)
               : <p className="contact-phone" style={{ color: typeInfo.color }}>{typeInfo.icon} {typeInfo.label}</p>}

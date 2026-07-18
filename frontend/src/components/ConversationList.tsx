@@ -342,8 +342,12 @@ export const ConversationList: React.FC<ConversationListProps> = ({
             <div className="conv-name-row">
               <span className="conv-name" title={displayName}>{displayName}</span>
               {contactType !== 'contact' && (
-                <span className={`conv-type-badge conv-type-${contactType}`}>
-                  {typeInfo.icon}
+                <span
+                  className={`conv-type-pill conv-type-${contactType}`}
+                  title={typeInfo.label}
+                >
+                  <span className="conv-type-pill-icon">{typeInfo.icon}</span>
+                  <span className="conv-type-pill-label">{typeInfo.label}</span>
                 </span>
               )}
             </div>

@@ -28,38 +28,61 @@
 
 .message-bubble {
   max-width: 65%;
-  padding: 8px 12px;
-  border-radius: 12px;
+  min-width: 76px;
+  padding: 6px 9px 8px 9px;
+  border-radius: 8px;
   position: relative;
   word-wrap: break-word;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s ease;
+  box-shadow: var(--shadow-bubble, 0 1px 1px rgba(11, 20, 26, 0.13));
+  transition: box-shadow 0.15s ease;
 }
 
 .message-bubble:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 3px rgba(11, 20, 26, 0.2);
 }
 
 .message-bubble.own {
-  background: linear-gradient(135deg, #128C7E 0%, #075E54 100%);
-  color: white;
-  border-bottom-right-radius: 4px;
+  background: var(--wa-bubble-out, #d9fdd3);
+  color: #111b21;
+  border-top-right-radius: 0;
 }
 
 .message-bubble.other {
-  background: #ffffff;
-  color: #303030;
-  border-bottom-left-radius: 4px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  background: var(--wa-bubble-in, #ffffff);
+  color: #111b21;
+  border-top-left-radius: 0;
+}
+
+/* Bubble tails */
+.message-bubble.own::before,
+.message-bubble.other::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 13px;
+}
+
+.message-bubble.own::before {
+  right: -8px;
+  border-top: 6px solid var(--wa-bubble-out, #d9fdd3);
+  border-right: 8px solid transparent;
+}
+
+.message-bubble.other::before {
+  left: -8px;
+  border-top: 6px solid var(--wa-bubble-in, #ffffff);
+  border-left: 8px solid transparent;
 }
 
 /* Message Text */
 .message-text {
   margin: 0;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 14.2px;
+  line-height: 1.4;
   white-space: pre-wrap;
   word-break: break-word;
+  color: #111b21;
 }
 
 .mention-tag {
@@ -102,7 +125,7 @@
   align-items: center;
   gap: 8px;
   padding: 8px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.05);
   border-radius: 20px;
   min-width: 250px;
 }
@@ -126,7 +149,7 @@
   align-items: center;
   gap: 10px;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.05);
   border-radius: 8px;
   text-decoration: none;
   color: inherit;
@@ -135,12 +158,12 @@
 }
 
 .message-bubble.other .document-link {
-  background: #f0f0f0;
-  color: #128C7E;
+  background: #f0f2f5;
+  color: var(--wa-green-dark, #008069);
 }
 
 .document-link:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.09);
   transform: translateX(2px);
 }
 
@@ -183,21 +206,24 @@
 }
 
 .message-bubble.own .media-fallback {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 /* Message Meta */
 .message-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 4px;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 2px;
   font-size: 11px;
-  opacity: 0.8;
+  line-height: 15px;
 }
 
 .time {
-  font-weight: 500;
+  font-weight: 400;
+  color: var(--color-text-secondary, #667781);
+  font-size: 11px;
 }
 
 /* Status Icons */
@@ -208,7 +234,7 @@
 }
 
 .status-pending {
-  opacity: 0.6;
+  color: #8696a0;
   animation: pulse 1.5s ease-in-out infinite;
 }
 
@@ -218,15 +244,15 @@
 }
 
 .status-sent {
-  color: #b0b0b0;
+  color: #8696a0;
 }
 
 .status-delivered {
-  color: #d0d0d0;
+  color: #8696a0;
 }
 
 .status-read {
-  color: #4FC3F7;
+  color: #53bdeb;
   font-weight: bold;
 }
 

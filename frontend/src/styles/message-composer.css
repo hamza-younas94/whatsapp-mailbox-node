@@ -2,10 +2,10 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
-  padding: var(--spacing-lg);
+  gap: var(--spacing-sm);
+  padding: 8px 16px;
   border-top: 1px solid var(--color-border);
-  background-color: var(--color-bg);
+  background-color: var(--wa-header-bg, #f0f2f5);
 }
 
 .message-composer.dragging {
@@ -262,46 +262,57 @@
 
 .composer-input-row {
   display: flex;
-  gap: var(--spacing-md);
+  gap: 6px;
   align-items: flex-end;
 }
 
 .attach-btn,
 .voice-btn,
 .send-btn {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
   border-radius: 50%;
   border: none;
-  background-color: var(--color-primary);
-  color: white;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  transition: background-color 0.2s;
+  font-size: 20px;
+  transition: background-color 0.2s, transform 0.1s;
   flex-shrink: 0;
 }
 
-.voice-btn {
-  background-color: #059669;
+/* Attach = subtle gray icon button */
+.attach-btn {
+  background-color: transparent;
+  color: var(--color-text-secondary, #54656f);
+}
+
+.attach-btn:hover:not(:disabled) {
+  background-color: rgba(11, 20, 26, 0.06);
+}
+
+/* Voice + Send = WhatsApp green circles */
+.voice-btn,
+.send-btn {
+  background-color: var(--wa-green, #00a884);
+  color: white;
+}
+
+.send-btn:hover:not(:disabled),
+.voice-btn:hover:not(:disabled) {
+  background-color: var(--wa-green-dark, #008069);
+}
+
+.send-btn:active:not(:disabled),
+.voice-btn:active:not(:disabled) {
+  transform: scale(0.94);
 }
 
 .voice-btn.recording {
   background-color: #dc2626;
   animation: pulse 1.5s ease-in-out infinite;
-}
-
-.attach-btn:hover:not(:disabled),
-.voice-btn:hover:not(:disabled),
-.send-btn:hover:not(:disabled) {
-  background-color: var(--color-primary-dark);
-}
-
-.voice-btn:hover:not(:disabled) {
-  background-color: #047857;
 }
 
 .voice-btn.recording:hover {
@@ -317,23 +328,31 @@
 
 .input-field {
   flex: 1;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   font-family: var(--font-family);
-  font-size: var(--font-size-base);
+  font-size: 15px;
+  line-height: 20px;
   resize: none;
   max-height: 120px;
   outline: none;
-  transition: border-color 0.2s;
+  background: #ffffff;
+  color: var(--color-text, #111b21);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-field::placeholder {
+  color: var(--color-text-light, #8696a0);
 }
 
 .input-field:focus {
-  border-color: var(--color-primary);
+  border-color: transparent;
+  box-shadow: 0 1px 2px rgba(11, 20, 26, 0.1);
 }
 
 .input-field:disabled {
-  background-color: var(--color-bg-alt);
+  background-color: #f0f2f5;
   cursor: not-allowed;
 }
 
@@ -345,15 +364,20 @@
 .qr-panel-btn {
   background: none;
   border: none;
-  font-size: 18px;
+  font-size: 20px;
   cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 6px;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
   transition: background 0.15s;
+  color: var(--color-text-secondary, #54656f);
 }
 
 .qr-panel-btn:hover {
-  background: rgba(0, 0, 0, 0.06);
+  background: rgba(11, 20, 26, 0.06);
 }
 
 .qr-panel {
@@ -456,15 +480,19 @@
 .emoji-btn {
   background: none;
   border: none;
-  font-size: 20px;
+  font-size: 22px;
   cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 6px;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
   transition: background 0.15s;
 }
 
 .emoji-btn:hover {
-  background: #f0f0f0;
+  background: rgba(11, 20, 26, 0.06);
 }
 
 .emoji-btn:disabled {

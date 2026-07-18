@@ -33,7 +33,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #fff;
+  background-color: var(--wa-header-bg, #f0f2f5);
+  border-bottom: 5px solid var(--wa-green, #00a884);
 }
 
 .empty-content {
