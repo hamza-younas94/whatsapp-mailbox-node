@@ -680,10 +680,26 @@ export class WhatsAppWebService extends EventEmitter {
       }
 
       logger.info({ messageId: message.id._serialized }, 'Downloading media from message');
-      
-      const media = await message.downloadMedia();
+
+      // whatsapp-web.js downloadMedia() intermittently throws a minified "r" error
+      // (transient decryption/fetch failure), especially for group/channel media.
+      // Retry a few times with a short backoff before giving up.
+      let media: Awaited<ReturnType<WAMessage['downloadMedia']>> | undefined;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          media = await message.downloadMedia();
+          if (media) break;
+          logger.warn({ messageId: message.id._serialized, attempt }, 'Media download returned null, retrying');
+        } catch (err) {
+          logger.warn(
+            { messageId: message.id._serialized, attempt, err: err instanceof Error ? err.message : String(err) },
+            'Media download attempt failed, retrying',
+          );
+        }
+        await new Promise((r) => setTimeout(r, 1500 * attempt));
+      }
       if (!media) {
-        logger.warn({ messageId: message.id._serialized }, 'Media download returned null');
+        logger.warn({ messageId: message.id._serialized }, 'Media download failed after retries');
         return undefined;
       }
 
