@@ -218,6 +218,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({ contactId, contactName, chatId, con
             createdAt: msg.createdAt,
             mediaUrl: msg.mediaUrl || undefined,
             mediaType: msg.mediaType as any,
+            senderName: (msg as any).senderName || undefined,
           }];
         });
       }

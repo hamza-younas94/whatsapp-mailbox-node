@@ -331,6 +331,7 @@ export class WhatsAppWebService extends EventEmitter {
       let contactBusinessName: string | undefined;
       let profilePhotoUrl: string | undefined;
       let isBusiness = false;
+      let senderName: string | undefined; // individual author of a group/channel message
 
       // For outgoing messages, use message.to instead of message.from
       const chatId = isOutgoing ? message.to : message.from;
@@ -343,7 +344,17 @@ export class WhatsAppWebService extends EventEmitter {
           const isGroupMessage = chatId.includes('@g.us') || chatId.includes('@newsletter') || chatId.includes('@broadcast');
 
           if (isGroupMessage) {
-            // For group/channel messages: get GROUP name from chat, NOT sender's name
+            // For group/channel messages: contactName = GROUP name (from chat),
+            // and separately capture senderName = the individual author of THIS message
+            // so the UI can show "who sent what" like WhatsApp.
+            try {
+              const author = await message.getContact();
+              if (author) {
+                senderName = author.name || author.pushname || author.number || undefined;
+              }
+            } catch {
+              // author lookup is non-critical
+            }
             const session = this.sessions.get(sessionId);
             if (session?.client) {
               try {
@@ -446,6 +457,7 @@ export class WhatsAppWebService extends EventEmitter {
         contactName: contactName || contactPushName,
         contactPushName,
         contactBusinessName,
+        senderName, // individual author name for group/channel messages
         profilePhotoUrl,
         isBusiness,
       });

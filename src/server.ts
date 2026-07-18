@@ -383,6 +383,7 @@ function setupIncomingMessageListener(): void {
         contactBusinessName,
         profilePhotoUrl,
         isBusiness,
+        senderName,
       } = event;
 
       logger.info(
@@ -564,6 +565,8 @@ function setupIncomingMessageListener(): void {
         status: isOutgoing ? 'SENT' : 'RECEIVED',
         waMessageId: safeWaMessageId,
         mediaUrl: mediaUrl,
+        // Individual author for group/channel messages (WhatsApp "who sent what")
+        ...(!isOutgoing && senderName ? { senderName } : {}),
       } as any);
 
       // Emit real-time update to client
@@ -579,6 +582,7 @@ function setupIncomingMessageListener(): void {
           status: savedMessage.status,
           mediaUrl: savedMessage.mediaUrl,
           mediaType: savedMessage.mediaType,
+          senderName: (savedMessage as any).senderName || undefined,
         });
       }
 

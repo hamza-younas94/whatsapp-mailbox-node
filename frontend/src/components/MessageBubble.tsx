@@ -14,6 +14,7 @@ interface Message {
   createdAt: string;
   reaction?: string;
   metadata?: any;
+  senderName?: string;
 }
 
 interface MessageBubbleProps {
@@ -196,6 +197,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn, hi
       onMouseLeave={handleMouseLeave}
     >
       <div ref={bubbleRef} className={`message-bubble ${isOwn ? 'own' : 'other'}`}>
+        {/* Sender name — shown for incoming group/channel messages (WhatsApp "who sent what") */}
+        {!isOwn && message.senderName && (
+          <div className="message-sender-name">{message.senderName}</div>
+        )}
         {/* Media content */}
         {hasMedia && (
           <div className="message-media">

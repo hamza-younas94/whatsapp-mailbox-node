@@ -1,3 +1,11 @@
+## [2.4.0] - 2026-07-18
+
+### Added
+- **Group/channel sender attribution ("who sent what").** Incoming group and channel messages
+  now capture the individual author (`message.author`) and store it in `Message.senderName`; the
+  chat bubble shows a WhatsApp-style colored sender label above each incoming group/channel message.
+  (`src/services/whatsapp-web.service.ts`, `src/server.ts`, `frontend/src/components/MessageBubble.tsx`, `ChatPane.tsx`)
+
 # Changelog
 
 All notable changes to this project are documented here.
