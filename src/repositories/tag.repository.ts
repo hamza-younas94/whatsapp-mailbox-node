@@ -34,12 +34,21 @@ export class TagRepository extends BaseRepository<Tag> implements ITagRepository
   }
 
   async addToContact(contactId: string, tagId: string): Promise<void> {
-    await this.prisma.tagOnContact.create({
-      data: { contactId, tagId },
+    if (!contactId || !tagId) {
+      throw new Error(`addToContact requires both contactId and tagId (got contactId=${contactId}, tagId=${tagId})`);
+    }
+    // Idempotent: ignore if the contact already has the tag instead of throwing on the unique constraint.
+    await this.prisma.tagOnContact.upsert({
+      where: { contactId_tagId: { contactId, tagId } },
+      create: { contactId, tagId },
+      update: {},
     });
   }
 
   async removeFromContact(contactId: string, tagId: string): Promise<void> {
+    if (!contactId || !tagId) {
+      throw new Error(`removeFromContact requires both contactId and tagId (got contactId=${contactId}, tagId=${tagId})`);
+    }
     await this.prisma.tagOnContact.delete({
       where: { contactId_tagId: { contactId, tagId } },
     });

@@ -78,12 +78,16 @@ export class WhatsAppWebService extends EventEmitter {
         clientId: sessionId,
         dataPath: this.sessionDir,
       }),
-      // Pin a known-good WhatsApp Web version to avoid markedUnread/sendSeen breakage (issue #5718)
-      webVersion: '2.3000.1031490220-alpha',
+      // Pin a known-good WhatsApp Web version to avoid markedUnread/sendSeen breakage (issue #5718).
+      // NOTE: WhatsApp/the wa-version repo periodically REMOVES old builds — when the pinned
+      // html 404s, device linking fails with "could not link device". Keep this current.
+      // Overridable via WWEBJS_WEB_VERSION env so we can hotfix without a code deploy.
+      webVersion: process.env.WWEBJS_WEB_VERSION || '2.3000.1043421788-alpha',
       webVersionCache: {
         type: 'remote',
-        remotePath:
-          'https://raw.githubusercontent.com/wppconnect-team/wa-version/refs/heads/main/html/2.3000.1031490220-alpha.html',
+        remotePath: `https://raw.githubusercontent.com/wppconnect-team/wa-version/refs/heads/main/html/${
+          process.env.WWEBJS_WEB_VERSION || '2.3000.1043421788-alpha'
+        }.html`,
       },
       authTimeoutMs: 300000,
       qrMaxRetries: 6,
@@ -222,33 +226,48 @@ export class WhatsAppWebService extends EventEmitter {
       this.emit('disconnected', { sessionId: id, reason });
       logger.warn({ sessionId: id, reason }, 'WhatsApp Web disconnected');
 
-      // Auto-reconnect (max 10 attempts with exponential backoff)
+      // Auto-reconnect. Fast exponential backoff for the first FAST_ATTEMPTS tries,
+      // then fall back to a SLOW indefinite retry so the session self-heals whenever
+      // the network/session recovers instead of giving up forever (root cause of the
+      // 2026-06-11 silent 5-week outage).
       const attempts = this.reconnectAttempts.get(id) || 0;
-      const maxAttempts = 10;
+      const FAST_ATTEMPTS = 10;
+      const SLOW_INTERVAL = 15 * 60_000; // 15 min
 
-      if (attempts < maxAttempts) {
-        const delay = Math.min(30_000 * Math.pow(2, attempts), 600_000); // 30s, 60s, 120s... max 10min
-        this.reconnectAttempts.set(id, attempts + 1);
-        logger.info({ sessionId: id, attempt: attempts + 1, delayMs: delay }, 'Scheduling auto-reconnect');
-
-        setTimeout(async () => {
-          try {
-            // Check if session was manually reconnected in the meantime
-            const current = this.sessions.get(id);
-            if (current && current.status === 'READY') {
-              logger.info({ sessionId: id }, 'Session already reconnected, skipping auto-reconnect');
-              return;
-            }
-
-            logger.info({ sessionId: id, attempt: attempts + 1 }, 'Auto-reconnecting WhatsApp session...');
-            await this.reconnectSession(id);
-          } catch (error) {
-            logger.error({ error, sessionId: id, attempt: attempts + 1 }, 'Auto-reconnect failed');
-          }
-        }, delay);
+      let delay: number;
+      if (attempts < FAST_ATTEMPTS) {
+        delay = Math.min(30_000 * Math.pow(2, attempts), 600_000); // 30s, 60s, 120s... max 10min
       } else {
-        logger.error({ sessionId: id, attempts }, 'Max reconnect attempts reached, manual reconnection required');
+        delay = SLOW_INTERVAL;
+        // Fire a one-time alert when we cross from fast into slow retries — this is the
+        // moment a human should scan a QR (auth likely expired) or check the box.
+        if (attempts === FAST_ATTEMPTS) {
+          logger.error(
+            { sessionId: id, attempts, reason },
+            'WhatsApp session down after fast reconnects — switching to slow retry; manual QR re-scan likely needed',
+          );
+          this.notifySessionDown(id, reason);
+        }
       }
+
+      this.reconnectAttempts.set(id, attempts + 1);
+      logger.info({ sessionId: id, attempt: attempts + 1, delayMs: delay }, 'Scheduling auto-reconnect');
+
+      setTimeout(async () => {
+        try {
+          // Check if session was manually reconnected in the meantime
+          const current = this.sessions.get(id);
+          if (current && current.status === 'READY') {
+            logger.info({ sessionId: id }, 'Session already reconnected, skipping auto-reconnect');
+            return;
+          }
+
+          logger.info({ sessionId: id, attempt: attempts + 1 }, 'Auto-reconnecting WhatsApp session...');
+          await this.reconnectSession(id);
+        } catch (error) {
+          logger.error({ error, sessionId: id, attempt: attempts + 1 }, 'Auto-reconnect failed');
+        }
+      }, delay);
     });
 
     // Message reaction event
@@ -855,6 +874,34 @@ export class WhatsAppWebService extends EventEmitter {
    */
   getSessionDir(): string {
     return this.sessionDir;
+  }
+
+  /**
+   * Alert that a session is down and needs attention (auth likely expired).
+   * Emits a 'session_down' event for in-app handling and, if ALERT_WEBHOOK_URL
+   * is configured, POSTs a message (Slack-compatible {text} payload) so a human
+   * is notified instead of the session dying silently. Feature-flagged: no-op if unset.
+   */
+  private async notifySessionDown(sessionId: string, reason: unknown): Promise<void> {
+    this.emit('session_down', { sessionId, reason });
+
+    const webhookUrl = process.env.ALERT_WEBHOOK_URL;
+    if (!webhookUrl) return;
+
+    const text =
+      `⚠️ WhatsApp Web session *${sessionId}* is down (reason: ${String(reason)}). ` +
+      `Auto-reconnect is retrying every 15 min but a manual QR re-scan at /qr-connect.html is likely required.`;
+
+    try {
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      logger.info({ sessionId }, 'Session-down alert sent to webhook');
+    } catch (error) {
+      logger.error({ error, sessionId }, 'Failed to send session-down alert');
+    }
   }
 
   /**

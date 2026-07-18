@@ -186,10 +186,18 @@ export class AutomationService implements IAutomationService {
         break;
 
       case 'ADD_TAG':
+        if (!action.params.tagId) {
+          logger.warn({ contactId: context.contactId }, 'ADD_TAG action skipped: rule has no tagId configured');
+          break;
+        }
         await this.tagService.addTagToContact(context.contactId, action.params.tagId);
         break;
 
       case 'REMOVE_TAG':
+        if (!action.params.tagId) {
+          logger.warn({ contactId: context.contactId }, 'REMOVE_TAG action skipped: rule has no tagId configured');
+          break;
+        }
         await this.tagService.removeTagFromContact(context.contactId, action.params.tagId);
         break;
 
