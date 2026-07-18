@@ -10,6 +10,7 @@
 import { EventEmitter } from 'events';
 import fs from 'fs';
 import path from 'path';
+import qrcode from 'qrcode';
 import { whatsmeowBridge, BridgeMessage } from './whatsmeow-bridge.client';
 import logger from '@utils/logger';
 
@@ -48,10 +49,15 @@ export class WhatsmeowAdapter extends EventEmitter {
     if (this.started) return;
     this.started = true;
 
-    whatsmeowBridge.on('qr', ({ qrCode }: { qrCode: string }) => {
-      this.qrCode = qrCode;
+    whatsmeowBridge.on('qr', async ({ qrCode }: { qrCode: string }) => {
+      // Bridge emits the raw pairing string; the UI renders a PNG data-URL (like webjs did).
+      try {
+        this.qrCode = await qrcode.toDataURL(qrCode);
+      } catch {
+        this.qrCode = qrCode;
+      }
       this.status = 'QR_READY';
-      this.emit('qr', { sessionId: this.sessionId, qrCode });
+      this.emit('qr', { sessionId: this.sessionId, qrCode: this.qrCode });
     });
 
     whatsmeowBridge.on('ready', () => {
