@@ -41,9 +41,11 @@ type ReactionData struct {
 
 // handleEvent is registered with whatsmeow and routes every event to the Node app.
 func (b *Bridge) handleEvent(evt interface{}) {
+	b.touch() // any event = the session is alive (watchdog liveness signal)
 	switch v := evt.(type) {
 	case *events.Connected:
 		b.log.Infof("WhatsApp connected")
+		b.touch()
 		b.hub.broadcast(Event{Type: "connected"})
 
 	case *events.Disconnected:
@@ -95,6 +97,8 @@ func (b *Bridge) handleMessage(evt *events.Message) {
 	if isGroup || isChannel {
 		md.ChatName = b.resolveChatName(chat)
 	}
+
+	b.log.Debugf("message %s from %s (group=%v channel=%v)", md.ID, md.SenderJID, isGroup, isChannel)
 
 	msg := evt.Message
 	switch {

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -20,12 +21,13 @@ import (
 
 // Bridge ties the whatsmeow client, the WebSocket hub, and config together.
 type Bridge struct {
-	cfg       Config
-	hub       *Hub
-	client    *whatsmeow.Client
-	log       waLog.Logger
-	nameCache sync.Map
-	connectMu sync.Mutex // single-flight guard so connect() never runs concurrently
+	cfg          Config
+	hub          *Hub
+	client       *whatsmeow.Client
+	log          waLog.Logger
+	nameCache    sync.Map
+	connectMu    sync.Mutex   // single-flight guard so connect() never runs concurrently
+	lastActivity atomic.Int64 // unix seconds of the last WhatsApp event (watchdog input)
 }
 
 func main() {
@@ -62,6 +64,10 @@ func main() {
 
 	// Connect (restores session, or starts QR pairing if this is a fresh device).
 	go b.connect()
+
+	// Watchdog: recover from a "connected but not receiving" degraded session
+	// (e.g. app-state sync failure) that whatsmeow's socket-level auto-reconnect misses.
+	go b.watchdog()
 
 	// Graceful shutdown.
 	sig := make(chan os.Signal, 1)
@@ -125,5 +131,39 @@ func (b *Bridge) connect() {
 		b.log.Warnf("QR sequence ended — re-arming")
 		b.client.Disconnect()
 		time.Sleep(2 * time.Second)
+	}
+}
+
+// touch records that a WhatsApp event just arrived (watchdog liveness input).
+func (b *Bridge) touch() {
+	b.lastActivity.Store(time.Now().Unix())
+}
+
+// watchdog forces a reconnect when the client claims to be connected but has
+// received no WhatsApp events for a while — the signature of a stale/degraded
+// session (app-state sync failure, half-open socket) that silently stops
+// message delivery. whatsmeow's socket-level auto-reconnect does not catch this.
+func (b *Bridge) watchdog() {
+	const idleLimit = int64(8 * 60) // 8 minutes with zero events = suspect stale
+	ticker := time.NewTicker(2 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+		if b.client.Store.ID == nil || !b.client.IsConnected() {
+			continue // not paired, or socket down (whatsmeow auto-reconnect owns that)
+		}
+		last := b.lastActivity.Load()
+		if last == 0 {
+			b.touch()
+			continue
+		}
+		if time.Now().Unix()-last > idleLimit {
+			b.log.Warnf("watchdog: no WhatsApp events for >%dm — forcing reconnect", idleLimit/60)
+			b.client.Disconnect()
+			time.Sleep(2 * time.Second)
+			if err := b.client.Connect(); err != nil {
+				b.log.Errorf("watchdog reconnect failed: %v", err)
+			}
+			b.touch()
+		}
 	}
 }
